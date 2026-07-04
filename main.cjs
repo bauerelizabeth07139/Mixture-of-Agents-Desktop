@@ -1,39 +1,19 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 
 const isDev = !app.isPackaged;
 const BACKEND_PORT = 3001;
-const FRONTEND_PORT = isDev ? 5173 : null;
 
 let mainWindow = null;
-let backendProcess = null;
+
+// Set NODE_PATH so backend can find node_modules from root
+const appPath = app.isPackaged ? path.join(process.resourcesPath, 'app.asar') : __dirname;
+process.env.NODE_PATH = path.join(appPath, 'node_modules');
+require('module').Module._initPaths();
 
 function getBackendPath() {
-  if (isDev) return path.join(__dirname, 'backend', 'dist', 'index.js');
-  return path.join(process.resourcesPath, 'backend', 'dist', 'index.js');
-}
-
-function getFrontendPath() {
-  if (isDev) return null; // use vite dev server
-  return path.join(__dirname, 'frontend', 'dist', 'index.html');
-}
-
-function startBackend() {
-  return new Promise((resolve, reject) => {
-    try {
-      process.env.PORT = String(BACKEND_PORT);
-      const backend = require(getBackendPath());
-      // Backend exports or starts listening
-      setTimeout(() => resolve(), 1500);
-    } catch (e) {
-      console.error('Backend start error:', e.message);
-      // Fallback: try to connect to existing backend
-      checkServer('http://localhost:' + BACKEND_PORT + '/api/health', 5000)
-        .then(resolve)
-        .catch(reject);
-    }
-  });
+  return path.join(appPath, 'backend', 'dist', 'index.js');
 }
 
 function checkServer(url, timeout) {
@@ -56,6 +36,26 @@ function checkServer(url, timeout) {
   });
 }
 
+function startBackend() {
+  return new Promise((resolve, reject) => {
+    try {
+      process.env.PORT = String(BACKEND_PORT);
+      console.log('Starting backend from:', getBackendPath());
+      require(getBackendPath());
+      // Wait for server to be ready
+      checkServer('http://localhost:' + BACKEND_PORT + '/api/health', 10000)
+        .then(() => { console.log('Backend ready'); resolve(); })
+        .catch((e) => { console.error('Backend health check failed:', e.message); resolve(); }); // continue anyway
+    } catch (e) {
+      console.error('Backend start error:', e.message);
+      // Try connecting to existing server
+      checkServer('http://localhost:' + BACKEND_PORT + '/api/health', 5000)
+        .then(resolve)
+        .catch(() => reject(e));
+    }
+  });
+}
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -71,11 +71,9 @@ async function createWindow() {
     },
   });
 
-  if (isDev) {
-    await mainWindow.loadURL('http://localhost:' + FRONTEND_PORT);
-  } else {
-    await mainWindow.loadFile(getFrontendPath());
-  }
+  const frontendPath = path.join(appPath, 'frontend', 'dist', 'index.html');
+  console.log('Loading frontend from:', frontendPath);
+  await mainWindow.loadFile(frontendPath);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -95,20 +93,13 @@ async function createWindow() {
 
 app.whenReady().then(async () => {
   try {
-    if (!isDev) {
-      await startBackend();
-    } else {
-      // Dev mode: check if backend is already running
-      try {
-        await checkServer('http://localhost:' + BACKEND_PORT + '/api/health', 3000);
-      } catch {
-        console.log('Backend not running in dev mode. Start it manually.');
-      }
-    }
+    await startBackend();
     await createWindow();
+    console.log('App ready');
   } catch (e) {
-    console.error('Startup error:', e.message);
-    app.quit();
+    console.error('Startup error:', e.message, e.stack);
+    // Still try to show window
+    await createWindow();
   }
 
   app.on('activate', () => {
