@@ -1,4 +1,6 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
@@ -32,6 +34,16 @@ app.use('/api/testing', createTestingRoutes(poolManager, wsManager.broadcast.bin
 app.use('/api/coding', createCodingRoutes(poolManager, wsManager.broadcast.bind(wsManager)));
 app.use('/api/extensions', createExtensionRoutes(extManager));
 app.get('/api/health', (_req, res) => { res.json({ status: 'ok', providers: poolManager.getAllProviders().length, ws: wsManager.getClientCount() }); });
+
+
+// Serve frontend static files (for Electron production mode)
+const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => { console.log('MoA backend on port ' + PORT); });

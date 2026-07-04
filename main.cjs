@@ -7,14 +7,10 @@ const BACKEND_PORT = 3001;
 
 let mainWindow = null;
 
-// Set NODE_PATH so backend can find node_modules from root
-const appPath = app.isPackaged ? path.join(process.resourcesPath, 'app.asar') : __dirname;
+// Fix NODE_PATH so backend can resolve modules from root node_modules
+const appPath = isDev ? __dirname : path.join(process.resourcesPath, 'app.asar');
 process.env.NODE_PATH = path.join(appPath, 'node_modules');
 require('module').Module._initPaths();
-
-function getBackendPath() {
-  return path.join(appPath, 'backend', 'dist', 'index.js');
-}
 
 function checkServer(url, timeout) {
   return new Promise((resolve, reject) => {
@@ -40,18 +36,18 @@ function startBackend() {
   return new Promise((resolve, reject) => {
     try {
       process.env.PORT = String(BACKEND_PORT);
-      console.log('Starting backend from:', getBackendPath());
-      require(getBackendPath());
-      // Wait for server to be ready
-      checkServer('http://localhost:' + BACKEND_PORT + '/api/health', 10000)
-        .then(() => { console.log('Backend ready'); resolve(); })
-        .catch((e) => { console.error('Backend health check failed:', e.message); resolve(); }); // continue anyway
+      const backendPath = path.join(appPath, 'backend', 'dist', 'index.js');
+      console.log('[MoA] Starting backend from:', backendPath);
+      require(backendPath);
+      // Wait for backend to be healthy
+      checkServer('http://localhost:' + BACKEND_PORT + '/api/health', 15000)
+        .then(() => { console.log('[MoA] Backend healthy'); resolve(); })
+        .catch((e) => { console.warn('[MoA] Backend health check failed, continuing anyway'); resolve(); });
     } catch (e) {
-      console.error('Backend start error:', e.message);
-      // Try connecting to existing server
+      console.error('[MoA] Backend require error:', e.message);
       checkServer('http://localhost:' + BACKEND_PORT + '/api/health', 5000)
         .then(resolve)
-        .catch(() => reject(e));
+        .catch(() => reject(new Error('Cannot start backend: ' + e.message)));
     }
   });
 }
@@ -71,9 +67,10 @@ async function createWindow() {
     },
   });
 
-  const frontendPath = path.join(appPath, 'frontend', 'dist', 'index.html');
-  console.log('Loading frontend from:', frontendPath);
-  await mainWindow.loadFile(frontendPath);
+  // Load from backend HTTP server (backend serves frontend static files)
+  const url = 'http://localhost:' + BACKEND_PORT;
+  console.log('[MoA] Loading frontend from:', url);
+  await mainWindow.loadURL(url);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
@@ -95,11 +92,13 @@ app.whenReady().then(async () => {
   try {
     await startBackend();
     await createWindow();
-    console.log('App ready');
+    console.log('[MoA] App ready');
   } catch (e) {
-    console.error('Startup error:', e.message, e.stack);
-    // Still try to show window
-    await createWindow();
+    console.error('[MoA] Fatal error:', e.message);
+    // Show error in a window
+    mainWindow = new BrowserWindow({ width: 600, height: 400, title: 'Mixture of Agents - Error' });
+    mainWindow.loadURL('data:text/html,<h1>Startup Error</h1><pre>' + encodeURIComponent(e.message + '\n' + e.stack) + '</pre>');
+    mainWindow.show();
   }
 
   app.on('activate', () => {
