@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -17,7 +20,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install backend dependencies
         run: npm install
@@ -34,24 +36,39 @@ jobs:
       - name: Build frontend
         run: npx vite build
         working-directory: frontend
-        env:
-          NODE_ENV: production
 
       - name: Install root dependencies
         run: npm install
 
-      - name: Build Electron app
+      - name: Build Electron portable exe
         run: npx electron-builder --win portable --x64
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Release Asset
+      - name: Verify exe exists
+        run: |
+          dir release\*.exe
+          echo "BUILD_SUCCESS=true" >> $env:GITHUB_ENV
+
+      - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_name }}
+          name: "Mixture of Agents Desktop ${{ github.ref_name }}"
+          body: |
+            ## Mixture of Agents Desktop ${{ github.ref_name }}
+            
+            ### 下载
+            - 下载 `Mixture-of-Agents-*-portable.exe`，双击即可运行
+            - 无需安装 Node.js 或任何依赖
+            
+            ### 功能
+            - 🧠 多模型协同调度引擎
+            - 📦 17+ 家模型提供商
+            - 🔌 MCP 服务器 + ⚡ 技能库
+            - 🧪 模型能力测试
+            - 🖥️ 独立桌面窗口
           files: |
             release/Mixture-of-Agents-*-portable.exe
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
