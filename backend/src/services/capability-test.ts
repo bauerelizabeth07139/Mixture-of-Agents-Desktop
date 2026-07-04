@@ -1,4 +1,4 @@
-import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
+﻿import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
 import { LLMClient } from './llm-client';
 
 // Capability Test Suite v2 - Real discrimination scoring
@@ -23,7 +23,7 @@ const TEST_CASES: TestCase[] = [
     id: 'code-1', name: 'Python Function', category: 'code',
     description: 'Write a correct Python function with exact logic',
     prompt: 'Write a Python function called "fizzbuzz" that takes an integer n and returns a list of strings from 1 to n where multiples of 3 become "Fizz", multiples of 5 become "Buzz", multiples of both become "FizzBuzz", others become the number as string. Return ONLY the function code.',
-    maxTokens: 400,
+    maxTokens: 1200,
     evaluate: (r) => {
       let score = 0;
       if (/def\s+fizzbuzz/i.test(r)) score += 1;
@@ -43,7 +43,7 @@ const TEST_CASES: TestCase[] = [
     id: 'code-2', name: 'Bug Detection', category: 'code',
     description: 'Find the exact bug in code',
     prompt: 'This Python function returns the second largest number. It has a bug. Find it:\n\ndef second_largest(nums):\n    unique = list(set(nums))\n    unique.sort()\n    return unique[-2]\n\nWhen does it fail? Give a one-sentence fix.',
-    maxTokens: 200,
+    maxTokens: 800,
     evaluate: (r) => {
       let score = 0;
       if (/less than 2|fewer than 2|only one|single element|IndexError/i.test(r)) score += 4;
@@ -58,7 +58,7 @@ const TEST_CASES: TestCase[] = [
     id: 'reason-1', name: 'Math Calculation', category: 'reasoning',
     description: 'Multi-step arithmetic with exact answers',
     prompt: 'A rectangle has length 17.5 cm and width 8.4 cm. Calculate: 1) Area in sq cm, 2) Perimeter in cm, 3) Diagonal in cm (2 decimal places). Give answers as: Area=X, Perimeter=Y, Diagonal=Z',
-    maxTokens: 300,
+    maxTokens: 1000,
     evaluate: (r) => {
       let score = 0;
       if (/147/.test(r)) score += 3;
@@ -72,7 +72,7 @@ const TEST_CASES: TestCase[] = [
     id: 'reason-2', name: 'Logic Puzzle', category: 'reasoning',
     description: 'Solve a logic deduction problem',
     prompt: 'Three boxes labeled "Apples", "Oranges", "Mixed" ALL have wrong labels. You pick one fruit from the "Mixed" box and it is an apple. What fruit is in each box? Give answers as: Apples box=X, Oranges box=Y, Mixed box=Z',
-    maxTokens: 300,
+    maxTokens: 1000,
     evaluate: (r) => {
       let score = 0;
       if (/mixed.*apple|mixed.*contain.*apple/i.test(r)) score += 3;
@@ -87,7 +87,7 @@ const TEST_CASES: TestCase[] = [
     id: 'chat-1', name: 'Format Following', category: 'instruction',
     description: 'Follow specific output format',
     prompt: 'Respond with EXACTLY this format, no extra text:\nName: [your model name]\nDate: [today YYYY-MM-DD]\nCapability: [one word]\nCount: [sum of 7+8+9+10+11+12]\nNothing else.',
-    maxTokens: 100,
+    maxTokens: 600,
     evaluate: (r) => {
       let score = 0;
       if (/^Name:\s*\S/m.test(r)) score += 2;
@@ -102,7 +102,7 @@ const TEST_CASES: TestCase[] = [
     id: 'chat-2', name: 'Word Count', category: 'chat',
     description: 'Summarize in exactly N words',
     prompt: 'Summarize gravity in EXACTLY 20 words. Not 19, not 21, exactly 20. Start with [20]: followed by your summary.',
-    maxTokens: 100,
+    maxTokens: 600,
     evaluate: (r) => {
       let score = 0;
       const match = r.match(/\[\d+\]:\s*(.+)/s);
@@ -121,7 +121,7 @@ const TEST_CASES: TestCase[] = [
     id: 'speed-1', name: 'Simple Q&A Speed', category: 'speed',
     description: 'Response speed on trivial question',
     prompt: 'What is the capital of France? Answer in one word.',
-    maxTokens: 10,
+    maxTokens: 600,
     evaluate: (_r, latencyMs) => {
       let score = 0;
       if (latencyMs < 500) score += 6;
@@ -218,7 +218,7 @@ export class CapabilityTestEngine {
           { type: 'text', text: 'Describe this image. State: 1) main object, 2) dominant color, 3) approximate count of distinct objects.' },
           { type: 'image_url', image_url: { url: imageUrl } },
         ] as any }],
-        model: model.modelId, maxTokens: 200, temperature: 0.1,
+        model: model.modelId, maxTokens: 800, temperature: 0.1,
       });
       const latencyMs = Date.now() - start;
       const r = resp.content.toLowerCase();
@@ -238,3 +238,4 @@ export class CapabilityTestEngine {
 
   static getTestCases(): TestCase[] { return TEST_CASES; }
 }
+
