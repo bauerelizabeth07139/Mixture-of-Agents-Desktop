@@ -1,0 +1,85 @@
+{
+  "name": "mixture-of-agents",
+  "version": "1.0.0",
+  "description": "Multi-model collaborative AI agent system — Desktop App",
+  "author": "Mixture of Agents",
+  "license": "MIT",
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "concurrently \"cd backend && npx tsc -w\" \"cd frontend && vite --port 5173\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:backend": "cd backend && npx tsc",
+    "build:frontend": "cd frontend && npx vite build",
+    "build:all": "npm run build:backend && npm run build:frontend",
+    "pack": "npm run build:all && electron-builder --dir",
+    "dist": "npm run build:all && electron-builder",
+    "start": "electron ."
+  },
+  "build": {
+    "appId": "com.moa.desktop",
+    "productName": "Mixture of Agents",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "backend/dist/**/*",
+      "backend/node_modules/**/*",
+      "backend/package.json",
+      "frontend/dist/**/*",
+      "!backend/src/**",
+      "!frontend/src/**",
+      "!frontend/node_modules/**",
+      "!**/*.ts",
+      "!**/*.tsx"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "sign": null,
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Mixture of Agents"
+    },
+    "portable": {
+      "artifactName": "Mixture-of-Agents-${version}-portable.exe"
+    },
+    "forceCodeSigning": false
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ws": "^8.16.0",
+    "axios": "^1.6.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^25.0.0",
+    "concurrently": "^8.2.0",
+    "wait-on": "^7.2.0",
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/ws": "^8.5.10",
+    "@types/uuid": "^9.0.7",
+    "typescript": "^5.3.3"
+  }
+}
