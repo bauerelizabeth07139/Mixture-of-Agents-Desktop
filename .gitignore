@@ -2,3 +2,5 @@
 dist/
 release/
 *.asar
+
+dist-exe/

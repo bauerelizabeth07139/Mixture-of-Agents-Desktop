@@ -38,7 +38,7 @@
     "appId": "com.moa.desktop",
     "productName": "Mixture of Agents",
     "directories": {
-      "output": "../release"
+      "output": "../dist-exe"
     },
     "files": [
       "electron-main.cjs",
