@@ -63,9 +63,9 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     process.env.PATH = pathAugment + origPath;
     const check = (name: string, cmd: string, verCmd?: string) => {
       try {
-        const ver = execSync(verCmd || cmd + ' --version', { encoding: 'utf8', timeout: 5000, shell: true, stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0];
+        const ver = execSync(verCmd || cmd + ' --version', { encoding: 'utf8', timeout: 5000, shell: true as any, stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0];
         let p: string | null = null;
-        try { p = execSync('where ' + name, { encoding: 'utf8', timeout: 3000, shell: true }).trim().split('\n')[0]; } catch {}
+        try { p = execSync('where ' + name, { encoding: 'utf8', timeout: 3000, shell: true as any }).trim().split('\n')[0]; } catch {}
         env.tools[name] = { available: true, version: ver, path: p };
       } catch {
         env.tools[name] = { available: false, version: null, path: null };
@@ -124,7 +124,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
         ? 'C:\\Users\\vipuser\\AppData\\Local\\Programs\\Python\\Python38;C:\\Program Files\\nodejs;C:\\Program Files\\Git\\cmd;'
         : '/usr/local/bin:/usr/bin:';
       const output = execSync(command, {
-        cwd, encoding: 'utf8', timeout: t, shell: true,
+        cwd, encoding: 'utf8', timeout: t, shell: true as any,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, FORCE_COLOR: '0', PATH: extra + (process.env.PATH || '') }
       });
@@ -211,3 +211,4 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
 
   return r;
 }
+

@@ -47,6 +47,7 @@ export interface OrchestratorState {
   id: string; defaultModelId: string; strategy: 'cost' | 'balanced' | 'efficiency';
   costEfficiencyRatio: number; subAgents: SubAgent[]; tasks: SubAgentTask[];
   status: 'idle' | 'planning' | 'executing' | 'completed' | 'failed'; createdAt: string;
+  finalResult?: string;
 }
 
 export interface Project {
