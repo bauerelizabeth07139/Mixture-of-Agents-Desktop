@@ -57,7 +57,14 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     };
 
     const pathAugment = process.platform === 'win32'
-      ? 'C:\\Users\\vipuser\\AppData\\Local\\Programs\\Python\\Python38;C:\\Program Files\\nodejs;C:\\Program Files\\Git\\cmd;'
+      ? [
+          path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
+          path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python311'),
+          'C:\\Program Files\\nodejs',
+          'C:\\Program Files\\Git\\cmd',
+          // Packaged Electron: add resources dir for bundled node.exe
+          ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
+        ].join(path.delimiter) + path.delimiter
       : '/usr/local/bin:/usr/bin:';
     const origPath = process.env.PATH || '';
     process.env.PATH = pathAugment + origPath;
@@ -121,7 +128,12 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     const t = Math.min(Math.max(timeout || 30000, 1000), 120000);
     try {
       const extra = process.platform === 'win32'
-        ? 'C:\\Users\\vipuser\\AppData\\Local\\Programs\\Python\\Python38;C:\\Program Files\\nodejs;C:\\Program Files\\Git\\cmd;'
+        ? [
+            path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
+            'C:\\Program Files\\nodejs',
+            'C:\\Program Files\\Git\\cmd',
+            ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
+          ].join(path.delimiter) + path.delimiter
         : '/usr/local/bin:/usr/bin:';
       const output = execSync(command, {
         cwd, encoding: 'utf8', timeout: t, shell: 'powershell' as const,

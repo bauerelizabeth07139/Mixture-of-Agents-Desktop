@@ -3,6 +3,7 @@ import { Provider, Model, ApiKeyEntry } from '../types';
 import { LLMClient } from './llm-client';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { execSync, exec as execCb } from 'child_process';
 import { promisify } from 'util';
 const execAsync = promisify(execCb);
@@ -83,7 +84,12 @@ export class CodingEngine {
 
   private getEnv(): NodeJS.ProcessEnv {
     const extra = process.platform === 'win32'
-      ? 'C:\\Users\\vipuser\\AppData\\Local\\Programs\\Python\\Python38;C:\\Program Files\\nodejs;C:\\Program Files\\Git\\cmd;'
+      ? [
+          path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
+          'C:\\Program Files\\nodejs',
+          'C:\\Program Files\\Git\\cmd',
+          ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
+        ].join(path.delimiter) + path.delimiter
       : '/usr/local/bin:/usr/bin:';
     return { ...process.env, FORCE_COLOR: '0', PATH: extra + (process.env.PATH || '') };
   }

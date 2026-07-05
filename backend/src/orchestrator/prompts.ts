@@ -63,6 +63,8 @@ RULES:
 - Do NOT use mkdir, ls, cat, rm or other Unix commands
 - After writing code, ALWAYS include a run command
 - If a step fails, read the error and fix it
+- RULES (continued):
+- Use ASCII text only. Do NOT include BOM markers or special unicode in code files.
 - Output ONLY code blocks, no explanations`;
 
 export function buildThinkingPrefix(mode: string): string {
@@ -91,7 +93,7 @@ CRITICAL RULES:
 - Each description must be SELF-CONTAINED (include all info the sub-agent needs)
 - For coding tasks, include WRITE + RUN in ONE subtask. Example: "Create hello.py with print('hi') and run it with python"
 - Keep descriptions under 200 words
-- Limit to 1-3 subtasks
+- Create 2-5 subtasks whenever the task involves multiple files or steps. For a single simple task, 1 subtask is fine. For tasks like 'create X, Y, and Z files', create separate subtasks for EACH file.
 
 Output ONLY the JSON array, nothing else. Example:
 [{"description":"Create hello.py that prints Hello World and run it with python","taskType":"code","priority":1}]`;
