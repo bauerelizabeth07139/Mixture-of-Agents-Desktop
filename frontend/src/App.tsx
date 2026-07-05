@@ -135,7 +135,7 @@ function SettingsPanel({ providers, ratio, setRatio, thinking, setThinking, mode
   visible: boolean; onClose: () => void;
 }) {
   if (!visible) return null;
-  const allModels = providers.flatMap(p => p.models.filter(m => m.type === 'llm').map(m => ({ ...m, pName: p.name, pIcon: p.icon })));
+  const allModels = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon })));
   const totalKeys = providers.reduce((s, p) => s + p.apiKeys.length, 0);
   return (
     <div className="settings-drawer">
@@ -243,7 +243,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
               {p.models.map(m => (
                 <div key={m.id} style={{ padding: '3px 0', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span>{m.name}</span>
-                  <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : 'badge-success'}`}>{m.type}</span>
+                  <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : 'badge-success'}`}>{m.type}</span>
                   {m.capabilities.multimodal && <span className="badge badge-warning">多模态</span>}
                 </div>
               ))}
@@ -289,7 +289,7 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
 
 // ─── Testing Panel ───
 function TestingPanel({ providers }: { providers: Provider[] }) {
-  const allModels = providers.flatMap(p => p.models.filter(m => m.type === 'llm').map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
+  const allModels = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
   const [scope, setScope] = useState<'single' | 'provider' | 'all'>('single');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('');
@@ -299,7 +299,7 @@ function TestingPanel({ providers }: { providers: Provider[] }) {
   const [reports, setReports] = useState<any[]>([]);
   const [lastResult, setLastResult] = useState('');
 
-  const providerModels = selectedProvider ? providers.find(p => p.id === selectedProvider)?.models.filter(m => m.type === 'llm') || [] : [];
+  const providerModels = selectedProvider ? providers.find(p => p.id === selectedProvider)?.models.filter(m => m.type === 'llm' || m.type === 'vlm') || [] : [];
 
   const runTest = async () => {
     setTesting(true); setReports([]); setLastResult('');
@@ -350,7 +350,7 @@ function TestingPanel({ providers }: { providers: Provider[] }) {
       {scope === 'provider' && (
         <select value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)} style={{ marginBottom: 12 }}>
           <option value="">Select Provider</option>
-          {providers.map(p => <option key={p.id} value={p.id}>{p.icon} {p.name} ({p.models.filter(m=>m.type==='llm').length} models)</option>)}
+          {providers.map(p => <option key={p.id} value={p.id}>{p.icon} {p.name} ({p.models.filter(m=>m.type==='llm'||m.type==='vlm').length} models)</option>)}
         </select>
       )}
       <button className="btn btn-primary" onClick={runTest} disabled={testing} style={{ marginBottom: 16 }}>
