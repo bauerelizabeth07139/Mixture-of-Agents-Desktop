@@ -123,7 +123,7 @@ export class Orchestrator {
           model: model.modelId, temperature: 0.2, maxTokens: 4096,
         });
 
-        if (!resp.content || resp.content.trim().length < 10) {
+        if (!resp.content || resp.content.trim().length < 1) {
           throw new Error('Empty or too short model response');
         }
 
@@ -247,7 +247,7 @@ export class Orchestrator {
           temperature: 0.3, maxTokens: 4096,
         });
 
-        if (!resp.content || resp.content.trim().length < 10) {
+        if (!resp.content || resp.content.trim().length < 1) {
           throw new Error('Empty or too short response (length=' + (resp.content?.length || 0) + ')');
         }
 
@@ -442,4 +442,5 @@ export class Orchestrator {
 
   getProject(): Project { return this.project; }
 }
+
 
