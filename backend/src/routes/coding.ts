@@ -1,4 +1,4 @@
-ï»¿import { Router } from 'express';
+import { Router } from 'express';
 import { ApiPoolManager } from '../providers/api-pool';
 import { CodingEngine } from '../services/coding-engine';
 import os from 'os';
@@ -39,7 +39,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     }
   });
 
-  // â”€â”€â”€ Enhanced Environment Detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ©¤©¤©¤ Enhanced Environment Detection ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
   r.get('/environment', (_req, res) => {
     const env: any = {
       cwd: workDir,
@@ -63,9 +63,9 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     process.env.PATH = pathAugment + origPath;
     const check = (name: string, cmd: string, verCmd?: string) => {
       try {
-        const ver = execSync(verCmd || cmd + ' --version', { encoding: 'utf8', timeout: 5000, shell: true as any, stdio: ['pipe', 'pipe', 'pipe'] }).trim().split('\n')[0];
+        const ver = execSync(verCmd || cmd + ' --version', { encoding: 'utf8', timeout: 5000, shell: 'powershell' as const }).trim().split('\n')[0];
         let p: string | null = null;
-        try { p = execSync('where ' + name, { encoding: 'utf8', timeout: 3000, shell: true as any }).trim().split('\n')[0]; } catch {}
+        try { p = execSync('where ' + name, { encoding: 'utf8', timeout: 3000, shell: 'powershell' as const }).trim().split('\n')[0]; } catch {}
         env.tools[name] = { available: true, version: ver, path: p };
       } catch {
         env.tools[name] = { available: false, version: null, path: null };
@@ -112,7 +112,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     res.json(env);
   });
 
-  // â”€â”€â”€ Shell Execution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ©¤©¤©¤ Shell Execution ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
   r.post('/shell', async (req, res) => {
     const { command, workdir, timeout } = req.body;
     if (!command) return res.status(400).json({ error: 'Missing command' });
@@ -124,8 +124,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
         ? 'C:\\Users\\vipuser\\AppData\\Local\\Programs\\Python\\Python38;C:\\Program Files\\nodejs;C:\\Program Files\\Git\\cmd;'
         : '/usr/local/bin:/usr/bin:';
       const output = execSync(command, {
-        cwd, encoding: 'utf8', timeout: t, shell: true as any,
-        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd, encoding: 'utf8', timeout: t, shell: 'powershell' as const,
         env: { ...process.env, FORCE_COLOR: '0', PATH: extra + (process.env.PATH || '') }
       });
       res.json({ success: true, output: (output || '').slice(0, 16000), exitCode: 0 });
@@ -134,7 +133,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     }
   });
 
-  // â”€â”€â”€ File Operations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ©¤©¤©¤ File Operations ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
   r.post('/read-file', (req, res) => {
     const { filePath, workdir } = req.body;
     if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
@@ -193,7 +192,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // â”€â”€â”€ Read from any absolute path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ©¤©¤©¤ Read from any absolute path ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
   r.post('/read-absolute', (req, res) => {
     const { absolutePath } = req.body;
     if (!absolutePath) return res.status(400).json({ error: 'Missing path' });
@@ -211,4 +210,3 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
 
   return r;
 }
-

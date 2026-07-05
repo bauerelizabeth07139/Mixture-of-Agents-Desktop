@@ -1,6 +1,7 @@
-export interface Provider { id: string; name: string; baseUrl: string; type: string; icon?: string; apiKeys: ApiKeyEntry[]; models: Model[]; isLocal: boolean; }
+﻿export interface Provider { id: string; name: string; baseUrl: string; type: string; icon?: string; apiKeys: ApiKeyEntry[]; models: Model[]; isLocal: boolean; }
 export interface ApiKeyEntry { id: string; key: string; isActive: boolean; }
-export interface Model { id: string; name: string; providerId: string; modelId: string; type: string; capabilities: ModelCapabilityProfile; }
+export type ModelType = 'llm' | 'vlm' | 'tts' | 'image' | 'video' | 'stt';
+export interface Model { id: string; name: string; providerId: string; modelId: string; type: ModelType; capabilities: ModelCapabilityProfile; }
 export interface ModelCapabilityProfile { code: number; agent: number; chat: number; context: number; speed: number; multimodal: boolean; pricing: { inputPer1M: number; outputPer1M: number; }; }
 export interface ProviderPreset { id: string; name: string; baseUrl: string; type: string; icon: string; description: string; defaultModels: string[]; }
 export interface Project { id: string; name: string; description: string; initialTask: string; orchestratorState: OrchestratorState; issueLibrary: Issue[]; completedAgents: AgentSummary[]; pendingAgents: AgentSummary[]; createdAt: string; }
@@ -40,4 +41,5 @@ export interface SkillPreset {
   id: string; name: string; description: string;
   category: string; icon: string; content: string;
 }
+
 

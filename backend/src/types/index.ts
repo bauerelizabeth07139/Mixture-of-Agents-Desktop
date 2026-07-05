@@ -5,7 +5,7 @@ export interface ModelCapabilityProfile {
   pricing: { inputPer1M: number; outputPer1M: number; userEditable: boolean; };
 }
 
-export type ModelType = 'llm' | 'tts' | 'image' | 'stt';
+export type ModelType = 'llm' | 'vlm' | 'tts' | 'image' | 'video' | 'stt';
 
 export interface Model {
   id: string; name: string; providerId: string; modelId: string; type: ModelType;
@@ -144,3 +144,4 @@ export interface SkillPreset {
   icon: string;
   content: string;
 }
+

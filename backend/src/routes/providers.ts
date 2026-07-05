@@ -5,6 +5,38 @@ import { ModelCapabilityScorer } from '../models/capability-scorer';
 import { LLMClient } from '../services/llm-client';
 import { v4 as uuid } from 'uuid';
 import { Provider, Model, ModelType } from '../types';
+// ©¤©¤©¤ Model Type Classification ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+// Classifies a model based on its ID and API metadata.
+// Works across providers: OpenAI, MiMo, SiliconFlow, DeepSeek, etc.
+function classifyModelType(modelId: string, raw?: any): ModelType {
+  const id = modelId.toLowerCase();
+
+  // ©¤©¤ Video generation ©¤©¤
+  if (/\b(video|cogvideo|sora|kling|pika|runway|minimax-video|hailuo|wan-video)\b/.test(id)) return 'video';
+  if (raw?.model_type === 'video' || raw?.task === 'video-generation') return 'video';
+
+  // ©¤©¤ Image generation ©¤©¤
+  if (/\b(dall-?e|stable-?diffusion|sd[123x]|sdxl|flux|midjourney|imagen|wanx|wan\b|cogview|cogview-?4|playground|kandinsky|firefly|ideogram|recraft)\b/.test(id)) return 'image';
+  if (/\b(txt2img|img2img|text-to-image|image-generation)\b/.test(id)) return 'image';
+  if (raw?.model_type === 'image' || raw?.task === 'text-to-image' || raw?.task === 'image-generation') return 'image';
+
+  // ©¤©¤ Text-to-Speech ©¤©¤
+  if (/\b(tts|text.to.speech|speech.synthesis|voice.synth|bark|coqui|xtts|fish.audio|cosyvoice|chat-tts|f5-tts)\b/.test(id)) return 'tts';
+  if (raw?.model_type === 'tts' || raw?.task === 'text-to-speech' || raw?.task === 'tts') return 'tts';
+
+  // ©¤©¤ Speech-to-Text / ASR ©¤©¤
+  if (/\b(whisper|asr|stt|speech.to.text|transcri|paraformer|sense.voice|funasr)\b/.test(id)) return 'stt';
+  if (raw?.model_type === 'stt' || raw?.task === 'speech-recognition' || raw?.task === 'asr') return 'stt';
+
+  // ©¤©¤ Vision-Language Models (VLM / multimodal LLM) ©¤©¤
+  // These are LLMs that can also process images/video input
+  if (/\b(gpt-4o(?!-mini)|gpt-4-turbo|gpt-4-vision|claude-3|claude-sonnet-4|claude-opus|gemini-pro-vision|gemini-1\.5|gemini-2|qwen-vl|qwen2-vl|qwen2\.5-vl|internvl|minicpm-v|llava|cogvlm|glm-4v|deepseek-vl|mimo-v2-omni|omni)\b/.test(id)) return 'vlm';
+  if (/\b(vision|vl|vlm|multimodal|omni)\b/.test(id)) return 'vlm';
+  if (raw?.model_type === 'vlm' || raw?.model_type === 'multimodal') return 'vlm';
+
+  // ©¤©¤ Default: plain LLM ©¤©¤
+  return 'llm';
+}
 import axios from 'axios';
 
 export function createProviderRoutes(pool: ApiPoolManager) {
@@ -24,7 +56,7 @@ export function createProviderRoutes(pool: ApiPoolManager) {
     };
     for (const mid of preset.defaultModels) {
       const caps = ModelCapabilityScorer.getDefaultProfile(mid);
-      prov.models.push({ id: uuid(), name: mid, providerId: prov.id, modelId: mid, type: 'llm', capabilities: caps });
+      prov.models.push({ id: uuid(), name: mid, providerId: prov.id, modelId: mid, type: classifyModelType(mid), capabilities: caps });
     }
     pool.addProvider(prov);
     res.json(prov);
@@ -84,12 +116,7 @@ export function createProviderRoutes(pool: ApiPoolManager) {
           const modelId = m.id || m.model || '';
           if (!modelId) continue;
 
-          // Determine type from context
-          let mtype: ModelType = 'llm';
-          const idLower = modelId.toLowerCase();
-          if (idLower.includes('tts') || idLower.includes('speech')) mtype = 'tts';
-          else if (idLower.includes('dall-e') || idLower.includes('image') || idLower.includes('stable-diffusion') || idLower.includes('flux') || idLower.includes('wanx') || idLower.includes('cogview')) mtype = 'image';
-          else if (idLower.includes('whisper') || idLower.includes('asr') || idLower.includes('stt')) mtype = 'stt';
+          const mtype = classifyModelType(modelId, m);
 
           // Extract pricing if available
           let inputPrice = 1, outputPrice = 2;
@@ -127,7 +154,7 @@ export function createProviderRoutes(pool: ApiPoolManager) {
             const caps = ModelCapabilityScorer.getDefaultProfile(modelId);
             prov.models.push({
               id: uuid(), name: modelId, providerId: prov.id,
-              modelId, type: 'llm', capabilities: caps,
+              modelId, type: classifyModelType(modelId), capabilities: caps,
             });
           }
         }
@@ -170,3 +197,4 @@ export function createProviderRoutes(pool: ApiPoolManager) {
 
   return r;
 }
+
