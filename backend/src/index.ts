@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import cors from 'cors';
@@ -35,8 +35,7 @@ app.use('/api/coding', createCodingRoutes(poolManager, wsManager.broadcast.bind(
 app.use('/api/extensions', createExtensionRoutes(extManager));
 app.get('/api/health', (_req, res) => { res.json({ status: 'ok', providers: poolManager.getAllProviders().length, ws: wsManager.getClientCount() }); });
 
-
-// Serve frontend static files (for Electron production mode)
+// Serve frontend static files (Electron production mode)
 const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
 if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
@@ -48,5 +47,4 @@ if (fs.existsSync(frontendDist)) {
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => { console.log('MoA backend on port ' + PORT); });
 
-// Export for Electron embedding
 export { app, server };
