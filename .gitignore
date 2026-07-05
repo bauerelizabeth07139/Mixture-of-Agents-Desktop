@@ -1,11 +1,4 @@
-node_modules/
+﻿node_modules/
 dist/
 release/
-.env
-*.log
-.DS_Store
-__pycache__/
-_build*.py
-_moa*.js
-out/
-build/
+*.asar

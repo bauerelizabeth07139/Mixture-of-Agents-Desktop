@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import cors from 'cors';
@@ -35,12 +35,14 @@ app.use('/api/coding', createCodingRoutes(poolManager, wsManager.broadcast.bind(
 app.use('/api/extensions', createExtensionRoutes(extManager));
 app.get('/api/health', (_req, res) => { res.json({ status: 'ok', providers: poolManager.getAllProviders().length, ws: wsManager.getClientCount() }); });
 
-// Serve frontend static files (Electron production mode)
-const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
-if (fs.existsSync(frontendDist)) {
-  app.use(express.static(frontendDist));
+// Serve frontend static files (works in both dev and packaged Electron)
+const publicDir = path.join(__dirname, '..', 'public');
+const devFrontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
+const staticDir = fs.existsSync(publicDir) ? publicDir : devFrontendDist;
+if (fs.existsSync(staticDir)) {
+  app.use(express.static(staticDir));
   app.get('*', (_req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
+    res.sendFile(path.join(staticDir, 'index.html'));
   });
 }
 
