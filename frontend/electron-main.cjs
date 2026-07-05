@@ -1,7 +1,8 @@
-﻿const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
+const fs = require('fs');
 
 const BACKEND_PORT = 3001;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
