@@ -7,7 +7,7 @@ const BACKEND_PORT = 3001;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 const DEV_URL = 'http://localhost:5173';
 
-const isPackaged = app.isPackaged;
+const isPackaged = app.isPackaged || fs.existsSync(path.join(process.resourcesPath, 'backend'));
 
 function waitForServer(url, timeout) {
   return new Promise((resolve, reject) => {
