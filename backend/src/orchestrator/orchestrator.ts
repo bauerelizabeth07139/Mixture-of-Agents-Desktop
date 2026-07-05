@@ -365,31 +365,59 @@ export class Orchestrator {
   }
 
   private async callOrchestrator(prompt: string): Promise<string> {
-    const m = this.getOrchestratorModel();
-    if (!m) throw new Error('No orchestrator model available');
-    const tp = buildThinkingPrefix(this.preferences.thinkingMode);
-    const resp = await LLMClient.chatCompletion(m.provider, m.apiKey, {
-      messages: [
-        { role: 'system', content: tp + ORCHESTRATOR_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-      model: this.getModelIdForAgent(m.model.id),
-      temperature: 0.2, maxTokens: 4096,
-    });
-    return resp.content;
+    const maxRetries = 5;
+    let excludedProviders: string[] = [];
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const m = this.getOrchestratorModel(excludedProviders);
+      if (!m) throw new Error("No orchestrator model available - all providers exhausted");
+      const tp = buildThinkingPrefix(this.preferences.thinkingMode);
+      try {
+        const resp = await LLMClient.chatCompletion(m.provider, m.apiKey, {
+          messages: [
+            { role: "system", content: tp + ORCHESTRATOR_SYSTEM_PROMPT },
+            { role: "user", content: prompt },
+          ],
+          model: this.getModelIdForAgent(m.model.id),
+          temperature: 0.2, maxTokens: 4096,
+        });
+        return resp.content;
+      } catch (error: any) {
+        if (error instanceof QuotaExhaustedError) {
+          console.warn("[Orchestrator] Macro model key exhausted, switching...", error.keyId);
+          const failRes = this.poolManager.markKeyFailed(m.provider.id, error.keyId);
+          if (failRes === "provider_exhausted") {
+            console.warn("[Orchestrator] Provider exhausted, switching to another:", m.provider.name);
+            excludedProviders.push(m.provider.id);
+          }
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error("Macro model: all retry attempts exhausted");
   }
 
-  private getOrchestratorModel(): {provider: Provider; model: Model; apiKey: any} | null {
+  private getOrchestratorModel(excludedProviders: string[] = []): {provider: Provider; model: Model; apiKey: any} | null {
     const id = this.preferences.defaultOrchestratorModel || this.project.orchestratorState.defaultModelId;
     if (id) {
       const f = this.poolManager.findProviderForModel(id);
-      if (f) return f;
+      if (f && !excludedProviders.includes(f.provider.id)) return f;
     }
-    const ms = this.poolManager.getAvailableModels('llm');
-    if (ms.length) return this.poolManager.findProviderForModel(ms[0].id);
+    // Fallback: find any available LLM from non-excluded providers, ranked by score
+    let ms = this.poolManager.getAvailableModels("llm");
+    ms = ms.filter(m => !excludedProviders.includes(m.providerId));
+    if (ms.length) {
+      const scored = ms.map(m => ({
+        model: m,
+        score: ModelCapabilityScorer.computeSelectionScore(m.capabilities, this.preferences.costEfficiencyRatio, "general"),
+        ...this.poolManager.findProviderForModel(m.id)!,
+      })).filter(x => x.provider && x.apiKey);
+      scored.sort((a, b) => b.score - a.score);
+      if (scored.length) return { provider: scored[0].provider, model: scored[0].model, apiKey: scored[0].apiKey };
+    }
     return null;
   }
-
   private getModelIdForAgent(assignedModel: string): string {
     const found = this.poolManager.findModel(assignedModel);
     return found ? found.model.modelId : assignedModel;
