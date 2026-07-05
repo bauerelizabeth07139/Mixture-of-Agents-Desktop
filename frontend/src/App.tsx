@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './services/api';
 import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServerConfig, SkillConfig, Project } from './types';
+import { TerminalPanel } from './components/Terminal';
+import { EditorPanel } from './components/Editor';
+import { EnvironmentPanel } from './components/Environment';
 
 // ─── Helper Components ───
 
@@ -294,59 +297,86 @@ function TestingPanel({ providers }: { providers: Provider[] }) {
   const [testing, setTesting] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, label: '' });
   const [reports, setReports] = useState<any[]>([]);
+  const [lastResult, setLastResult] = useState('');
+
+  const providerModels = selectedProvider ? providers.find(p => p.id === selectedProvider)?.models.filter(m => m.type === 'llm') || [] : [];
 
   const runTest = async () => {
-    setTesting(true); setReports([]);
+    setTesting(true); setReports([]); setLastResult('');
     try {
       if (scope === 'single') {
         const model = allModels.find(m => m.id === selectedModel);
-        if (!model) { alert('请选择模型'); setTesting(false); return; }
+        if (!model) { alert('Please select a model'); setTesting(false); return; }
         setProgress({ current: 1, total: 1, label: model.modelId });
         const r = testMode === 'quick' ? await api.runQuickTest(model.provId, model.id) : await api.runFullTest(model.provId, model.id);
         setReports(r.reports || []);
+        setLastResult('Single model test completed');
       } else if (scope === 'provider') {
-        if (!selectedProvider) { alert('请选择提供商'); setTesting(false); return; }
+        if (!selectedProvider) { alert('Please select a provider'); setTesting(false); return; }
+        setProgress({ current: 0, total: providerModels.length || 1, label: 'Testing provider models' });
         const r = await api.runProviderTest(selectedProvider, testMode === 'quick');
         setReports(r.reports || []);
+        setLastResult('Provider test done: ' + (r.providerName || '') + ', reports: ' + (r.reports?.length || 0));
+        setProgress({ current: providerModels.length || 1, total: providerModels.length || 1, label: 'Done' });
       } else {
+        const totalCount = allModels.length || 1;
+        setProgress({ current: 0, total: totalCount, label: 'Testing all models' });
         const r = await api.runAllTest(testMode === 'quick');
         setReports(r.reports || []);
+        setLastResult('All models test done, reports: ' + (r.reports?.length || 0));
+        setProgress({ current: totalCount, total: totalCount, label: 'Done' });
       }
-    } catch (e: any) { alert('测试失败: ' + e.message); }
+    } catch (e: any) { alert('Test failed: ' + e.message); }
     setTesting(false);
   };
 
   return (
     <div className="tab-panel">
-      <h3 style={{ marginBottom: 16, fontSize: 15 }}>🧪 能力测试</h3>
+      <h3 style={{ marginBottom: 16, fontSize: 15 }}>Capability Tests</h3>
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {[{ k: 'single', l: '单个模型' }, { k: 'provider', l: '单个提供商' }, { k: 'all', l: '所有模型' }].map(s => (
+        {[{ k: 'single', l: 'Single Model' }, { k: 'provider', l: 'Single Provider' }, { k: 'all', l: 'All Models' }].map(s => (
           <button key={s.k} className={`btn btn-sm ${scope === s.k ? 'btn-primary' : ''}`} onClick={() => setScope(s.k as any)}>{s.l}</button>
         ))}
         <div style={{ flex: 1 }} />
-        <button className={`btn btn-sm ${testMode === 'quick' ? 'btn-primary' : ''}`} onClick={() => setTestMode('quick')}>快速</button>
-        <button className={`btn btn-sm ${testMode === 'full' ? 'btn-primary' : ''}`} onClick={() => setTestMode('full')}>完整</button>
+        <button className={`btn btn-sm ${testMode === 'quick' ? 'btn-primary' : ''}`} onClick={() => setTestMode('quick')}>Quick</button>
+        <button className={`btn btn-sm ${testMode === 'full' ? 'btn-primary' : ''}`} onClick={() => setTestMode('full')}>Full</button>
       </div>
       {scope === 'single' && (
         <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} style={{ marginBottom: 12 }}>
-          <option value="">选择模型</option>
+          <option value="">Select Model</option>
           {allModels.map(m => <option key={m.id} value={m.id}>{m.pIcon} {m.pName} - {m.modelId}</option>)}
         </select>
       )}
       {scope === 'provider' && (
         <select value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)} style={{ marginBottom: 12 }}>
-          <option value="">选择提供商</option>
-          {providers.map(p => <option key={p.id} value={p.id}>{p.icon} {p.name} ({p.models.length} 模型)</option>)}
+          <option value="">Select Provider</option>
+          {providers.map(p => <option key={p.id} value={p.id}>{p.icon} {p.name} ({p.models.filter(m=>m.type==='llm').length} models)</option>)}
         </select>
       )}
       <button className="btn btn-primary" onClick={runTest} disabled={testing} style={{ marginBottom: 16 }}>
-        {testing ? '⏳ 测试中...' : '🚀 开始测试'}
+        {testing ? 'Testing...' : 'Start Test'}
       </button>
-      {testing && <div className="progress-bar" style={{ marginBottom: 16 }}><div className="progress-fill" style={{ width: '60%', animation: 'pulse 1.5s infinite' }} /></div>}
+      {testing && progress.total > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+            <span>{progress.label || 'Testing...'}</span>
+            <span>{progress.current}/{progress.total}</span>
+          </div>
+          <div className="progress-bar"><div className="progress-fill" style={{ width: Math.max(5, Math.round((progress.current/Math.max(1,progress.total))*100)) + '%' }} /></div>
+        </div>
+      )}
+      {lastResult && <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--text-secondary)' }}>{lastResult}</div>}
       {reports.map((r, i) => (
         <div key={i} className="card">
           <div className="card-title">{r.modelName} <span className="badge badge-info" style={{ marginLeft: 8 }}>{r.providerName}</span>
             <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{r.overallScore?.toFixed(1)}/10</span>
+          </div>
+          <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+            {r.metrics?.passRate != null && <span>Pass {r.metrics.passRate}%</span>}
+            {r.metrics?.avgLatencyMs != null && <span>Avg {r.metrics.avgLatencyMs}ms</span>}
+            {r.metrics?.codeAvg != null && <span>Code {r.metrics.codeAvg}</span>}
+            {r.metrics?.reasonAvg != null && <span>Reason {r.metrics.reasonAvg}</span>}
+            {r.metrics?.chatAvg != null && <span>Chat {r.metrics.chatAvg}</span>}
           </div>
           {r.results?.map((t: any, j: number) => (
             <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 12 }}>
@@ -357,11 +387,12 @@ function TestingPanel({ providers }: { providers: Provider[] }) {
           ))}
           {r.capabilities && (
             <div style={{ marginTop: 8 }}>
-              <CapabilityBar label="代码" value={r.capabilities.code} color="var(--accent)" />
+              <CapabilityBar label="Code" value={r.capabilities.code} color="var(--accent)" />
               <CapabilityBar label="Agent" value={r.capabilities.agent} color="var(--info)" />
-              <CapabilityBar label="对话" value={r.capabilities.chat} color="var(--success)" />
+              <CapabilityBar label="Chat" value={r.capabilities.chat} color="var(--success)" />
             </div>
           )}
+          {r.error && <div style={{ color: 'var(--error)', fontSize: 12, marginTop: 6 }}>Error: {r.error}</div>}
         </div>
       ))}
     </div>
@@ -533,7 +564,7 @@ function ExtensionsPanel() {
 
 // ─── Main App ───
 export default function App() {
-  const [tab, setTab] = useState<'chat' | 'providers' | 'models' | 'testing' | 'extensions'>('chat');
+  const [tab, setTab] = useState<'chat' | 'providers' | 'models' | 'testing' | 'extensions' | 'terminal' | 'editor' | 'environment'>('chat');
   const [providers, setProviders] = useState<Provider[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -578,10 +609,15 @@ export default function App() {
         });
       } else if (msg.type === 'task_update') {
         const t = msg.payload.task;
+        const idBase = t.id || Date.now().toString();
         if (t.status === 'completed') {
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', content: '✅ ' + t.description.slice(0, 60) + '\n' + (t.result || '').slice(0, 300), time, tools: [{ name: t.description.slice(0, 40), status: 'success', output: t.result?.slice(0, 500), icon: '📋' }] }]);
+          setMessages(prev => [...prev, { id: idBase, role: 'agent', content: '\u2705 ' + t.description.slice(0, 60) + '\n' + (t.result || '').slice(0, 300), time, tools: [{ name: t.description.slice(0, 40), status: 'success', output: t.result?.slice(0, 500), icon: '\uD83D�' }] }]);
         } else if (t.status === 'failed') {
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', content: '❌ 子任务失败: ' + t.description.slice(0, 60) + '\n' + (t.error || ''), time }]);
+          setMessages(prev => [...prev, { id: idBase + '-fail', role: 'error', content: '\u274C Subtask failed: ' + t.description.slice(0, 60) + '\n' + (t.error || ''), time }]);
+        } else if (t.status === 'running') {
+          setMessages(prev => [...prev, { id: idBase, role: 'system', content: '\uD83D\uDE80 Running: ' + t.description.slice(0, 80), time }]);
+        } else if (t.status === 'retrying') {
+          setMessages(prev => [...prev, { id: idBase + '-retry-' + t.attempts, role: 'system', content: '\uD83D\uDD01 Retry #' + t.attempts + ': ' + t.description.slice(0, 80), time }]);
         }
       } else if (msg.type === 'issue_created') {
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'system', content: '⚠️ 问题记录: ' + JSON.stringify(msg.payload), time }]);
@@ -616,7 +652,7 @@ export default function App() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const tabNames: Record<string, string> = { chat: '💬 对话', providers: '📦 提供商', models: '🎯 模型', testing: '🧪 测试', extensions: '🔌 扩展' };
+  const tabNames: Record<string, string> = { chat: '💬 对话', providers: '📦 提供商', models: '🎯 模型', testing: '🧪 测试', extensions: '🔌 扩展', terminal: '⌨️ 终端', editor: '📝 编辑器', environment: '⚙️ 环境' };
 
   return (
     <div className="app">
@@ -709,6 +745,9 @@ export default function App() {
           {tab === 'models' && <ModelPanel providers={providers} />}
           {tab === 'testing' && <TestingPanel providers={providers} />}
           {tab === 'extensions' && <ExtensionsPanel />}
+          {tab === 'terminal' && <div style={{height:'calc(100vh - 60px)'}}><TerminalPanel /></div>}
+          {tab === 'editor' && <div style={{height:'calc(100vh - 60px)'}}><EditorPanel /></div>}
+          {tab === 'environment' && <EnvironmentPanel />}
         </div>
       )}
     </div>
