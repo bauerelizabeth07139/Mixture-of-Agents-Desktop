@@ -33,20 +33,30 @@ let mainWindow = null;
 let backendProcess = null;
 
 function startBackend() {
-  if (!isPackaged) return; // In dev, backend is started separately
+  if (!isPackaged) return;
+
+  const backendDir = path.join(process.resourcesPath, 'backend');
+  const backendEntry = path.join(backendDir, 'dist', 'index.js');
   
-  const backendEntry = path.join(process.resourcesPath, 'backend', 'dist', 'index.js');
-  console.log('Starting backend from:', backendEntry);
+  // Find node binary: prefer bundled node.exe in extraResources, fallback to system node
+  let nodeCmd = 'node';
+  const bundledNode = path.join(process.resourcesPath, 'node.exe');
+  if (fs.existsSync(bundledNode)) {
+    nodeCmd = bundledNode;
+  }
   
-  backendProcess = spawn('node', [backendEntry], {
-    cwd: path.join(process.resourcesPath, 'backend'),
+  console.log('Starting backend from:', backendEntry, 'using node:', nodeCmd);
+  
+  backendProcess = spawn(nodeCmd, [backendEntry], {
+    cwd: backendDir,
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PORT: String(BACKEND_PORT), FORCE_COLOR: '0' },
+    env: { ...process.env, PORT: String(BACKEND_PORT), FORCE_COLOR: '0', NODE_ENV: 'production' },
   });
   
   backendProcess.stdout?.on('data', (d) => console.log('[backend]', d.toString().trim()));
   backendProcess.stderr?.on('data', (d) => console.error('[backend]', d.toString().trim()));
   backendProcess.on('exit', (code) => console.log('Backend exited with code:', code));
+  backendProcess.on('error', (err) => console.error('Backend spawn error:', err.message));
 }
 
 async function createWindow() {
