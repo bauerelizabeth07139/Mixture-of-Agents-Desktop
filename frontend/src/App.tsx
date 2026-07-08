@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './services/api';
 import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServerConfig, SkillConfig, Project } from './types';
 import { TerminalPanel } from './components/Terminal';
 import { EditorPanel } from './components/Editor';
 import { EnvironmentPanel } from './components/Environment';
 
-// 閳光偓閳光偓閳光偓 Helper Components 閳光偓閳光偓閳光偓
+// ─── Helper Components ───
 
 function CapabilityBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
@@ -24,7 +24,7 @@ function CostEfficiencySlider({ value, onChange }: { value: number; onChange: (v
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
-        <span>棣冩畬 閺佸牏宸?(0)</span><span>閳挎牭绗?閸у洩銆€ (0.5)</span><span>棣冩尩 閹存劖婀?(1)</span>
+        <span>🚀 效率 (0)</span><span>⚖️ 均衡 (0.5)</span><span>💰 成本 (1)</span>
       </div>
       <div className="slider-container">
         <input type="range" className="slider" min={0} max={1} step={0.01} value={value} onChange={e => handleSlider(parseFloat(e.target.value))} />
@@ -35,7 +35,7 @@ function CostEfficiencySlider({ value, onChange }: { value: number; onChange: (v
   );
 }
 
-// 閳光偓閳光偓閳光偓 Tool Call Card (like Codex/Claude Code) 閳光偓閳光偓閳光偓
+// ─── Tool Call Card (like Codex/Claude Code) ───
 function ToolCard({ tool }: { tool: { name: string; status: string; output?: string; icon: string } }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -44,9 +44,9 @@ function ToolCard({ tool }: { tool: { name: string; status: string; output?: str
         <span className="tool-icon">{tool.icon}</span>
         <span className="tool-name">{tool.name}</span>
         <span className={`tool-status ${tool.status}`}>
-          {tool.status === 'running' ? '閳?鏉╂劘顢戞稉? : tool.status === 'success' ? '閴?鐎瑰本鍨? : '閴?婢惰精瑙?}
+          {tool.status === 'running' ? '⏳ 运行中' : tool.status === 'success' ? '✅ 完成' : '❌ 失败'}
         </span>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>{expanded ? '閳? : '閳?}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>{expanded ? '▲' : '▼'}</span>
       </div>
       {expanded && tool.output && (
         <div className="tool-card-body">{tool.output}</div>
@@ -55,11 +55,11 @@ function ToolCard({ tool }: { tool: { name: string; status: string; output?: str
   );
 }
 
-// 閳光偓閳光偓閳光偓 Message Component 閳光偓閳光偓閳光偓
+// ─── Message Component ───
 function ChatMessage({ msg }: { msg: ChatMsg }) {
   const roleClass = msg.role === 'user' ? 'user' : msg.role === 'orchestrator' ? 'orchestrator' : msg.role === 'error' ? 'error' : 'system';
-  const roleIcon = msg.role === 'user' ? '棣冩噥' : msg.role === 'orchestrator' ? '棣冾潵' : msg.role === 'error' ? '閳跨媴绗? : msg.role === 'agent' ? '棣冾樆' : '棣冩尠';
-  const roleName = msg.role === 'user' ? '娴? : msg.role === 'orchestrator' ? '鐠嬪啫瀹冲鏇熸惛' : msg.role === 'error' ? '缁崵绮? : msg.role === 'agent' ? (msg.agentName || '鐎涙劒鍞悶?) : '缁崵绮?;
+  const roleIcon = msg.role === 'user' ? '👤' : msg.role === 'orchestrator' ? '🧠' : msg.role === 'error' ? '⚠️' : msg.role === 'agent' ? '🤖' : '💬';
+  const roleName = msg.role === 'user' ? '你' : msg.role === 'orchestrator' ? '调度引擎' : msg.role === 'error' ? '系统' : msg.role === 'agent' ? (msg.agentName || '子代理') : '系统';
   return (
     <div className="message">
       <div className={`message-avatar ${roleClass}`}>{roleIcon}</div>
@@ -91,35 +91,35 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
   );
 }
 
-// 閳光偓閳光偓閳光偓 Welcome Screen 閳光偓閳光偓閳光偓
+// ─── Welcome Screen ───
 function WelcomeScreen({ onQuickStart }: { onQuickStart: (task: string) => void }) {
   return (
     <div className="welcome-screen">
-      <div className="welcome-logo">棣冃?/div>
+      <div className="welcome-logo">🧬</div>
       <div className="welcome-title">Mixture of Agents</div>
-      <div className="welcome-subtitle">婢舵碍膩閸ㄥ宕楅崥灞炬閼虫垝缍嬬化鑽ょ埠 閳?閸╄桨绨?Claude Code 閸愬懏鐗抽惃鍕閼冲€熺殶鎼达箑绱╅幙搴礉閼奉亜濮╅崚鍡涘帳閺堚偓闁倸鎮庨惃鍕侀崹瀣暚閹存劒鎹㈤崝?/div>
+      <div className="welcome-subtitle">多模型协同智能体系统 — 基于 Claude Code 内核的智能调度引擎，自动分配最适合的模型完成任务</div>
       <div className="welcome-cards">
-        <div className="welcome-card" onClick={() => onQuickStart('鐢喗鍨滈崘娆庣娑?Express.js REST API閿涘苯瀵橀崥顐ゆ暏閹?CRUD 閹垮秳缍旈崪?SQLite 閺佺増宓佹惔?)}>
-          <div className="welcome-card-icon">棣冩崌</div>
-          <div className="welcome-card-title">缂傛牕鍟撴禒锝囩垳</div>
-          <div className="welcome-card-desc">閸掓稑缂撴い鍦窗閵嗕胶绱崘娆庡敩閻降鈧浇鍤滈崝銊︾ゴ鐠?/div>
+        <div className="welcome-card" onClick={() => onQuickStart('帮我写一个 Express.js REST API，包含用户 CRUD 操作和 SQLite 数据库')}>
+          <div className="welcome-card-icon">💻</div>
+          <div className="welcome-card-title">编写代码</div>
+          <div className="welcome-card-desc">创建项目、编写代码、自动测试</div>
         </div>
-        <div className="welcome-card" onClick={() => onQuickStart('閸掑棙鐎借ぐ鎾冲閻╊喖缍嶆稉瀣畱 CSV 閺佺増宓侀弬鍥︽閿涘瞼鏁撻幋鎰埠鐠佲剝濮ら崨濠傛嫲閸欘垵顫嬮崠鏍ф禈鐞涖劌缂撶拋?)}>
-          <div className="welcome-card-icon">棣冩惓</div>
-          <div className="welcome-card-title">閸掑棙鐎介弫鐗堝祦</div>
-          <div className="welcome-card-desc">閺佺増宓侀崚鍡樼€介妴浣瑰Г閸涘﹦鏁撻幋鎰┾偓浣界Ъ閸斿灝褰傞悳?/div>
+        <div className="welcome-card" onClick={() => onQuickStart('分析当前目录下的 CSV 数据文件，生成统计报告和可视化图表建议')}>
+          <div className="welcome-card-icon">📊</div>
+          <div className="welcome-card-title">分析数据</div>
+          <div className="welcome-card-desc">数据分析、报告生成、趋势发现</div>
         </div>
-        <div className="welcome-card" onClick={() => onQuickStart('鐢喗鍨滅拋鎹愵吀娑撯偓娑擃亜宕ョ€广垻閮寸紒鐔烘畱閺嬭埖鐎弬瑙勵攳閿涘苯瀵橀幏顒€澧犻崥搴ｎ伂閹垛偓閺堫垶鈧鐎烽妴浣规殶閹诡喖绨辩拋鎹愵吀閸滃矂鍎寸純鍙夋煙濡?)}>
-          <div className="welcome-card-icon">棣冨綀閿?/div>
-          <div className="welcome-card-title">缁崵绮虹拋鎹愵吀</div>
-          <div className="welcome-card-desc">閺嬭埖鐎拋鎹愵吀閵嗕焦濡ч張顖炩偓澶婄€烽妴浣规煙濡楀牐鐦庢导?/div>
+        <div className="welcome-card" onClick={() => onQuickStart('帮我设计一个博客系统的架构方案，包括前后端技术选型、数据库设计和部署方案')}>
+          <div className="welcome-card-icon">🏗️</div>
+          <div className="welcome-card-title">系统设计</div>
+          <div className="welcome-card-desc">架构设计、技术选型、方案评估</div>
         </div>
       </div>
     </div>
   );
 }
 
-// 閳光偓閳光偓閳光偓 Types for Chat 閳光偓閳光偓閳光偓
+// ─── Types for Chat ───
 interface ChatMsg {
   id: string; role: 'user' | 'orchestrator' | 'agent' | 'system' | 'error';
   content: string; time: string; model?: string; agentName?: string;
@@ -127,7 +127,7 @@ interface ChatMsg {
   agents?: Array<{ name: string; status: string; task: string; model: string }>;
 }
 
-// 閳光偓閳光偓閳光偓 Settings Panel (right side) 閳光偓閳光偓閳光偓
+// ─── Settings Panel (right side) ───
 function SettingsPanel({ providers, ratio, setRatio, thinking, setThinking, modelId, setModelId, visible, onClose }: {
   providers: Provider[]; ratio: number; setRatio: (v: number) => void;
   thinking: string; setThinking: (v: any) => void;
@@ -140,42 +140,42 @@ function SettingsPanel({ providers, ratio, setRatio, thinking, setThinking, mode
   return (
     <div className="settings-drawer">
       <div className="settings-drawer-header">
-        <h3>閳挎瑱绗?鐠佸墽鐤?/h3>
-        <button className="btn btn-sm btn-icon" onClick={onClose}>閴?/button>
+        <h3>⚙️ 设置</h3>
+        <button className="btn btn-sm btn-icon" onClick={onClose}>✕</button>
       </div>
       <div className="settings-section">
-        <div className="settings-section-title">鐎瑰繗顫囩拫鍐╁付濡€崇€?/div>
+        <div className="settings-section-title">宏观调控模型</div>
         <select value={modelId} onChange={e => setModelId(e.target.value)}>
-          <option value="">閼奉亜濮╅柅澶嬪</option>
+          <option value="">自动选择</option>
           {allModels.map(m => <option key={m.id} value={m.id}>{m.pIcon} {m.pName} - {m.name}</option>)}
         </select>
       </div>
       <div className="settings-section">
-        <div className="settings-section-title">閹繆鈧啫宸辨惔?/div>
+        <div className="settings-section-title">思考强度</div>
         <div style={{ display: 'flex', gap: 6 }}>
           {['low', 'medium', 'high'].map(m => (
             <button key={m} className={`btn btn-sm ${thinking === m ? 'btn-primary' : ''}`}
               onClick={() => setThinking(m)} style={{ flex: 1 }}>
-              {m === 'low' ? '娴? : m === 'medium' ? '娑? : '妤?}
+              {m === 'low' ? '低' : m === 'medium' ? '中' : '高'}
             </button>
           ))}
         </div>
       </div>
       <div className="settings-section">
-        <div className="settings-section-title">閹存劖婀?/ 閺佸牏宸?閸嬪繐銈?/div>
+        <div className="settings-section-title">成本 / 效率 偏好</div>
         <CostEfficiencySlider value={ratio} onChange={setRatio} />
       </div>
       <div className="settings-section">
-        <div className="settings-section-title">韫囶偊鈧喓绮虹拋?/div>
-        <div className="settings-row"><label>瀹告煡鍘ょ純顔藉絹娓氭稑鏅?/label><span>{providers.length}</span></div>
-        <div className="settings-row"><label>閸欘垳鏁ゅΟ鈥崇€?/label><span>{allModels.length}</span></div>
+        <div className="settings-section-title">快速统计</div>
+        <div className="settings-row"><label>已配置提供商</label><span>{providers.length}</span></div>
+        <div className="settings-row"><label>可用模型</label><span>{allModels.length}</span></div>
         <div className="settings-row"><label>API Keys</label><span>{totalKeys}</span></div>
       </div>
     </div>
   );
 }
 
-// 閳光偓閳光偓閳光偓 Provider Management Panel 閳光偓閳光偓閳光偓
+// ─── Provider Management Panel ───
 function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefresh: () => void }) {
   const [presets, setPresets] = useState<ProviderPreset[]>([]);
   const [customName, setCustomName] = useState('');
@@ -194,7 +194,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
 
   return (
     <div className="tab-panel">
-      <h3 style={{ marginBottom: 16, fontSize: 15 }}>棣冩憹 妫板嫯顔曢幓鎰返閸?/h3>
+      <h3 style={{ marginBottom: 16, fontSize: 15 }}>📦 预设提供商</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8, marginBottom: 24 }}>
         {presets.map(p => {
           const added = providers.some(pr => pr.name === p.name);
@@ -203,39 +203,39 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
               onClick={() => !added && addPreset(p.id)}>
               <div className="card-title">{p.icon} {p.name}</div>
               <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{p.description}</div>
-              {added && <span className="badge badge-success" style={{ marginTop: 6 }}>瀹稿弶鍧婇崝?/span>}
+              {added && <span className="badge badge-success" style={{ marginTop: 6 }}>已添加</span>}
             </div>
           );
         })}
       </div>
 
-      <h3 style={{ marginBottom: 12, fontSize: 15 }}>棣冩暋 閼奉亜鐣炬稊澶嬪絹娓氭稑鏅?/h3>
+      <h3 style={{ marginBottom: 12, fontSize: 15 }}>🔧 自定义提供商</h3>
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        <input placeholder="閸氬秶袨" value={customName} onChange={e => setCustomName(e.target.value)} style={{ flex: 1 }} />
+        <input placeholder="名称" value={customName} onChange={e => setCustomName(e.target.value)} style={{ flex: 1 }} />
         <input placeholder="Base URL" value={customUrl} onChange={e => setCustomUrl(e.target.value)} style={{ flex: 2 }} />
-        <button className="btn btn-primary" onClick={addCustom}>濞ｈ濮?/button>
+        <button className="btn btn-primary" onClick={addCustom}>添加</button>
       </div>
 
       {providers.length > 0 && (
         <>
-          <h3 style={{ marginBottom: 12, fontSize: 15 }}>棣冩斀 API Key 缁狅紕鎮?/h3>
+          <h3 style={{ marginBottom: 12, fontSize: 15 }}>🔑 API Key 管理</h3>
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             <select value={selProv} onChange={e => setSelProv(e.target.value)} style={{ flex: 1 }}>
-              <option value="">闁瀚ㄩ幓鎰返閸?/option>
-              {providers.map(p => <option key={p.id} value={p.id}>{p.icon || '棣冩敳'} {p.name}</option>)}
+              <option value="">选择提供商</option>
+              {providers.map(p => <option key={p.id} value={p.id}>{p.icon || '🔌'} {p.name}</option>)}
             </select>
             <input placeholder="API Key" value={newKey} onChange={e => setNewKey(e.target.value)} type="password" style={{ flex: 2 }} />
-            <button className="btn btn-primary" onClick={addKey}>濞ｈ濮?/button>
+            <button className="btn btn-primary" onClick={addKey}>添加</button>
           </div>
           {providers.map(p => (
             <div key={p.id} className="card">
               <div className="card-title">
-                {p.icon || '棣冩敳'} {p.name}
-                <span className="badge badge-info" style={{ marginLeft: 8 }}>{p.models.length} 濡€崇€?/span>
+                {p.icon || '🔌'} {p.name}
+                <span className="badge badge-info" style={{ marginLeft: 8 }}>{p.models.length} 模型</span>
                 <span className="badge badge-success" style={{ marginLeft: 4 }}>{p.apiKeys.length} Keys</span>
                 {p.apiKeys.length > 0 && (
                   <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={() => fetchModels(p.id)} disabled={fetching === p.id}>
-                    {fetching === p.id ? '閳?閼惧嘲褰囨稉?..' : '棣冩敡 閼惧嘲褰囧Ο鈥崇€?}
+                    {fetching === p.id ? '⏳ 获取中...' : '🔄 获取模型'}
                   </button>
                 )}
               </div>
@@ -244,7 +244,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                 <div key={m.id} style={{ padding: '3px 0', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span>{m.name}</span>
                   <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : 'badge-success'}`}>{m.type}</span>
-                  {m.capabilities.multimodal && <span className="badge badge-warning">婢舵碍膩閹?/span>}
+                  {m.capabilities.multimodal && <span className="badge badge-warning">多模态</span>}
                 </div>
               ))}
             </div>
@@ -255,31 +255,31 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
   );
 }
 
-// 閳光偓閳光偓閳光偓 Model Capabilities Panel 閳光偓閳光偓閳光偓
+// ─── Model Capabilities Panel ───
 function ModelPanel({ providers }: { providers: Provider[] }) {
   const allModels = providers.flatMap(p => p.models.map(m => ({ ...m, providerName: p.name, providerIcon: p.icon })));
   const [selected, setSelected] = useState('');
   const model = allModels.find(m => m.id === selected);
   return (
     <div className="tab-panel">
-      <h3 style={{ marginBottom: 16, fontSize: 15 }}>棣冨箚 濡€崇€烽懗钘夊閹槒顫?/h3>
+      <h3 style={{ marginBottom: 16, fontSize: 15 }}>🎯 模型能力总览</h3>
       <select value={selected} onChange={e => setSelected(e.target.value)} style={{ marginBottom: 16 }}>
-        <option value="">闁瀚ㄥΟ鈥崇€烽弻銉ф箙鐠囷附鍎?/option>
+        <option value="">选择模型查看详情</option>
         {allModels.map(m => <option key={m.id} value={m.id}>{m.providerIcon} {m.providerName} - {m.name}</option>)}
       </select>
       {model && (
         <div className="card">
           <div className="card-title">{model.providerIcon} {model.name}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>{model.providerName} 璺?{model.type}</div>
-          <CapabilityBar label="娴狅絿鐖? value={model.capabilities.code} color="var(--accent)" />
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>{model.providerName} · {model.type}</div>
+          <CapabilityBar label="代码" value={model.capabilities.code} color="var(--accent)" />
           <CapabilityBar label="Agent" value={model.capabilities.agent} color="var(--info)" />
-          <CapabilityBar label="鐎电鐦? value={model.capabilities.chat} color="var(--success)" />
-          <CapabilityBar label="娑撳﹣绗呴弬? value={model.capabilities.context} color="var(--warning)" />
-          <CapabilityBar label="闁喎瀹? value={model.capabilities.speed} color="#ff6b9d" />
+          <CapabilityBar label="对话" value={model.capabilities.chat} color="var(--success)" />
+          <CapabilityBar label="上下文" value={model.capabilities.context} color="var(--warning)" />
+          <CapabilityBar label="速度" value={model.capabilities.speed} color="#ff6b9d" />
           <div style={{ marginTop: 12, fontSize: 12, display: 'flex', gap: 16 }}>
-            <span>棣冩憸 鏉堟挸鍙? ${model.capabilities.pricing.inputPer1M}/1M</span>
-            <span>棣冩憶 鏉堟挸鍤? ${model.capabilities.pricing.outputPer1M}/1M</span>
-            {model.capabilities.multimodal && <span className="badge badge-warning">婢舵碍膩閹?/span>}
+            <span>📥 输入: ${model.capabilities.pricing.inputPer1M}/1M</span>
+            <span>📤 输出: ${model.capabilities.pricing.outputPer1M}/1M</span>
+            {model.capabilities.multimodal && <span className="badge badge-warning">多模态</span>}
           </div>
         </div>
       )}
@@ -287,7 +287,7 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
   );
 }
 
-// 閳光偓閳光偓閳光偓 Testing Panel 閳光偓閳光偓閳光偓
+// ─── Testing Panel ───
 function TestingPanel({ providers }: { providers: Provider[] }) {
   const allModels = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
   const [scope, setScope] = useState<'single' | 'provider' | 'all'>('single');
@@ -399,7 +399,7 @@ function TestingPanel({ providers }: { providers: Provider[] }) {
   );
 }
 
-// 閳光偓閳光偓閳光偓 Extensions Panel 閳光偓閳光偓閳光偓
+// ─── Extensions Panel ───
 function ExtensionsPanel() {
   const [subTab, setSubTab] = useState<'mcp' | 'skills'>('mcp');
   const [mcpServers, setMcpServers] = useState<any[]>([]);
@@ -408,8 +408,8 @@ function ExtensionsPanel() {
   const [skillPresets, setSkillPresets] = useState<any[]>([]);
   const [showAddMcp, setShowAddMcp] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
-  const [customMcp, setCustomMcp] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: '閼奉亜鐣炬稊?, icon: '棣冩暋' });
-  const [customSkill, setCustomSkill] = useState({ name: '', description: '', content: '', category: '閼奉亜鐣炬稊?, icon: '棣冩暋' });
+  const [customMcp, setCustomMcp] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: '自定义', icon: '🔧' });
+  const [customSkill, setCustomSkill] = useState({ name: '', description: '', content: '', category: '自定义', icon: '🔧' });
   const [editingSkill, setEditingSkill] = useState<any>(null);
 
   const loadAll = useCallback(async () => {
@@ -422,41 +422,41 @@ function ExtensionsPanel() {
   return (
     <div className="tab-panel">
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        <button className={`btn ${subTab === 'mcp' ? 'btn-primary' : ''}`} onClick={() => setSubTab('mcp')} style={{ borderRadius: '6px 6px 0 0' }}>棣冩敳 MCP 閺堝秴濮熼崳?/button>
-        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>閳?閹垛偓閼宠棄绨?/button>
+        <button className={`btn ${subTab === 'mcp' ? 'btn-primary' : ''}`} onClick={() => setSubTab('mcp')} style={{ borderRadius: '6px 6px 0 0' }}>🔌 MCP 服务器</button>
+        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>⚡ 技能库</button>
       </div>
 
       {subTab === 'mcp' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>棣冩敳 MCP 閺堝秴濮熼崳?/h3>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowAddMcp(!showAddMcp)}>+ 閼奉亜鐣炬稊澶嬪潑閸?/button>
+            <h3 style={{ fontSize: 15 }}>🔌 MCP 服务器</h3>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAddMcp(!showAddMcp)}>+ 自定义添加</button>
           </div>
           {showAddMcp && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input placeholder="閸氬秶袨" value={customMcp.name} onChange={e => setCustomMcp({...customMcp, name: e.target.value})} />
-                <input placeholder="閸ョ偓鐖? value={customMcp.icon} onChange={e => setCustomMcp({...customMcp, icon: e.target.value})} />
+                <input placeholder="名称" value={customMcp.name} onChange={e => setCustomMcp({...customMcp, name: e.target.value})} />
+                <input placeholder="图标" value={customMcp.icon} onChange={e => setCustomMcp({...customMcp, icon: e.target.value})} />
               </div>
-              <input placeholder="閹诲繗鍫? value={customMcp.description} onChange={e => setCustomMcp({...customMcp, description: e.target.value})} style={{ marginBottom: 8 }} />
+              <input placeholder="描述" value={customMcp.description} onChange={e => setCustomMcp({...customMcp, description: e.target.value})} style={{ marginBottom: 8 }} />
               <select value={customMcp.transport} onChange={e => setCustomMcp({...customMcp, transport: e.target.value})} style={{ marginBottom: 8 }}>
                 <option value="stdio">stdio</option><option value="sse">SSE</option><option value="streamable-http">HTTP</option>
               </select>
               {customMcp.transport === 'stdio' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginBottom: 8 }}>
-                  <input placeholder="閸涙垝鎶?(婵?npx)" value={customMcp.command} onChange={e => setCustomMcp({...customMcp, command: e.target.value})} />
-                  <input placeholder="閸欏倹鏆?(缁岀儤鐗搁崚鍡涙)" value={customMcp.args} onChange={e => setCustomMcp({...customMcp, args: e.target.value})} />
+                  <input placeholder="命令 (如 npx)" value={customMcp.command} onChange={e => setCustomMcp({...customMcp, command: e.target.value})} />
+                  <input placeholder="参数 (空格分隔)" value={customMcp.args} onChange={e => setCustomMcp({...customMcp, args: e.target.value})} />
                 </div>
               ) : (
                 <input placeholder="URL" value={customMcp.url} onChange={e => setCustomMcp({...customMcp, url: e.target.value})} style={{ marginBottom: 8 }} />
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="btn btn-sm" onClick={() => setShowAddMcp(false)}>閸欐牗绉?/button>
-                <button className="btn btn-primary btn-sm" onClick={async () => { if (customMcp.name) { await api.addMcpCustom({ name: customMcp.name, description: customMcp.description, transport: customMcp.transport, command: customMcp.command || undefined, args: customMcp.args ? customMcp.args.split(' ').filter(Boolean) : undefined, url: customMcp.url || undefined, enabled: true, category: customMcp.category, icon: customMcp.icon }); setShowAddMcp(false); loadAll(); } }}>濞ｈ濮?/button>
+                <button className="btn btn-sm" onClick={() => setShowAddMcp(false)}>取消</button>
+                <button className="btn btn-primary btn-sm" onClick={async () => { if (customMcp.name) { await api.addMcpCustom({ name: customMcp.name, description: customMcp.description, transport: customMcp.transport, command: customMcp.command || undefined, args: customMcp.args ? customMcp.args.split(' ').filter(Boolean) : undefined, url: customMcp.url || undefined, enabled: true, category: customMcp.category, icon: customMcp.icon }); setShowAddMcp(false); loadAll(); } }}>添加</button>
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>妫板嫯顔?MCP 閺堝秴濮熼崳?/h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设 MCP 服务器</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {mcpPresets.map((p: any) => {
               const added = mcpServers.some((s: any) => s.name === p.name);
@@ -466,14 +466,14 @@ function ExtensionsPanel() {
                   <div className="card-title">{p.icon} {p.name}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4 }}>{p.description}</div>
                   <span className="badge badge-info">{p.transport}</span>
-                  {added && <span className="badge badge-success" style={{ marginLeft: 4 }}>瀹稿弶鍧婇崝?/span>}
+                  {added && <span className="badge badge-success" style={{ marginLeft: 4 }}>已添加</span>}
                 </div>
               );
             })}
           </div>
           {mcpServers.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>瀹告煡鍘ょ純?/h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已配置</h4>
               {mcpServers.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 18 }}>{s.icon}</span>
@@ -481,9 +481,9 @@ function ExtensionsPanel() {
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.transport === 'stdio' ? s.command + ' ' + (s.args || []).join(' ') : s.url}</div>
                   </div>
-                  <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '閸氼垳鏁? : '缁備胶鏁?}</span>
-                  <button className="btn btn-sm" onClick={async () => { await api.updateMcp(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '缁備胶鏁? : '閸氼垳鏁?}</button>
-                  <button className="btn btn-sm" onClick={async () => { await api.removeMcp(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>閸掔娀娅?/button>
+                  <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '启用' : '禁用'}</span>
+                  <button className="btn btn-sm" onClick={async () => { await api.updateMcp(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '禁用' : '启用'}</button>
+                  <button className="btn btn-sm" onClick={async () => { await api.removeMcp(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>删除</button>
                 </div>
               ))}
             </>
@@ -494,35 +494,35 @@ function ExtensionsPanel() {
       {subTab === 'skills' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>閳?閹垛偓閼宠棄绨?/h3>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkill(!showAddSkill)}>+ 閼奉亜鐣炬稊澶婂灡瀵?/button>
+            <h3 style={{ fontSize: 15 }}>⚡ 技能库</h3>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkill(!showAddSkill)}>+ 自定义创建</button>
           </div>
           {showAddSkill && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input placeholder="閹垛偓閼宠棄鎮曠粔? value={customSkill.name} onChange={e => setCustomSkill({...customSkill, name: e.target.value})} />
-                <input placeholder="閸ョ偓鐖? value={customSkill.icon} onChange={e => setCustomSkill({...customSkill, icon: e.target.value})} />
+                <input placeholder="技能名称" value={customSkill.name} onChange={e => setCustomSkill({...customSkill, name: e.target.value})} />
+                <input placeholder="图标" value={customSkill.icon} onChange={e => setCustomSkill({...customSkill, icon: e.target.value})} />
               </div>
-              <input placeholder="閹诲繗鍫? value={customSkill.description} onChange={e => setCustomSkill({...customSkill, description: e.target.value})} style={{ marginBottom: 8 }} />
-              <textarea placeholder="閹垛偓閼宠棄鍞寸€?缁崵绮洪幓鎰仛鐠?.." value={customSkill.content} onChange={e => setCustomSkill({...customSkill, content: e.target.value})} style={{ minHeight: 100, marginBottom: 8 }} />
+              <input placeholder="描述" value={customSkill.description} onChange={e => setCustomSkill({...customSkill, description: e.target.value})} style={{ marginBottom: 8 }} />
+              <textarea placeholder="技能内容/系统提示词..." value={customSkill.content} onChange={e => setCustomSkill({...customSkill, content: e.target.value})} style={{ minHeight: 100, marginBottom: 8 }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="btn btn-sm" onClick={() => setShowAddSkill(false)}>閸欐牗绉?/button>
-                <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkill.name && customSkill.content) { await api.addSkillCustom({ name: customSkill.name, description: customSkill.description, content: customSkill.content, source: 'file', enabled: true, category: customSkill.category, icon: customSkill.icon }); setShowAddSkill(false); loadAll(); } }}>閸掓稑缂?/button>
+                <button className="btn btn-sm" onClick={() => setShowAddSkill(false)}>取消</button>
+                <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkill.name && customSkill.content) { await api.addSkillCustom({ name: customSkill.name, description: customSkill.description, content: customSkill.content, source: 'file', enabled: true, category: customSkill.category, icon: customSkill.icon }); setShowAddSkill(false); loadAll(); } }}>创建</button>
               </div>
             </div>
           )}
           {editingSkill && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--warning)' }}>
-              <div className="card-title">缂傛牞绶? {editingSkill.icon} {editingSkill.name}</div>
+              <div className="card-title">编辑: {editingSkill.icon} {editingSkill.name}</div>
               <input value={editingSkill.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingSkill({...editingSkill, name: e.target.value})} style={{ marginBottom: 8 }} />
               <textarea value={editingSkill.content} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditingSkill({...editingSkill, content: e.target.value})} style={{ minHeight: 120, marginBottom: 8 }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="btn btn-sm" onClick={() => setEditingSkill(null)}>閸欐牗绉?/button>
-                <button className="btn btn-primary btn-sm" onClick={async () => { await api.updateSkill(editingSkill.id, { content: editingSkill.content, name: editingSkill.name }); setEditingSkill(null); loadAll(); }}>娣囨繂鐡?/button>
+                <button className="btn btn-sm" onClick={() => setEditingSkill(null)}>取消</button>
+                <button className="btn btn-primary btn-sm" onClick={async () => { await api.updateSkill(editingSkill.id, { content: editingSkill.content, name: editingSkill.name }); setEditingSkill(null); loadAll(); }}>保存</button>
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>妫板嫯顔曢幎鈧懗?/h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设技能</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillPresets.map((p: any) => {
               const added = skills.some((s: any) => s.name === p.name);
@@ -531,14 +531,14 @@ function ExtensionsPanel() {
                   onClick={async () => { if (!added) { await api.addSkillFromPreset(p.id); loadAll(); } }}>
                   <div className="card-title">{p.icon} {p.name}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{p.description}</div>
-                  {added && <span className="badge badge-success" style={{ marginTop: 4 }}>瀹稿弶鍧婇崝?/span>}
+                  {added && <span className="badge badge-success" style={{ marginTop: 4 }}>已添加</span>}
                 </div>
               );
             })}
           </div>
           {skills.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>瀹告煡鍘ょ純?/h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已配置</h4>
               {skills.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -547,10 +547,10 @@ function ExtensionsPanel() {
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
                       <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{s.description}</div>
                     </div>
-                    <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '閸氼垳鏁? : '缁備胶鏁?}</span>
-                    <button className="btn btn-sm" onClick={() => setEditingSkill(s)}>缂傛牞绶?/button>
-                    <button className="btn btn-sm" onClick={async () => { await api.updateSkill(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '缁備胶鏁? : '閸氼垳鏁?}</button>
-                    <button className="btn btn-sm" onClick={async () => { await api.removeSkill(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>閸掔娀娅?/button>
+                    <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '启用' : '禁用'}</span>
+                    <button className="btn btn-sm" onClick={() => setEditingSkill(s)}>编辑</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.updateSkill(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '禁用' : '启用'}</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.removeSkill(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>删除</button>
                   </div>
                 </div>
               ))}
@@ -562,7 +562,7 @@ function ExtensionsPanel() {
   );
 }
 
-// 閳光偓閳光偓閳光偓 Main App 閳光偓閳光偓閳光偓
+// ─── Main App ───
 export default function App() {
   const [tab, setTab] = useState<'chat' | 'providers' | 'models' | 'testing' | 'extensions' | 'terminal' | 'editor' | 'environment'>('chat');
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -575,6 +575,10 @@ export default function App() {
   const [thinking, setThinking] = useState<'low' | 'medium' | 'high'>('medium');
   const [ratio, setRatio] = useState(0.5);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('moa-theme') as 'dark' | 'light') || 'dark');
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('moa-theme', theme);
+  }, [theme]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -589,11 +593,11 @@ export default function App() {
       if (msg.type === 'orchestrator_update') {
         const d = msg.payload;
         if (d.status === 'planning') {
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'orchestrator', content: '棣冾潵 濮濓絽婀崚鍡樼€芥禒璇插楠炶泛鍨庣憴锝呯摍娴犺濮?..', time }]);
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'orchestrator', content: '🧠 正在分析任务并分解子任务...', time }]);
         } else if (d.status === 'executing') {
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'orchestrator', content: '閳?閸掑棜袙鐎瑰本鍨氶敍灞绢劀閸︺劌鍨庨柊?' + d.subtasks + ' 娑擃亜鐡欐禒璇插缂佹瑥鐡欐禒锝囨倞...', time }]);
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'orchestrator', content: '⚡ 分解完成，正在分配 ' + d.subtasks + ' 个子任务给子代理...', time }]);
         } else if (d.status === 'completed') {
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'orchestrator', content: '閴?娴犺濮熺€瑰本鍨氶敍涔梟\n' + (d.result || ''), time }]);
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'orchestrator', content: '✅ 任务完成！\n\n' + (d.result || ''), time }]);
           setSending(false);
         }
       } else if (msg.type === 'agent_update') {
@@ -602,9 +606,9 @@ export default function App() {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last && last.role === 'orchestrator' && last.agents) {
-            last.agents = [...last.agents, { name: a.name, status: a.status, task: '閹笛嗩攽娑?..', model: a.modelId }];
+            last.agents = [...last.agents, { name: a.name, status: a.status, task: '执行中...', model: a.modelId }];
           } else {
-            updated.push({ id: Date.now().toString(), role: 'system', content: '', time, agents: [{ name: a.name, status: a.status, task: '瀹告彃鍨庨柊?, model: a.modelId }] });
+            updated.push({ id: Date.now().toString(), role: 'system', content: '', time, agents: [{ name: a.name, status: a.status, task: '已分配', model: a.modelId }] });
           }
           return updated;
         });
@@ -612,7 +616,7 @@ export default function App() {
         const t = msg.payload.task;
         const idBase = t.id || Date.now().toString();
         if (t.status === 'completed') {
-          setMessages(prev => [...prev, { id: idBase, role: 'agent', content: '\u2705 ' + t.description.slice(0, 60) + '\n' + (t.result || '').slice(0, 300), time, tools: [{ name: t.description.slice(0, 40), status: 'success', output: t.result?.slice(0, 500), icon: '\uD83D閿? }] }]);
+          setMessages(prev => [...prev, { id: idBase, role: 'agent', content: '\u2705 ' + t.description.slice(0, 60) + '\n' + (t.result || '').slice(0, 300), time, tools: [{ name: t.description.slice(0, 40), status: 'success', output: t.result?.slice(0, 500), icon: '\uD83D�' }] }]);
         } else if (t.status === 'failed') {
           setMessages(prev => [...prev, { id: idBase + '-fail', role: 'error', content: '\u274C Subtask failed: ' + t.description.slice(0, 60) + '\n' + (t.error || ''), time }]);
         } else if (t.status === 'running') {
@@ -621,7 +625,7 @@ export default function App() {
           setMessages(prev => [...prev, { id: idBase + '-retry-' + t.attempts, role: 'system', content: '\uD83D\uDD01 Retry #' + t.attempts + ': ' + t.description.slice(0, 80), time }]);
         }
       } else if (msg.type === 'issue_created') {
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'system', content: '閳跨媴绗?闂傤噣顣界拋鏉跨秿: ' + JSON.stringify(msg.payload), time }]);
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'system', content: '⚠️ 问题记录: ' + JSON.stringify(msg.payload), time }]);
       }
       if (msg.payload?.projectId) {
         fetch('/api/projects/' + msg.payload.projectId).then(r => r.json()).then(setProject).catch(() => {});
@@ -629,12 +633,6 @@ export default function App() {
     };
     return () => ws.close();
   }, [loadProviders]);
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('moa-theme', theme);
-  }, [theme]);
-
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -650,7 +648,7 @@ export default function App() {
       setProject(proj);
       await api.executeProject(proj.id, { costEfficiencyRatio: ratio, orchestratorModel: modelId, thinkingMode: thinking });
     } catch (e: any) {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', content: '閸欐垿鈧礁銇戠拹? ' + e.message, time }]);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'error', content: '发送失败: ' + e.message, time }]);
       setSending(false);
     }
   };
@@ -659,17 +657,17 @@ export default function App() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const tabNames: Record<string, string> = { chat: '棣冩尠 鐎电鐦?, providers: '棣冩憹 閹绘劒绶甸崯?, models: '棣冨箚 濡€崇€?, testing: '棣冃?濞村鐦?, extensions: '棣冩敳 閹碘晛鐫?, terminal: '閳鳖煉绗?缂佸牏顏?, editor: '棣冩憫 缂傛牞绶崳?, environment: '閳挎瑱绗?閻滎垰顣? };
+  const tabNames: Record<string, string> = { chat: '💬 对话', providers: '📦 提供商', models: '🎯 模型', testing: '🧪 测试', extensions: '🔌 扩展', terminal: '⌨️ 终端', editor: '📝 编辑器', environment: '⚙️ 环境' };
 
   return (
     <div className="app">
       {/* Sidebar */}
       <div className="sidebar">
         <div className="sidebar-brand">
-          <span className="logo">棣冃?/span>
+          <span className="logo">🧬</span>
           <div>
             <div className="title">Mixture of Agents</div>
-            <div className="subtitle">婢舵碍膩閸ㄥ宕楅崥?璺?閺呴缚鍏樼拫鍐ㄥ</div>
+            <div className="subtitle">多模型协同 · 智能调度</div>
           </div>
           <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} title={theme === 'dark' ? '切换到日间模式' : '切换到夜间模式'}>
             {theme === 'dark' ? '☀️' : '🌙'}
@@ -682,7 +680,7 @@ export default function App() {
         </div>
         {tab === 'chat' && messages.length > 0 && (
           <div className="sidebar-section">
-            <div className="sidebar-section-title">閺堚偓鏉╂垵顕拠?/div>
+            <div className="sidebar-section-title">最近对话</div>
             {messages.filter(m => m.role === 'user').slice(-8).reverse().map(m => (
               <div key={m.id} style={{ padding: '6px 0', fontSize: 11, color: 'var(--text-secondary)', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                 onClick={() => { const el = document.getElementById('msg-' + m.id); el?.scrollIntoView({ behavior: 'smooth' }); }}>
@@ -704,9 +702,9 @@ export default function App() {
                 {messages.map(m => <div key={m.id} id={'msg-' + m.id}><ChatMessage msg={m} /></div>)}
                 {sending && (
                   <div className="message">
-                    <div className="message-avatar orchestrator">棣冾潵</div>
+                    <div className="message-avatar orchestrator">🧠</div>
                     <div className="message-body">
-                      <div className="message-header"><span className="message-name">鐠嬪啫瀹冲鏇熸惛</span><span className="message-time">閹繆鈧啩鑵?..</span></div>
+                      <div className="message-header"><span className="message-name">调度引擎</span><span className="message-time">思考中...</span></div>
                       <div style={{ display: 'flex', gap: 4, padding: '4px 0' }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1s infinite 0s' }} />
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent)', animation: 'pulse 1s infinite 0.2s' }} />
@@ -723,23 +721,23 @@ export default function App() {
             <div className="prompt-bar">
               <div className="prompt-wrapper">
                 <textarea ref={inputRef} className="prompt-input" value={inputVal} onChange={e => setInputVal(e.target.value)}
-                  onKeyDown={handleKeyDown} placeholder="閹诲繗鍫担鐘垫畱娴犺濮?.. (Enter 閸欐垿鈧? Shift+Enter 閹广垼顢?"
+                  onKeyDown={handleKeyDown} placeholder="描述你的任务... (Enter 发送, Shift+Enter 换行)"
                   rows={1} style={{ height: Math.min(120, Math.max(24, inputVal.split('\n').length * 22)) }} />
                 <div className="prompt-actions">
-                  <button className="prompt-btn send" onClick={() => handleSend()} disabled={!inputVal.trim() || sending}>閳?/button>
+                  <button className="prompt-btn send" onClick={() => handleSend()} disabled={!inputVal.trim() || sending}>▶</button>
                 </div>
               </div>
               <div className="prompt-meta">
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>
-                  閳挎瑱绗?{modelId ? providers.flatMap(p => p.models).find(m => m.id === modelId)?.name || '瀹告煡鈧膩閸? : '閼奉亜濮╅柅澶嬪'}
+                  ⚙️ {modelId ? providers.flatMap(p => p.models).find(m => m.id === modelId)?.name || '已选模型' : '自动选择'}
                 </span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>
-                  棣冾潵 {thinking === 'low' ? '娴? : thinking === 'medium' ? '娑? : '妤?}
+                  🧠 {thinking === 'low' ? '低' : thinking === 'medium' ? '中' : '高'}
                 </span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>
-                  {ratio <= 0.2 ? '棣冩畬 閺佸牏宸? : ratio >= 0.8 ? '棣冩尩 閹存劖婀? : '閳挎牭绗?閸у洩銆€'} {ratio}
+                  {ratio <= 0.2 ? '🚀 效率' : ratio >= 0.8 ? '💰 成本' : '⚖️ 均衡'} {ratio}
                 </span>
-                <span style={{ marginLeft: 'auto' }}>{providers.length} 閹绘劒绶甸崯?璺?{providers.flatMap(p => p.models).length} 濡€崇€?/span>
+                <span style={{ marginLeft: 'auto' }}>{providers.length} 提供商 · {providers.flatMap(p => p.models).length} 模型</span>
               </div>
             </div>
           </div>
