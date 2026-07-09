@@ -1,4 +1,4 @@
-﻿# Mixture of Agents — Desktop
+# Mixture of Agents — Desktop
 
 Multi-model collaborative agent system desktop version. Based on Electron, supports 17+ model providers.
 
@@ -99,3 +99,10 @@ Mixture-of-Agents-Desktop/
 ## License
 
 MIT
+
+## v2.0 更新
+- 文件上传：+ 按钮和拖拽上传
+- 并行测试：快速(~2min)和标准(~10min)
+- 多模态眼睛：自动VLM图片描述
+- API池：每URL独立池，自动剔除失效key
+- 中文测试界面
