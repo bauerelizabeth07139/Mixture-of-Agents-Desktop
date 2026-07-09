@@ -242,7 +242,7 @@ body {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 8px 12px;
+  padding: 10px 14px;
   transition: var(--transition);
 }
 .prompt-wrapper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
@@ -255,8 +255,8 @@ body {
   line-height: 1.5;
   resize: none;
   outline: none;
-  min-height: 24px;
-  max-height: 200px;
+  min-height: 88px;
+  max-height: 240px;
   font-family: var(--font-sans);
 }
 .prompt-input::placeholder { color: var(--text-muted); }

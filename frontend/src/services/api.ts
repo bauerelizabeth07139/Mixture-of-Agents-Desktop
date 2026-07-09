@@ -1,4 +1,4 @@
-﻿const B = '/api';
+const B = '/api';
 const h = { 'Content-Type': 'application/json' };
 export const api = {
   fetchPresets: () => fetch(B+'/providers/presets').then(r=>r.json()),
@@ -47,6 +47,15 @@ export const api = {
   // File write
   writeFile: (filePath: string, content: string, workdir?: string) => fetch(B+'/coding/write-file',{method:'POST',headers:h,body:JSON.stringify({filePath,content,workdir})}).then(r=>r.json()),
   // Read absolute path
-  readAbsolute: (absolutePath: string) => fetch(B+'/coding/read-absolute',{method:'POST',headers:h,body:JSON.stringify({absolutePath})}).then(r=>r.json()),
+    readAbsolute: (absolutePath: string) => fetch(B+'/coding/read-absolute',{method:'POST',headers:h,body:JSON.stringify({absolutePath})}).then(r=>r.json()),
+  // File upload
+  uploadFile: (file: File) => { const fd = new FormData(); fd.append('file', file); return fetch(B+'/upload', { method: 'POST', body: fd }).then(r => r.json()); },
+  // Multi-key add (paste multiple keys separated by newlines)
+  addKeys: (providerId: string, keys: string[]) => fetch(B+'/providers/'+providerId+'/keys/batch', {method:'POST', headers:h, body:JSON.stringify({keys})}).then(r=>r.json()),
+  // Pool stats
+  getPoolStats: () => fetch(B+'/providers/pool-stats').then(r=>r.json()),
+  // Run quick/standard test on all models (parallel)
+  runQuickTestAll: () => fetch(B+'/testing/test-all-models', {method:'POST', headers:h, body:JSON.stringify({quick: true})}).then(r=>r.json()),
+  runStandardTestAll: () => fetch(B+'/testing/test-all-models', {method:'POST', headers:h, body:JSON.stringify({quick: false})}).then(r=>r.json()),
 };
 

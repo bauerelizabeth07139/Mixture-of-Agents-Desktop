@@ -167,7 +167,7 @@ export class CapabilityTestEngine {
       code: avg(codeResults), agent: avg(reasonResults), chat: avg(chatResults),
       context: model.capabilities.context,
       speed: avgLatency < 800 ? 10 : avgLatency < 1500 ? 8 : avgLatency < 3000 ? 6 : avgLatency < 6000 ? 4 : 2,
-      multimodal: model.capabilities.multimodal, pricing: model.capabilities.pricing,
+      multimodal: model.capabilities.multimodal, visionScore: 0, audioScore: 0, pricing: model.capabilities.pricing,
     };
     const overallScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 10) / 10;
     return { modelId: model.id, modelName: model.modelId, providerName: provider.name, timestamp: new Date().toISOString(), results, overallScore, capabilities };
@@ -205,7 +205,7 @@ export class CapabilityTestEngine {
         chat: results.find(r => r.category === 'chat' || r.category === 'instruction')?.score ?? 0,
         context: model.capabilities.context,
         speed: avgLatency < 800 ? 10 : avgLatency < 1500 ? 8 : avgLatency < 3000 ? 6 : avgLatency < 6000 ? 4 : 2,
-        multimodal: model.capabilities.multimodal, pricing: model.capabilities.pricing,
+        multimodal: model.capabilities.multimodal, visionScore: 0, audioScore: 0, pricing: model.capabilities.pricing,
       },
     };
   }
@@ -238,4 +238,3 @@ export class CapabilityTestEngine {
 
   static getTestCases(): TestCase[] { return TEST_CASES; }
 }
-

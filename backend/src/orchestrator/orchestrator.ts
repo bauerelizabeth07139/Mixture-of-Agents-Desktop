@@ -408,11 +408,13 @@ export class Orchestrator {
     let ms = this.poolManager.getAvailableModels("llm");
     ms = ms.filter(m => !excludedProviders.includes(m.providerId));
     if (ms.length) {
-      const scored = ms.map(m => ({
-        model: m,
-        score: ModelCapabilityScorer.computeSelectionScore(m.capabilities, this.preferences.costEfficiencyRatio, "general"),
-        ...this.poolManager.findProviderForModel(m.id)!,
-      })).filter(x => x.provider && x.apiKey);
+      const scored = ms.map(m => {
+        const found = this.poolManager.findProviderForModel(m.id)!;
+        return {
+          ...found,
+          score: ModelCapabilityScorer.computeSelectionScore(m.capabilities, this.preferences.costEfficiencyRatio, "general"),
+        };
+      }).filter(x => x.provider && x.apiKey);
       scored.sort((a, b) => b.score - a.score);
       if (scored.length) return { provider: scored[0].provider, model: scored[0].model, apiKey: scored[0].apiKey };
     }

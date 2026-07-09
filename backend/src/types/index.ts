@@ -1,7 +1,9 @@
-﻿export type ModelCapability = 'code' | 'agent' | 'chat' | 'multimodal' | 'reasoning' | 'fast';
+export type ModelCapability = 'code' | 'agent' | 'chat' | 'multimodal' | 'reasoning' | 'fast';
 
 export interface ModelCapabilityProfile {
   code: number; agent: number; chat: number; context: number; speed: number; multimodal: boolean;
+  visionScore: number;  // 0-10, from multimodal test
+  audioScore: number;   // 0-10, reserved for future audio test
   pricing: { inputPer1M: number; outputPer1M: number; userEditable: boolean; };
 }
 
@@ -144,4 +146,3 @@ export interface SkillPreset {
   icon: string;
   content: string;
 }
-

@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // Model Capability Scorer - Tests & scores model capabilities
 // ============================================================
 
@@ -15,24 +15,24 @@ const TEST_PROMPTS = {
 
 /** Known model defaults (pre-populated for common models) */
 const KNOWN_MODEL_SCORES: Record<string, Partial<ModelCapabilityProfile>> = {
-  'gpt-4o': { code: 9, agent: 9, chat: 9, context: 8, speed: 8, multimodal: true, pricing: { inputPer1M: 2.5, outputPer1M: 10, userEditable: true } },
-  'gpt-4o-mini': { code: 7, agent: 7, chat: 8, context: 8, speed: 9, multimodal: true, pricing: { inputPer1M: 0.15, outputPer1M: 0.6, userEditable: true } },
-  'gpt-4-turbo': { code: 9, agent: 9, chat: 9, context: 8, speed: 7, multimodal: true, pricing: { inputPer1M: 10, outputPer1M: 30, userEditable: true } },
-  'gpt-3.5-turbo': { code: 6, agent: 5, chat: 7, context: 6, speed: 10, multimodal: false, pricing: { inputPer1M: 0.5, outputPer1M: 1.5, userEditable: true } },
-  'claude-3-5-sonnet-20241022': { code: 10, agent: 10, chat: 9, context: 8, speed: 7, multimodal: true, pricing: { inputPer1M: 3, outputPer1M: 15, userEditable: true } },
-  'claude-3-opus-20240229': { code: 9, agent: 9, chat: 9, context: 8, speed: 5, multimodal: true, pricing: { inputPer1M: 15, outputPer1M: 75, userEditable: true } },
-  'deepseek-chat': { code: 8, agent: 7, chat: 8, context: 7, speed: 8, multimodal: false, pricing: { inputPer1M: 0.14, outputPer1M: 0.28, userEditable: true } },
-  'deepseek-coder': { code: 9, agent: 7, chat: 6, context: 7, speed: 8, multimodal: false, pricing: { inputPer1M: 0.14, outputPer1M: 0.28, userEditable: true } },
-  'deepseek-reasoner': { code: 8, agent: 9, chat: 7, context: 7, speed: 5, multimodal: false, pricing: { inputPer1M: 0.55, outputPer1M: 2.19, userEditable: true } },
-  'qwen-max': { code: 8, agent: 8, chat: 9, context: 9, speed: 7, multimodal: false, pricing: { inputPer1M: 2.4, outputPer1M: 9.6, userEditable: true } },
-  'glm-4': { code: 7, agent: 7, chat: 8, context: 7, speed: 7, multimodal: false, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
-  'glm-4v': { code: 6, agent: 6, chat: 8, context: 7, speed: 7, multimodal: true, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
-  'moonshot-v1-128k': { code: 7, agent: 7, chat: 8, context: 9, speed: 7, multimodal: false, pricing: { inputPer1M: 1.26, outputPer1M: 1.26, userEditable: true } },
-  'Baichuan4': { code: 7, agent: 6, chat: 8, context: 7, speed: 7, multimodal: false, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
-  'abab6.5-chat': { code: 7, agent: 6, chat: 8, context: 7, speed: 7, multimodal: false, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
-  'dall-e-3': { code: 0, agent: 0, chat: 0, context: 0, speed: 5, multimodal: false, pricing: { inputPer1M: 0, outputPer1M: 40, userEditable: true } },
-  'tts-1': { code: 0, agent: 0, chat: 0, context: 0, speed: 9, multimodal: false, pricing: { inputPer1M: 0, outputPer1M: 15, userEditable: true } },
-  'whisper-1': { code: 0, agent: 0, chat: 0, context: 0, speed: 8, multimodal: false, pricing: { inputPer1M: 0, outputPer1M: 6, userEditable: true } },
+  'gpt-4o': { code: 9, agent: 9, chat: 9, context: 8, speed: 8, multimodal: true, visionScore: 8, audioScore: 0, pricing: { inputPer1M: 2.5, outputPer1M: 10, userEditable: true } },
+  'gpt-4o-mini': { code: 7, agent: 7, chat: 8, context: 8, speed: 9, multimodal: true, visionScore: 7, audioScore: 0, pricing: { inputPer1M: 0.15, outputPer1M: 0.6, userEditable: true } },
+  'gpt-4-turbo': { code: 9, agent: 9, chat: 9, context: 8, speed: 7, multimodal: true, visionScore: 8, audioScore: 0, pricing: { inputPer1M: 10, outputPer1M: 30, userEditable: true } },
+  'gpt-3.5-turbo': { code: 6, agent: 5, chat: 7, context: 6, speed: 10, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 0.5, outputPer1M: 1.5, userEditable: true } },
+  'claude-3-5-sonnet-20241022': { code: 10, agent: 10, chat: 9, context: 8, speed: 7, multimodal: true, visionScore: 8, audioScore: 0, pricing: { inputPer1M: 3, outputPer1M: 15, userEditable: true } },
+  'claude-3-opus-20240229': { code: 9, agent: 9, chat: 9, context: 8, speed: 5, multimodal: true, visionScore: 7, audioScore: 0, pricing: { inputPer1M: 15, outputPer1M: 75, userEditable: true } },
+  'deepseek-chat': { code: 8, agent: 7, chat: 8, context: 7, speed: 8, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 0.14, outputPer1M: 0.28, userEditable: true } },
+  'deepseek-coder': { code: 9, agent: 7, chat: 6, context: 7, speed: 8, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 0.14, outputPer1M: 0.28, userEditable: true } },
+  'deepseek-reasoner': { code: 8, agent: 9, chat: 7, context: 7, speed: 5, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 0.55, outputPer1M: 2.19, userEditable: true } },
+  'qwen-max': { code: 8, agent: 8, chat: 9, context: 9, speed: 7, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 2.4, outputPer1M: 9.6, userEditable: true } },
+  'glm-4': { code: 7, agent: 7, chat: 8, context: 7, speed: 7, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
+  'glm-4v': { code: 6, agent: 6, chat: 8, context: 7, speed: 7, multimodal: true, visionScore: 6, audioScore: 0, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
+  'moonshot-v1-128k': { code: 7, agent: 7, chat: 8, context: 9, speed: 7, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 1.26, outputPer1M: 1.26, userEditable: true } },
+  'Baichuan4': { code: 7, agent: 6, chat: 8, context: 7, speed: 7, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
+  'abab6.5-chat': { code: 7, agent: 6, chat: 8, context: 7, speed: 7, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 1.0, outputPer1M: 1.0, userEditable: true } },
+  'dall-e-3': { code: 0, agent: 0, chat: 0, context: 0, speed: 5, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 0, outputPer1M: 40, userEditable: true } },
+  'tts-1': { code: 0, agent: 0, chat: 0, context: 0, speed: 9, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 0, outputPer1M: 15, userEditable: true } },
+  'whisper-1': { code: 0, agent: 0, chat: 0, context: 0, speed: 8, multimodal: false, visionScore: 0, audioScore: 0, pricing: { inputPer1M: 0, outputPer1M: 6, userEditable: true } },
 };
 
 export class ModelCapabilityScorer {
@@ -47,6 +47,8 @@ export class ModelCapabilityScorer {
         context: known.context ?? 5,
         speed: known.speed ?? 5,
         multimodal: known.multimodal ?? false,
+        visionScore: known.visionScore ?? 0,
+        audioScore: known.audioScore ?? 0,
         pricing: known.pricing ?? { inputPer1M: 1, outputPer1M: 2, userEditable: true },
       };
     }
@@ -59,6 +61,8 @@ export class ModelCapabilityScorer {
       context: 5,
       speed: 5,
       multimodal: false,
+      visionScore: 0,
+      audioScore: 0,
       pricing: { inputPer1M: 1, outputPer1M: 2, userEditable: true },
     };
   }
@@ -110,6 +114,8 @@ export class ModelCapabilityScorer {
       context: 5, // Would need longer test
       speed: speedScore,
       multimodal: false, // Would need image test
+      visionScore: 0, // Would need multimodal test
+      audioScore: 0,  // Reserved for future audio test
       pricing: this.getDefaultProfile(modelId).pricing,
     };
   }
