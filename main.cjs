@@ -9,7 +9,8 @@ let mainWindow = null;
 
 // Fix NODE_PATH so backend can resolve modules from root node_modules
 const appPath = isDev ? __dirname : path.join(process.resourcesPath, 'app.asar');
-process.env.NODE_PATH = path.join(appPath, 'node_modules');
+const backendBasePath = isDev ? __dirname : path.join(process.resourcesPath, 'backend');
+process.env.NODE_PATH = path.join(backendBasePath, 'node_modules');
 require('module').Module._initPaths();
 
 function checkServer(url, timeout) {
@@ -36,7 +37,7 @@ function startBackend() {
   return new Promise((resolve, reject) => {
     try {
       process.env.PORT = String(BACKEND_PORT);
-      const backendPath = path.join(appPath, 'backend', 'dist', 'index.js');
+      const backendPath = path.join(backendBasePath, 'dist', 'index.js');
       console.log('[MoA] Starting backend from:', backendPath);
       require(backendPath);
       // Wait for backend to be healthy
