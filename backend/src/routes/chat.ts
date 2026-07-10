@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient } from '../services/llm-client';
 
@@ -132,7 +132,10 @@ export function createChatRoutes(pool: ApiPoolManager) {
               else if (ext === '.ps1') cmd = `powershell -File "${filePath}"`;
               else cmd = `bash "${filePath}"`;
               
-              const output = execSync(cmd, { cwd: workDir, timeout: 30000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+              const extraPath = process.platform === 'win32'
+                ? [process.env.LOCALAPPDATA + '\\Programs\\Python\\Python311', process.env.LOCALAPPDATA + '\\Programs\\Python\\Python38', 'C:\\Program Files\\nodejs', 'C:\\Program Files\\Git\\cmd', process.env.PATH].filter(Boolean).join(path.delimiter)
+                : '/usr/local/bin:/usr/bin:' + (process.env.PATH || '');
+              const output = execSync(cmd, { cwd: workDir, timeout: 30000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true, env: { ...process.env, FORCE_COLOR: '0', PATH: extraPath } });
               execResults.push({ lang: block.lang, filename, stdout: output, stderr: '', exitCode: 0 });
             } catch (e: any) {
               execResults.push({ lang: block.lang, filename: block.filename, stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: e.status || 1 });
