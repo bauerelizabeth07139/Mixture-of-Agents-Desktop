@@ -12,6 +12,7 @@ export interface ChatRequest {
   maxTokens?: number;
   stream?: boolean;
   tools?: any[];
+  thinkingEffort?: 'none' | 'low' | 'medium' | 'high';
 }
 
 export interface ChatResponse {
@@ -65,6 +66,7 @@ export class LLMClient {
         max_tokens: request.maxTokens ?? 4096,
         stream: false,
         ...(request.tools ? { tools: request.tools } : {}),
+        ...(request.thinkingEffort && request.thinkingEffort !== 'none' ? { reasoning_effort: request.thinkingEffort } : {}),
       }, { headers, timeout: 120000 });
 
       const data = response.data;

@@ -2,226 +2,363 @@
 import { LLMClient } from './llm-client';
 import { updateModelPricing } from './price-fetcher';
 
-// Capability Test Suite v2 - Real discrimination scoring
+// ============================================================
+// Capability Test Suite v3 - Authoritative benchmarks, time-based scoring
+// ============================================================
 
 export interface TestCase {
-  id: string; name: string; category: 'code' | 'reasoning' | 'chat' | 'instruction' | 'speed';
+  id: string; name: string; category: 'code' | 'reasoning' | 'instruction' | 'chat';
   description: string; prompt: string; maxTokens: number;
-  evaluate: (response: string, latencyMs: number) => { score: number; details: string };
+  evaluate: (response: string) => { pass: boolean; details: string };
+  difficulty: 'quick' | 'standard';
 }
 
 export interface TestResult {
-  testId: string; testName: string; category: string; score: number; details: string; latencyMs: number; tokensUsed: number;
+  testId: string; testName: string; category: string;
+  score: number; // 0-1 time-based
+  details: string; latencyMs: number; tokensUsed: number;
 }
 
 export interface ModelTestReport {
   modelId: string; modelName: string; providerName: string; timestamp: string;
-  results: TestResult[]; overallScore: number; capabilities: ModelCapabilityProfile;
+  results: TestResult[]; overallScore: number;
+  capabilities: ModelCapabilityProfile;
+  testSuite: 'quick' | 'standard';
+  totalTimeMs: number;
 }
 
-const TEST_CASES: TestCase[] = [
-  {
-    id: 'code-1', name: 'Python Function', category: 'code',
-    description: 'Write a correct Python function with exact logic',
-    prompt: 'Write a Python function called "fizzbuzz" that takes an integer n and returns a list of strings from 1 to n where multiples of 3 become "Fizz", multiples of 5 become "Buzz", multiples of both become "FizzBuzz", others become the number as string. Return ONLY the function code.',
-    maxTokens: 1200,
-    evaluate: (r) => {
-      let score = 0;
-      if (/def\s+fizzbuzz/i.test(r)) score += 1;
-      if (/for\s+\w+\s+in\s+range/i.test(r)) score += 1;
-      const bothPos = r.indexOf('FizzBuzz');
-      const fizzPos = r.indexOf('Fizz');
-      if (bothPos >= 0 && fizzPos >= 0 && bothPos <= fizzPos) score += 2;
-      if (/15|\%\s*15/.test(r)) score += 2;
-      if (/return|append|yield/i.test(r)) score += 1;
-      if (/str\(|f['"]|append|\[.*\]/i.test(r)) score += 1;
-      if (score >= 5 && !/error|undefined/.test(r)) score += 2;
-      score = Math.min(10, score);
-      return { score, details: score >= 7 ? 'Correct FizzBuzz' : score >= 4 ? 'Partial' : 'Incorrect' };
-    },
-  },
-  {
-    id: 'code-2', name: 'Bug Detection', category: 'code',
-    description: 'Find the exact bug in code',
-    prompt: 'This Python function returns the second largest number. It has a bug. Find it:\n\ndef second_largest(nums):\n    unique = list(set(nums))\n    unique.sort()\n    return unique[-2]\n\nWhen does it fail? Give a one-sentence fix.',
+// --- Time limits ---
+const QUICK_TIMEOUT_MS = 180000;   // 3 min per test
+const STANDARD_TIMEOUT_MS = 720000; // 12 min per test
+
+// --- Time-based scoring ---
+// Solved within 50% time limit => 1.0, linear decay to 0.8 at 100% time
+function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean): number {
+  if (!passed) return 0;
+  const half = timeLimitMs * 0.5;
+  if (latencyMs <= half) return 1.0;
+  return 0.8 + 0.2 * (1 - (latencyMs - half) / half);
+}
+
+// ============================================================
+// TEST BANKS - Sourced from authoritative benchmarks
+// code: HumanEval, MBPP patterns
+// reasoning: GSM8K, MATH, ARC patterns
+// instruction: IFEval patterns
+// chat: MT-Bench patterns
+// ============================================================
+
+const QUICK_TESTS: TestCase[] = [
+  // --- Code (4 tests) - HumanEval style ---
+  { id: 'q-code-1', name: 'FizzBuzz', category: 'code', difficulty: 'quick',
+    description: 'Classic FizzBuzz (HumanEval-style)',
+    prompt: 'Write a Python function fizzbuzz(n: int) -> list[str] that returns ["1","2","Fizz","4","Buzz",...] for 1..n. Multiples of 3="Fizz", 5="Buzz", both="FizzBuzz". Return ONLY the function.',
     maxTokens: 800,
     evaluate: (r) => {
-      let score = 0;
-      if (/less than 2|fewer than 2|only one|single element|IndexError/i.test(r)) score += 4;
-      if (/check.*len|len.*check|if.*len.*<.*2/i.test(r)) score += 3;
-      if (/set|duplicate|unique/i.test(r)) score += 1;
-      if (/if.*len.*unique.*<.*2|return.*None|raise.*ValueError/i.test(r)) score += 2;
-      score = Math.min(10, score);
-      return { score, details: score >= 6 ? 'Found the edge case bug' : 'Did not find the real bug' };
-    },
+      const has = /def\s+fizzbuzz/i.test(r) && /for.*in\s+range/i.test(r) && /15|%.*15/i.test(r) && /return/i.test(r);
+      return { pass: has, details: has ? 'Correct' : 'Missing logic' };
+    }
   },
-  {
-    id: 'reason-1', name: 'Math Calculation', category: 'reasoning',
-    description: 'Multi-step arithmetic with exact answers',
-    prompt: 'A rectangle has length 17.5 cm and width 8.4 cm. Calculate: 1) Area in sq cm, 2) Perimeter in cm, 3) Diagonal in cm (2 decimal places). Give answers as: Area=X, Perimeter=Y, Diagonal=Z',
-    maxTokens: 1000,
-    evaluate: (r) => {
-      let score = 0;
-      if (/147/.test(r)) score += 3;
-      if (/51\.?8/.test(r)) score += 3;
-      if (/19\.?4[0-2]/.test(r)) score += 4;
-      score = Math.min(10, score);
-      return { score, details: score >= 8 ? 'All correct' : score >= 5 ? 'Partial' : 'Incorrect' };
-    },
-  },
-  {
-    id: 'reason-2', name: 'Logic Puzzle', category: 'reasoning',
-    description: 'Solve a logic deduction problem',
-    prompt: 'Three boxes labeled "Apples", "Oranges", "Mixed" ALL have wrong labels. You pick one fruit from the "Mixed" box and it is an apple. What fruit is in each box? Give answers as: Apples box=X, Oranges box=Y, Mixed box=Z',
-    maxTokens: 1000,
-    evaluate: (r) => {
-      let score = 0;
-      if (/mixed.*apple|mixed.*contain.*apple/i.test(r)) score += 3;
-      if (/apples.*orange|apple.*label.*orange/i.test(r)) score += 3;
-      if (/oranges.*mixed|orange.*label.*mixed/i.test(r)) score += 3;
-      if (score >= 6 && /wrong|since|because|therefore/i.test(r)) score += 1;
-      score = Math.min(10, score);
-      return { score, details: score >= 8 ? 'Correct deduction' : score >= 4 ? 'Partial' : 'Incorrect' };
-    },
-  },
-  {
-    id: 'chat-1', name: 'Format Following', category: 'instruction',
-    description: 'Follow specific output format',
-    prompt: 'Respond with EXACTLY this format, no extra text:\nName: [your model name]\nDate: [today YYYY-MM-DD]\nCapability: [one word]\nCount: [sum of 7+8+9+10+11+12]\nNothing else.',
+  { id: 'q-code-2', name: 'Two Sum', category: 'code', difficulty: 'quick',
+    description: 'Two Sum (LeetCode #1)',
+    prompt: 'Write Python function two_sum(nums: list[int], target: int) -> list[int] returning indices of two numbers that add to target. Exactly one solution exists. Return ONLY the function.',
     maxTokens: 600,
     evaluate: (r) => {
-      let score = 0;
-      if (/^Name:\s*\S/m.test(r)) score += 2;
-      if (/Date:\s*\d{4}-\d{2}-\d{2}/.test(r)) score += 2;
-      if (/Capability:\s*\w+$/m.test(r)) score += 2;
-      if (/Count:\s*57/.test(r)) score += 4;
-      score = Math.min(10, score);
-      return { score, details: score >= 8 ? 'Perfect compliance' : score >= 4 ? 'Partial' : 'Did not follow format' };
-    },
+      const has = /def\s+two_sum/i.test(r) && (/dict|hashmap|enumerate/i.test(r) || /\{.*:.*\}/i.test(r));
+      return { pass: has, details: has ? 'O(n) solution' : 'Missing or brute-force' };
+    }
   },
-  {
-    id: 'chat-2', name: 'Word Count', category: 'chat',
-    description: 'Summarize in exactly N words',
-    prompt: 'Summarize gravity in EXACTLY 20 words. Not 19, not 21, exactly 20. Start with [20]: followed by your summary.',
-    maxTokens: 600,
+  { id: 'q-code-3', name: 'Reverse String', category: 'code', difficulty: 'quick',
+    description: 'In-place string reverse (LeetCode #344)',
+    prompt: 'Write Python function reverse_string(s: list[str]) -> None that reverses the list in-place. Return ONLY the function.',
+    maxTokens: 400,
     evaluate: (r) => {
-      let score = 0;
-      const match = r.match(/\[\d+\]:\s*(.+)/s);
-      const summary = match ? match[1].trim() : r.trim();
-      const words = summary.split(/\s+/).filter(w => w.length > 0);
-      if (words.length === 20) score += 5;
-      else if (Math.abs(words.length - 20) <= 2) score += 3;
-      else if (Math.abs(words.length - 20) <= 5) score += 1;
-      if (/gravity|gravitational|mass|attract|force|fall|weight/i.test(summary)) score += 3;
-      if (/^\[\d+\]:/.test(r.trim())) score += 2;
-      score = Math.min(10, score);
-      return { score, details: 'Words: ' + words.length + '/20. ' + (score >= 7 ? 'Excellent' : score >= 4 ? 'Close' : 'Off target') };
-    },
+      const has = /def\s+reverse_string/i.test(r) && (/reverse|swap|\[::-1\]|left.*right|two.pointer/i.test(r));
+      return { pass: has, details: has ? 'Correct reverse' : 'Missing logic' };
+    }
   },
-  {
-    id: 'speed-1', name: 'Simple Q&A Speed', category: 'speed',
-    description: 'Response speed on trivial question',
-    prompt: 'What is the capital of France? Answer in one word.',
-    maxTokens: 600,
-    evaluate: (_r, latencyMs) => {
-      let score = 0;
-      if (latencyMs < 500) score += 6;
-      else if (latencyMs < 1000) score += 5;
-      else if (latencyMs < 2000) score += 4;
-      else if (latencyMs < 3000) score += 3;
-      else if (latencyMs < 5000) score += 2;
-      else score += 1;
-      if (/paris/i.test(_r)) score += 4;
-      score = Math.min(10, score);
-      return { score, details: latencyMs + 'ms - ' + (score >= 4 ? 'Fast' : 'Slow') };
-    },
+  { id: 'q-code-4', name: 'Valid Parentheses', category: 'code', difficulty: 'quick',
+    description: 'Valid Parentheses (LeetCode #20)',
+    prompt: 'Write Python function is_valid(s: str) -> bool that checks if brackets ()[]{} are properly matched. Return ONLY the function.',
+    maxTokens: 500,
+    evaluate: (r) => {
+      const has = /def\s+is_valid/i.test(r) && (/stack|append|pop|\[.*\]/i.test(r)) && /\(|\[|\{/.test(r);
+      return { pass: has, details: has ? 'Stack-based solution' : 'Missing bracket logic' };
+    }
+  },
+  // --- Reasoning (3 tests) - GSM8K/ARC style ---
+  { id: 'q-reason-1', name: 'Multi-step Arithmetic', category: 'reasoning', difficulty: 'quick',
+    description: 'GSM8K-style word problem',
+    prompt: 'A store sells shirts for $15 each. On Monday they sold 23 shirts. On Tuesday they sold 17 shirts. On Wednesday they sold twice as many as Monday. What was the total revenue for the 3 days? Answer with just the dollar amount.',
+    maxTokens: 400,
+    evaluate: (r) => {
+      const has = /\$?\s*945\b/.test(r) || /945/.test(r);
+      return { pass: has, details: has ? 'Correct: $945' : 'Wrong answer' };
+    }
+  },
+  { id: 'q-reason-2', name: 'Logic Deduction', category: 'reasoning', difficulty: 'quick',
+    description: 'ARC-style logic puzzle',
+    prompt: 'If all roses are flowers, and some flowers fade quickly, can we conclude that some roses fade quickly? Answer YES or NO with one sentence of reasoning.',
+    maxTokens: 300,
+    evaluate: (r) => {
+      const has = /\bno\b/i.test(r) && (/not necessarily|cannot|doesn.t follow|not.*valid/i.test(r));
+      return { pass: has, details: has ? 'Correct: cannot conclude' : 'Wrong logic' };
+    }
+  },
+  { id: 'q-reason-3', name: 'Pattern Completion', category: 'reasoning', difficulty: 'quick',
+    description: 'Number sequence reasoning',
+    prompt: 'What comes next: 2, 6, 12, 20, 30, ?  Answer with just the number and explain the pattern in one sentence.',
+    maxTokens: 300,
+    evaluate: (r) => {
+      const has = /\b42\b/.test(r);
+      return { pass: has, details: has ? 'Correct: 42 (n*(n+1))' : 'Wrong pattern' };
+    }
+  },
+  // --- Instruction (2 tests) - IFEval style ---
+  { id: 'q-inst-1', name: 'Strict Format', category: 'instruction', difficulty: 'quick',
+    description: 'IFEval strict format following',
+    prompt: 'Respond with EXACTLY this format, nothing else:\nName: GPT-4\nYear: 2023\nType: Language Model\nWords: 3\nNo extra text before or after.',
+    maxTokens: 200,
+    evaluate: (r) => {
+      const lines = r.trim().split('\n').filter(l => l.trim());
+      const hasName = /^Name:\s*GPT-4/m.test(r);
+      const hasYear = /^Year:\s*2023/m.test(r);
+      const hasType = /^Type:\s*Language Model/m.test(r);
+      const hasWords = /^Words:\s*3/m.test(r);
+      const pass = hasName && hasYear && hasType && hasWords && lines.length <= 5;
+      return { pass, details: pass ? 'Perfect compliance' : 'Format violation' };
+    }
+  },
+  { id: 'q-inst-2', name: 'Word Constraint', category: 'instruction', difficulty: 'quick',
+    description: 'IFEval word count constraint',
+    prompt: 'Explain what a computer is in EXACTLY 10 words. Not 9, not 11. Exactly 10. Start with "A computer is".',
+    maxTokens: 100,
+    evaluate: (r) => {
+      const match = r.trim().match(/A computer is\s+(.+)/i);
+      const text = match ? match[1].trim() : r.trim();
+      const words = text.split(/\s+/).filter(w => w.length > 0);
+      const totalWords = match ? words.length + 2 : words.length;
+      const pass = Math.abs(totalWords - 10) === 0;
+      return { pass, details: `Got ${totalWords} words` };
+    }
+  },
+  // --- Chat (1 test) - MT-Bench style ---
+  { id: 'q-chat-1', name: 'Concise Knowledge', category: 'chat', difficulty: 'quick',
+    description: 'MT-Bench concise response quality',
+    prompt: 'In exactly 3 sentences, explain how a neural network learns. No bullet points, no numbered lists.',
+    maxTokens: 300,
+    evaluate: (r) => {
+      const sentences = r.trim().split(/[.!?]+/).filter(s => s.trim().length > 5);
+      const pass = sentences.length >= 3 && sentences.length <= 4 && r.length > 60;
+      return { pass, details: `${sentences.length} sentences, ${r.length} chars` };
+    }
   },
 ];
 
+const STANDARD_TESTS: TestCase[] = [
+  // --- Code (4 tests) - Harder HumanEval/LeetCode ---
+  { id: 's-code-1', name: 'LRU Cache', category: 'code', difficulty: 'standard',
+    description: 'LRU Cache (LeetCode #146)',
+    prompt: 'Implement a class LRUCache with:\n- __init__(self, capacity: int)\n- get(self, key: int) -> int (return value or -1)\n- put(self, key: int, value: int) -> None\nBoth operations must be O(1). Use OrderedDict or doubly-linked list + dict. Return ONLY the class.',
+    maxTokens: 1200,
+    evaluate: (r) => {
+      const has = /class\s+LRUCache/i.test(r) && (/OrderedDict|move_to_end|DLinkedNode|double/i.test(r)) && /def\s+(get|put)/i.test(r);
+      return { pass: has, details: has ? 'O(1) LRU implementation' : 'Missing or incorrect' };
+    }
+  },
+  { id: 's-code-2', name: 'Binary Tree Level Order', category: 'code', difficulty: 'standard',
+    description: 'Binary Tree Level Order Traversal (LeetCode #102)',
+    prompt: 'Write Python function level_order(root: TreeNode | None) -> list[list[int]] for level-order traversal. Include TreeNode class definition. Return ONLY the code.',
+    maxTokens: 800,
+    evaluate: (r) => {
+      const has = /def\s+level_order/i.test(r) && (/deque|queue|BFS|level/i.test(r)) && /TreeNode/i.test(r);
+      return { pass: has, details: has ? 'BFS level traversal' : 'Missing BFS logic' };
+    }
+  },
+  { id: 's-code-3', name: 'Merge Intervals', category: 'code', difficulty: 'standard',
+    description: 'Merge Intervals (LeetCode #56)',
+    prompt: 'Write Python function merge(intervals: list[list[int]]) -> list[list[int]] that merges overlapping intervals. Return ONLY the function.',
+    maxTokens: 600,
+    evaluate: (r) => {
+      const has = /def\s+merge/i.test(r) && (/sort|sorted/i.test(r)) && (/append|push|result|merged/i.test(r));
+      return { pass: has, details: has ? 'Sort + merge approach' : 'Missing merge logic' };
+    }
+  },
+  { id: 's-code-4', name: 'Trie Implementation', category: 'code', difficulty: 'standard',
+    description: 'Implement Trie (LeetCode #208)',
+    prompt: 'Implement a Trie (prefix tree) class with insert(word), search(word) -> bool, startsWith(prefix) -> bool. Return ONLY the class in Python.',
+    maxTokens: 800,
+    evaluate: (r) => {
+      const has = /class\s+Trie/i.test(r) && /def\s+(insert|search|startsWith)/i.test(r) && (/children|dict|\{.*:.*\}/i.test(r));
+      return { pass: has, details: has ? 'Trie with children dict' : 'Missing trie structure' };
+    }
+  },
+  // --- Reasoning (3 tests) - MATH/Competition style ---
+  { id: 's-reason-1', name: 'Combinatorics', category: 'reasoning', difficulty: 'standard',
+    description: 'MATH-competition level combinatorics',
+    prompt: 'In how many ways can 8 people be seated at a round table if two specific people must NOT sit next to each other? Show your reasoning step by step and give the final number.',
+    maxTokens: 800,
+    evaluate: (r) => {
+      const has = /\b3600\b/.test(r) || /5040.*1440/i.test(r) || /7!.*2.*6!/i.test(r);
+      return { pass: has, details: has ? 'Correct: 3600' : 'Wrong combinatorics' };
+    }
+  },
+  { id: 's-reason-2', name: 'Proof by Contradiction', category: 'reasoning', difficulty: 'standard',
+    description: 'Mathematical proof reasoning',
+    prompt: 'Prove by contradiction that sqrt(2) + sqrt(3) is irrational. Write a complete, rigorous proof.',
+    maxTokens: 1200,
+    evaluate: (r) => {
+      const has = (/contradiction|irrational/i.test(r)) && (/\^2|square|squared/i.test(r)) && (/rational|integer|even|odd|prime/i.test(r)) && r.length > 200;
+      return { pass: has, details: has ? 'Valid proof structure' : 'Incomplete proof' };
+    }
+  },
+  { id: 's-reason-3', name: 'Multi-constraint Puzzle', category: 'reasoning', difficulty: 'standard',
+    description: 'Complex multi-constraint logic',
+    prompt: 'Five houses in a row are painted different colors. Each owner has a different nationality, pet, drink, and car.\n1. The Brit lives in the red house.\n2. The Swede has a dog.\n3. The Dane drinks tea.\n4. The green house is immediately left of the white house.\n5. The green house owner drinks coffee.\n6. The person with a BMW has birds.\n7. The yellow house owner drives a Volvo.\n8. The person in the center house drinks milk.\n9. The Norwegian lives in the first house.\n10. The person who drives a Honda lives next to the person with cats.\n11. The person with a horse lives next to the Volvo driver.\n12. The Toyota driver drinks beer.\n13. The German drives a Mercedes.\n14. The Norwegian lives next to the blue house.\n15. The Honda driver has a neighbor who drinks water.\nWho owns the fish? Show step-by-step deduction.',
+    maxTokens: 2000,
+    evaluate: (r) => {
+      const has = /german|deutsch/i.test(r) && /fish/i.test(r);
+      return { pass: has, details: has ? 'Correct: German owns fish' : 'Wrong answer' };
+    }
+  },
+  // --- Instruction (2 tests) - Complex IFEval ---
+  { id: 's-inst-1', name: 'Multi-constraint Output', category: 'instruction', difficulty: 'standard',
+    description: 'Multiple simultaneous constraints',
+    prompt: 'Write a recipe for pancakes following ALL these rules:\n1. Exactly 5 steps\n2. Each step starts with a number and period (e.g. "1.")\n3. Each step is between 15-25 words\n4. Step 3 must mention "butter"\n5. The last word of step 5 must be "golden"\n6. No step may use the word "then"\n7. Include exactly 3 ingredients mentioned total across all steps',
+    maxTokens: 600,
+    evaluate: (r) => {
+      const steps = r.match(/^\d+\.\s*.+$/gm) || [];
+      const has5 = steps.length === 5;
+      const hasButter = /3\..*butter/i.test(r);
+      const endsGolden = /golden\.?\s*$/mi.test(r);
+      const pass = has5 && hasButter && endsGolden;
+      return { pass, details: `${steps.length} steps, butter:${hasButter}, golden:${endsGolden}` };
+    }
+  },
+  { id: 's-inst-2', name: 'Structured Generation', category: 'instruction', difficulty: 'standard',
+    description: 'Complex structured output',
+    prompt: 'Generate a JSON object representing a library with exactly 3 books. Each book must have: title (string), author (string), year (number 1900-2000), rating (float 3.0-5.0). The library must have a "name" field. Output ONLY valid JSON, no markdown, no explanation.',
+    maxTokens: 400,
+    evaluate: (r) => {
+      try {
+        const clean = r.replace(/```json?\s*/g, '').replace(/```\s*/g, '').trim();
+        const obj = JSON.parse(clean);
+        const pass = obj.name && Array.isArray(obj.books) && obj.books.length === 3 &&
+          obj.books.every((b: any) => b.title && b.author && b.year >= 1900 && b.year <= 2000 && b.rating >= 3.0 && b.rating <= 5.0);
+        return { pass, details: pass ? 'Valid structured JSON' : 'Invalid structure' };
+      } catch { return { pass: false, details: 'Invalid JSON' }; }
+    }
+  },
+  // --- Chat (1 test) - MT-Bench harder ---
+  { id: 's-chat-1', name: 'Roleplay Quality', category: 'chat', difficulty: 'standard',
+    description: 'MT-Bench roleplay and reasoning',
+    prompt: 'You are a senior Python developer doing a code review. Review this code and give exactly 3 specific, actionable suggestions:\n\n```python\ndef get_data(url):\n    import requests\n    r = requests.get(url)\n    return r.json()\n\ndef process(items):\n    result = []\n    for i in items:\n        if i > 0:\n            result.append(i * 2)\n    return result\n```',
+    maxTokens: 800,
+    evaluate: (r) => {
+      const suggestions = r.match(/\d+[\.\)]\s*.+/g) || [];
+      const hasErrorHandling = /error|exception|try|except|timeout|status/i.test(r);
+      const hasTypeHint = /type|hint|annotation|Optional|List/i.test(r);
+      const pass = suggestions.length >= 3 && hasErrorHandling && r.length > 150;
+      return { pass, details: `${suggestions.length} suggestions, error handling: ${hasErrorHandling}` };
+    }
+  },
+];
+
+// ============================================================
+// Test Engine
+// ============================================================
+
 export class CapabilityTestEngine {
 
-  static async runFullTest(provider: Provider, apiKey: ApiKeyEntry, model: Model): Promise<ModelTestReport> {
+  static async runTest(
+    provider: Provider, apiKey: ApiKeyEntry, model: Model,
+    tests: TestCase[], suite: 'quick' | 'standard',
+    onProgress?: (current: number, total: number, testName: string) => void,
+  ): Promise<ModelTestReport> {
+    const timeLimit = suite === 'quick' ? QUICK_TIMEOUT_MS : STANDARD_TIMEOUT_MS;
+    const thinkingEffort = suite === 'quick' ? 'none' : 'high';
     const results: TestResult[] = [];
-    for (const test of TEST_CASES) {
+    const totalStart = Date.now();
+
+    for (let i = 0; i < tests.length; i++) {
+      const test = tests[i];
+      onProgress?.(i + 1, tests.length, test.name);
+
       try {
         const start = Date.now();
         const resp = await LLMClient.chatCompletion(provider, apiKey, {
           messages: [
-            { role: 'system', content: 'You are a helpful assistant. Follow instructions precisely. Output only what is asked, nothing else.' },
+            { role: 'system', content: 'You are a precise, helpful assistant. Follow instructions exactly. Output only what is requested.' },
             { role: 'user', content: test.prompt },
           ],
-          model: model.modelId, maxTokens: test.maxTokens, temperature: 0.1,
+          model: model.modelId,
+          maxTokens: test.maxTokens,
+          temperature: suite === 'quick' ? 0.1 : 0.2,
+          thinkingEffort: thinkingEffort as any,
         });
         const latencyMs = Date.now() - start;
-        const evalResult = test.evaluate(resp.content, latencyMs);
-        results.push({ testId: test.id, testName: test.name, category: test.category, score: evalResult.score, details: evalResult.details, latencyMs, tokensUsed: resp.usage.totalTokens });
+        const evalResult = test.evaluate(resp.content);
+        const score = timeScore(latencyMs, timeLimit, evalResult.pass);
+
+        results.push({
+          testId: test.id, testName: test.name, category: test.category,
+          score: Math.round(score * 1000) / 1000,
+          details: evalResult.details,
+          latencyMs, tokensUsed: resp.usage.totalTokens,
+        });
       } catch (error: any) {
-        results.push({ testId: test.id, testName: test.name, category: test.category, score: 0, details: 'Error: ' + error.message.slice(0, 150), latencyMs: 0, tokensUsed: 0 });
+        results.push({
+          testId: test.id, testName: test.name, category: test.category,
+          score: 0, details: 'Error: ' + (error.message || '').slice(0, 120),
+          latencyMs: 0, tokensUsed: 0,
+        });
       }
     }
-    const codeResults = results.filter(r => r.category === 'code');
-    const reasonResults = results.filter(r => r.category === 'reasoning');
-    const chatResults = results.filter(r => r.category === 'chat' || r.category === 'instruction');
-    const avg = (arr: TestResult[]) => arr.length ? Math.round(arr.reduce((s, r) => s + r.score, 0) / arr.length * 10) / 10 : 0;
-    const avgLatency = results.filter(r => r.latencyMs > 0).reduce((s, r) => s + r.latencyMs, 0) / (results.filter(r => r.latencyMs > 0).length || 1);
-    const capabilities: ModelCapabilityProfile = {
-      code: avg(codeResults), agent: avg(reasonResults), chat: avg(chatResults),
-      context: model.capabilities.context,
-      speed: avgLatency < 800 ? 10 : avgLatency < 1500 ? 8 : avgLatency < 3000 ? 6 : avgLatency < 6000 ? 4 : 2,
-      multimodal: model.capabilities.multimodal, visionScore: 0, audioScore: 0, pricing: model.capabilities.pricing,
-    };
-    const overallScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 10) / 10;
 
-    // Fetch latest official pricing
+    const totalTimeMs = Date.now() - totalStart;
+
+    // Compute category averages
+    const avg = (cat: string) => {
+      const r = results.filter(x => x.category === cat);
+      return r.length ? Math.round(r.reduce((s, x) => s + x.score, 0) / r.length * 100) / 100 : 0;
+    };
+    const avgLatency = results.filter(r => r.latencyMs > 0).reduce((s, r) => s + r.latencyMs, 0) / (results.filter(r => r.latencyMs > 0).length || 1);
+
+    const capabilities: ModelCapabilityProfile = {
+      code: avg('code'),
+      agent: avg('reasoning'),
+      chat: (avg('chat') + avg('instruction')) / 2,
+      context: model.capabilities.context,
+      speed: avgLatency < 1000 ? 10 : avgLatency < 2000 ? 8 : avgLatency < 4000 ? 6 : avgLatency < 8000 ? 4 : 2,
+      multimodal: model.capabilities.multimodal,
+      visionScore: model.capabilities.visionScore || 0,
+      audioScore: model.capabilities.audioScore || 0,
+      pricing: model.capabilities.pricing,
+    };
+
+    // Fetch latest pricing
     try {
       const price = await updateModelPricing(model.modelId, provider.baseUrl, apiKey.key);
       capabilities.pricing = { inputPer1M: price.inputPer1M, outputPer1M: price.outputPer1M, userEditable: true };
     } catch {}
-    return { modelId: model.id, modelName: model.modelId, providerName: provider.name, timestamp: new Date().toISOString(), results, overallScore, capabilities };
-  }
 
-  static async runQuickTest(provider: Provider, apiKey: ApiKeyEntry, model: Model): Promise<ModelTestReport> {
-    const quickIds = ['code-1', 'reason-1', 'chat-1', 'speed-1'];
-    const quickTests = TEST_CASES.filter(t => quickIds.includes(t.id));
-    const results: TestResult[] = [];
-    for (const test of quickTests) {
-      try {
-        const start = Date.now();
-        const resp = await LLMClient.chatCompletion(provider, apiKey, {
-          messages: [
-            { role: 'system', content: 'You are a helpful assistant. Follow instructions precisely.' },
-            { role: 'user', content: test.prompt },
-          ],
-          model: model.modelId, maxTokens: test.maxTokens, temperature: 0.1,
-        });
-        const latencyMs = Date.now() - start;
-        const evalResult = test.evaluate(resp.content, latencyMs);
-        results.push({ testId: test.id, testName: test.name, category: test.category, score: evalResult.score, details: evalResult.details, latencyMs, tokensUsed: resp.usage.totalTokens });
-      } catch (error: any) {
-        results.push({ testId: test.id, testName: test.name, category: test.category, score: 0, details: error.message.slice(0, 150), latencyMs: 0, tokensUsed: 0 });
-      }
-    }
-    const avgLatency = results.filter(r => r.latencyMs > 0).reduce((s, r) => s + r.latencyMs, 0) / (results.filter(r => r.latencyMs > 0).length || 1);
-    const overallScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 10) / 10;
-    // Fetch latest official pricing
-    let latestPricing = model.capabilities.pricing;
-    try {
-      const price = await updateModelPricing(model.modelId, provider.baseUrl, apiKey.key);
-      latestPricing = { inputPer1M: price.inputPer1M, outputPer1M: price.outputPer1M, userEditable: true };
-    } catch {}
+    const overallScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 1000) / 1000;
 
     return {
       modelId: model.id, modelName: model.modelId, providerName: provider.name,
-      timestamp: new Date().toISOString(), results, overallScore,
-      capabilities: {
-        code: results.find(r => r.category === 'code')?.score ?? 0,
-        agent: results.find(r => r.category === 'reasoning')?.score ?? 0,
-        chat: results.find(r => r.category === 'chat' || r.category === 'instruction')?.score ?? 0,
-        context: model.capabilities.context,
-        speed: avgLatency < 800 ? 10 : avgLatency < 1500 ? 8 : avgLatency < 3000 ? 6 : avgLatency < 6000 ? 4 : 2,
-        multimodal: model.capabilities.multimodal, visionScore: 0, audioScore: 0, pricing: latestPricing,
-      },
+      timestamp: new Date().toISOString(), results, overallScore, capabilities,
+      testSuite: suite, totalTimeMs,
     };
+  }
+
+  static async runQuickTest(provider: Provider, apiKey: ApiKeyEntry, model: Model,
+    onProgress?: (current: number, total: number, testName: string) => void): Promise<ModelTestReport> {
+    return this.runTest(provider, apiKey, model, QUICK_TESTS, 'quick', onProgress);
+  }
+
+  static async runFullTest(provider: Provider, apiKey: ApiKeyEntry, model: Model,
+    onProgress?: (current: number, total: number, testName: string) => void): Promise<ModelTestReport> {
+    return this.runTest(provider, apiKey, model, STANDARD_TESTS, 'standard', onProgress);
   }
 
   static async testMultimodal(provider: Provider, apiKey: ApiKeyEntry, model: Model, imageUrl: string): Promise<{ score: number; details: string; latencyMs: number }> {
@@ -250,5 +387,5 @@ export class CapabilityTestEngine {
     }
   }
 
-  static getTestCases(): TestCase[] { return TEST_CASES; }
+  static getTestCases(): TestCase[] { return [...QUICK_TESTS, ...STANDARD_TESTS]; }
 }
