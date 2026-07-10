@@ -1042,7 +1042,8 @@ export default function App() {
     setInputVal('');
 
     try {
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, thinkingMode: thinking, costEfficiencyRatio: ratio }) });
+      const chatHistory = messages.filter(m => m.role === 'user' || m.role === 'orchestrator').map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: typeof m.content === 'string' ? m.content : '' }));
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, thinkingMode: thinking, costEfficiencyRatio: ratio, history: chatHistory }) });
       const data = await res.json();
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents }]);
     } catch (err: any) {
