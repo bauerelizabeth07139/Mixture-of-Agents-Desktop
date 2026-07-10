@@ -1,5 +1,6 @@
 ﻿import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
 import { LLMClient } from './llm-client';
+import { updateModelPricing } from './price-fetcher';
 
 // Capability Test Suite v2 - Real discrimination scoring
 
@@ -170,6 +171,12 @@ export class CapabilityTestEngine {
       multimodal: model.capabilities.multimodal, visionScore: 0, audioScore: 0, pricing: model.capabilities.pricing,
     };
     const overallScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 10) / 10;
+
+    // Fetch latest official pricing
+    try {
+      const price = await updateModelPricing(model.modelId, provider.baseUrl, apiKey.key);
+      capabilities.pricing = { inputPer1M: price.inputPer1M, outputPer1M: price.outputPer1M, userEditable: true };
+    } catch {}
     return { modelId: model.id, modelName: model.modelId, providerName: provider.name, timestamp: new Date().toISOString(), results, overallScore, capabilities };
   }
 
@@ -196,6 +203,13 @@ export class CapabilityTestEngine {
     }
     const avgLatency = results.filter(r => r.latencyMs > 0).reduce((s, r) => s + r.latencyMs, 0) / (results.filter(r => r.latencyMs > 0).length || 1);
     const overallScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 10) / 10;
+    // Fetch latest official pricing
+    let latestPricing = model.capabilities.pricing;
+    try {
+      const price = await updateModelPricing(model.modelId, provider.baseUrl, apiKey.key);
+      latestPricing = { inputPer1M: price.inputPer1M, outputPer1M: price.outputPer1M, userEditable: true };
+    } catch {}
+
     return {
       modelId: model.id, modelName: model.modelId, providerName: provider.name,
       timestamp: new Date().toISOString(), results, overallScore,
@@ -205,7 +219,7 @@ export class CapabilityTestEngine {
         chat: results.find(r => r.category === 'chat' || r.category === 'instruction')?.score ?? 0,
         context: model.capabilities.context,
         speed: avgLatency < 800 ? 10 : avgLatency < 1500 ? 8 : avgLatency < 3000 ? 6 : avgLatency < 6000 ? 4 : 2,
-        multimodal: model.capabilities.multimodal, visionScore: 0, audioScore: 0, pricing: model.capabilities.pricing,
+        multimodal: model.capabilities.multimodal, visionScore: 0, audioScore: 0, pricing: latestPricing,
       },
     };
   }
