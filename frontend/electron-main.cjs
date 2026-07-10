@@ -1,12 +1,11 @@
 const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const http = require('http');
-const fs = require('fs');
+const { fork } = require('child_process');
 
 const BACKEND_PORT = 3001;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
 const DEV_URL = 'http://localhost:5173';
-
 const isPackaged = app.isPackaged;
 
 function waitForServer(url, timeout) {
@@ -30,43 +29,31 @@ function waitForServer(url, timeout) {
 }
 
 let mainWindow = null;
+let backendProcess = null;
 
 function startBackend() {
   if (!isPackaged) return;
-
   const backendDir = path.join(process.resourcesPath, 'backend');
   const backendEntry = path.join(backendDir, 'dist', 'index.js');
+  console.log('[MoA] Starting backend:', backendEntry);
 
-  // Set NODE_PATH so backend can find its node_modules
-  process.env.NODE_PATH = path.join(backendDir, 'node_modules');
-  require('module').Module._initPaths();
-
-  // Set working directory
-  process.chdir(backendDir);
-
-  console.log('[MoA] Starting backend via require:', backendEntry);
-
-  try {
-    require(backendEntry);
-    console.log('[MoA] Backend loaded successfully');
-  } catch (e) {
-    console.error('[MoA] Backend require error:', e.message);
-  }
+  backendProcess = fork(backendEntry, [], {
+    cwd: backendDir,
+    env: { ...process.env, PORT: String(BACKEND_PORT), NODE_ENV: 'production', NODE_PATH: path.join(backendDir, 'node_modules') },
+    silent: false,
+  });
+  backendProcess.on('error', (err) => console.error('[MoA] Backend error:', err.message));
+  backendProcess.on('exit', (code) => console.log('[MoA] Backend exited:', code));
 }
 
 async function createWindow() {
+  console.log('[MoA] Creating window...');
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 900,
-    minHeight: 600,
+    width: 1440, height: 900, minWidth: 900, minHeight: 600,
     title: 'Mixture of Agents',
     backgroundColor: '#0a0a0f',
-    show: false,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
+    show: true,
+    webPreferences: { nodeIntegration: false, contextIsolation: true },
   });
 
   const loadURL = isPackaged ? BACKEND_URL : DEV_URL;
@@ -74,48 +61,39 @@ async function createWindow() {
 
   try {
     await mainWindow.loadURL(loadURL);
+    console.log('[MoA] URL loaded');
   } catch (e) {
-    console.error('[MoA] Failed to load URL:', e.message);
-    if (isPackaged) {
-      try { await mainWindow.loadURL(DEV_URL); } catch {}
-    }
+    console.error('[MoA] loadURL failed:', e.message);
   }
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    mainWindow.focus();
-  });
-
-  mainWindow.setTitle('Mixture of Agents');
-
+  mainWindow.focus();
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('http') && !url.includes('localhost')) {
-      shell.openExternal(url);
-      return { action: 'deny' };
-    }
+    if (url.startsWith('http') && !url.includes('localhost')) { shell.openExternal(url); return { action: 'deny' }; }
     return { action: 'allow' };
   });
-
   mainWindow.on('closed', () => { mainWindow = null; });
+  console.log('[MoA] Window ready');
 }
 
 app.whenReady().then(async () => {
+  console.log('[MoA] app.whenReady');
   startBackend();
 
-  const waitURL = isPackaged ? BACKEND_URL : DEV_URL;
-  try {
-    await waitForServer(waitURL, 15000);
-  } catch (e) {
-    console.warn('[MoA] Server not ready, opening anyway...');
+  if (isPackaged) {
+    // Wait a bit for backend to start, then create window regardless
+    try {
+      await waitForServer(BACKEND_URL, 15000);
+      console.log('[MoA] Backend ready');
+    } catch (e) {
+      console.warn('[MoA] Backend wait timeout, opening anyway');
+    }
   }
 
   await createWindow();
+  console.log('[MoA] App ready');
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 
-app.on('window-all-closed', () => {
-  app.quit();
-});
+app.on('window-all-closed', () => { if (backendProcess) backendProcess.kill(); app.quit(); });
+app.on('before-quit', () => { if (backendProcess) backendProcess.kill(); });
