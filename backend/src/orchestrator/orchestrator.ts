@@ -30,6 +30,13 @@ export class Orchestrator {
 
   onEvent(cb: OrchestratorEventCallback) { this.eventCallback = cb; }
   /** Map user thinking preference to LLM thinking effort */
+  
+  /** Resolve the actual thinking level for a sub-agent */
+  private resolveThinkingLevel(perTaskLevel?: string): string {
+    if (perTaskLevel && ['low', 'medium', 'high'].includes(perTaskLevel)) return perTaskLevel;
+    if (this.preferences.thinkingMode === 'auto') return 'medium'; // auto default
+    return this.preferences.thinkingMode;
+  }
   private getThinkingEffort(): 'none'|'low'|'medium'|'high' {
     const mode = this.preferences.thinkingMode;
     if (mode === 'auto') return 'medium'; // Auto: let orchestrator decide per-task later
@@ -125,7 +132,7 @@ export class Orchestrator {
         const ctx = this.buildContext();
         const resp = await LLMClient.chatCompletion(provider, apiKey, {
           messages: [
-            { role: 'system', content: buildThinkingPrefix(thinkingLevel || (this.preferences.thinkingMode !== 'auto' ? this.preferences.thinkingMode : '')) + CODING_SUBAGENT_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
+            { role: 'system', content: buildThinkingPrefix(this.resolveThinkingLevel(thinkingLevel)) + CODING_SUBAGENT_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
             { role: 'user', content: 'Task: ' + desc + '\nProject base: ' + this.codingEngine.getBasePath() },
           ],
           model: model.modelId, temperature: 0.2, maxTokens: 4096,
@@ -248,7 +255,7 @@ export class Orchestrator {
         const ctx = this.buildContext();
         const resp = await LLMClient.chatCompletion(provider, apiKey, {
           messages: [
-            { role: 'system', content: buildThinkingPrefix(thinkingLevel || (this.preferences.thinkingMode !== 'auto' ? this.preferences.thinkingMode : '')) + SUBAGENT_SYSTEM_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
+            { role: 'system', content: buildThinkingPrefix(this.resolveThinkingLevel(thinkingLevel)) + SUBAGENT_SYSTEM_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
             { role: 'user', content: desc },
           ],
           model: this.getModelIdForAgent(task.assignedModel),
