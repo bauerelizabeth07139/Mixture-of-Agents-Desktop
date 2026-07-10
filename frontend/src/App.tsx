@@ -166,6 +166,17 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
             return <div key={i}>{line || <br />}</div>;
           })}
         </div>
+        {msg.codeExecution && msg.codeExecution.map((ex, i) => (
+          <div key={i} style={{ marginTop: 8, background: 'var(--bg-tertiary)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+            <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>{ex.lang === 'python' || ex.lang === 'py' ? '🐍' : ex.lang === 'javascript' || ex.lang === 'js' || ex.lang === 'node' ? '⚡' : '💻'}</span>
+              <span>{ex.filename || ex.lang}</span>
+              <span style={{ marginLeft: 'auto', color: ex.exitCode === 0 ? 'var(--success)' : 'var(--error)' }}>{ex.exitCode === 0 ? '✅ 成功' : '❌ 失败 (exit ' + ex.exitCode + ')'}</span>
+            </div>
+            {ex.stdout && <pre style={{ padding: '8px 12px', fontSize: 12, fontFamily: 'var(--font-mono)', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-primary)', maxHeight: 300, overflow: 'auto' }}>{ex.stdout}</pre>}
+            {ex.stderr && <pre style={{ padding: '8px 12px', fontSize: 12, fontFamily: 'var(--font-mono)', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--error)', maxHeight: 200, overflow: 'auto', background: 'var(--error-bg)' }}>{ex.stderr}</pre>}
+          </div>
+        ))}
         {msg.tools && msg.tools.map((t, i) => <ToolCard key={i} tool={t} />)}
         {msg.agents && msg.agents.map((a, i) => (
           <div key={i} className="agent-status-card">
@@ -216,6 +227,7 @@ interface ChatMsg {
   content: string; time: string; model?: string; agentName?: string;
   visionModel?: string;
   attachments?: Array<{type:'image'|'text'|'file', name: string, data: string, preview?: string, size?: number}>;
+  codeExecution?: Array<{lang: string; filename?: string; stdout: string; stderr: string; exitCode: number}>;
   tools?: Array<{ name: string; status: string; output?: string; icon: string }>;
   agents?: Array<{ name: string; status: string; task: string; model: string }>;
 }
@@ -930,6 +942,14 @@ export default function App() {
   const [thinking, setThinking] = useState<'auto'|'low'|'medium'|'high'>('medium');
   const [ratio, setRatio] = useState(0.5);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try { return (localStorage.getItem('moa-theme') as 'dark' | 'light') || 'dark'; } catch { return 'dark'; }
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('moa-theme', theme); } catch {}
+  }, [theme]);
   const [attachments, setAttachments] = useState<Array<{type:'image'|'text'|'file', name: string, data: string, preview?: string, size?: number}>>([]);
   const [dragging, setDragging] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -1018,6 +1038,16 @@ export default function App() {
   const handleSend = useCallback(async (overrideText?: string) => {
     const task = overrideText || inputVal.trim();
     if ((!task && attachments.length === 0) || sending) return;
+
+    // Auto-create thread if none active
+    if (!activeThreadId) {
+      const id = Date.now().toString();
+      const now = new Date().toISOString();
+      const title = task.slice(0, 30) + (task.length > 30 ? '...' : '');
+      const thread: ChatThread = { id, title, messages: [], createdAt: now, updatedAt: now };
+      setThreads(prev => [thread, ...prev]);
+      setActiveThreadId(id);
+    }
     setSending(true);
     const currentAttachments = [...attachments];
     setAttachments([]);
@@ -1045,7 +1075,18 @@ export default function App() {
       const chatHistory = messages.filter(m => m.role === 'user' || m.role === 'orchestrator').map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: typeof m.content === 'string' ? m.content : '' }));
       const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, thinkingMode: thinking, costEfficiencyRatio: ratio, history: chatHistory }) });
       const data = await res.json();
-      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents }]);
+      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents, codeExecution: data.codeExecution }]);
+
+      // Auto-name thread from first user message
+      if (activeThreadId) {
+        setThreads(prev => prev.map(t => {
+          if (t.id === activeThreadId && t.title === '新建对话') {
+            const autoTitle = task.slice(0, 25) + (task.length > 25 ? '...' : '');
+            return { ...t, title: autoTitle };
+          }
+          return t;
+        }));
+      }
     } catch (err: any) {
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'error', content: err.message || '发送失败，请检查网络连接和 API 配置', time: new Date().toLocaleTimeString('zh-CN') }]);
     } finally { setSending(false); }
@@ -1098,6 +1139,15 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               <span>{tabNames[k]}</span>
             </div>
           ))}
+        </div>
+        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
+          <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+            style={{ width: '100%', background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
+              color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', padding: '6px 12px',
+              fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              transition: 'var(--transition)' }}>
+            {theme === 'dark' ? '☀️ 白天模式' : '🌙 黑夜模式'}
+          </button>
         </div>
         {/* Thread list */}
         <div style={{ flex: 1, overflow: 'auto', padding: '4px 8px' }}>

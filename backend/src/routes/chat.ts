@@ -97,6 +97,52 @@ export function createChatRoutes(pool: ApiPoolManager) {
         maxTokens: 4096,
       });
 
+      // Detect and execute code blocks in response
+      const codeBlocks: Array<{lang: string; code: string; filename?: string}> = [];
+      const blockRegex = /```(\w+)(?::([^\n]+))?\n([\s\S]*?)```/g;
+      let match;
+      while ((match = blockRegex.exec(resp.content)) !== null) {
+        codeBlocks.push({ lang: match[1] || 'txt', code: match[3], filename: match[2] });
+      }
+
+      const execResults: Array<{lang: string; filename?: string; stdout: string; stderr: string; exitCode: number}> = [];
+      if (codeBlocks.length > 0) {
+        const { execSync } = await import('child_process');
+        const fs = await import('fs');
+        const os = await import('os');
+        const path = await import('path');
+        
+        const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moa-exec-'));
+        
+        for (const block of codeBlocks) {
+          if (['python', 'py', 'javascript', 'js', 'node', 'powershell', 'bash', 'sh', 'shell', 'typescript', 'ts'].includes(block.lang.toLowerCase())) {
+            try {
+              const ext = block.lang === 'python' || block.lang === 'py' ? '.py' 
+                : block.lang === 'javascript' || block.lang === 'js' || block.lang === 'node' ? '.js'
+                : block.lang === 'typescript' || block.lang === 'ts' ? '.ts'
+                : block.lang === 'powershell' ? '.ps1' : '.sh';
+              const filename = block.filename || ('script' + ext);
+              const filePath = path.join(workDir, filename);
+              fs.writeFileSync(filePath, block.code, 'utf8');
+              
+              let cmd = '';
+              if (ext === '.py') cmd = `python "${filePath}"`;
+              else if (ext === '.js') cmd = `node "${filePath}"`;
+              else if (ext === '.ts') cmd = `npx ts-node "${filePath}"`;
+              else if (ext === '.ps1') cmd = `powershell -File "${filePath}"`;
+              else cmd = `bash "${filePath}"`;
+              
+              const output = execSync(cmd, { cwd: workDir, timeout: 30000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+              execResults.push({ lang: block.lang, filename, stdout: output, stderr: '', exitCode: 0 });
+            } catch (e: any) {
+              execResults.push({ lang: block.lang, filename: block.filename, stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: e.status || 1 });
+            }
+          }
+        }
+        // Cleanup
+        try { fs.rmSync(workDir, { recursive: true, force: true }); } catch {}
+      }
+
       res.json({
         role: 'orchestrator',
         content: resp.content,
@@ -106,6 +152,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         usage: resp.usage,
         contextCompressed: compressedHistory.length < (history || []).length,
         historySize: (history || []).length,
+        codeExecution: execResults.length > 0 ? execResults : undefined,
       });
     } catch (err: any) {
       console.error('[Chat] Error:', err.message);
