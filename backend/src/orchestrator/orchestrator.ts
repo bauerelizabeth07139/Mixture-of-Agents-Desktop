@@ -1,4 +1,4 @@
-﻿import { v4 as uuid } from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { Project, SubAgent, SubAgentTask, Model, Provider, UserPreferences } from '../types';
 import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient, QuotaExhaustedError } from '../services/llm-client';
@@ -29,6 +29,14 @@ export class Orchestrator {
   }
 
   onEvent(cb: OrchestratorEventCallback) { this.eventCallback = cb; }
+  /** Map user thinking preference to LLM thinking effort */
+  private getThinkingEffort(): 'none'|'low'|'medium'|'high' {
+    const mode = this.preferences.thinkingMode;
+    if (mode === 'auto') return 'medium'; // Auto: let orchestrator decide per-task later
+    const map: Record<string, 'none'|'low'|'medium'|'high'> = { low: 'none', medium: 'low', high: 'high' };
+    return map[mode] || 'low';
+  }
+
   private emit(event: string, data: any) { this.eventCallback?.(event, data); }
 
   async execute(): Promise<void> {
@@ -52,7 +60,7 @@ export class Orchestrator {
     }
   }
 
-  private async decomposeTask(): Promise<Array<{description: string; taskType: string; priority: number}>> {
+  private async decomposeTask(): Promise<Array<{description: string; taskType: string; priority: number; thinkingLevel?: string}>> {
     const m = this.getOrchestratorModel();
     if (!m) throw new Error('No orchestrator model available');
     try {
@@ -72,10 +80,10 @@ export class Orchestrator {
       console.error('[Orchestrator] Decomposition failed, using single task:', e.message);
     }
     // Fallback: single task
-    return [{ description: this.project.initialTask, taskType: 'general', priority: 1 }];
+    return [{ description: this.project.initialTask, taskType: 'general', priority: 1, thinkingLevel: undefined }];
   }
 
-  private async executeSubtask(st: {description: string; taskType: string; priority: number}): Promise<void> {
+  private async executeSubtask(st: {description: string; taskType: string; priority: number; thinkingLevel?: string}): Promise<void> {
     const taskId = uuid();
     const task: SubAgentTask = {
       id: taskId, agentId: '', description: st.description, assignedModel: '',
@@ -99,13 +107,13 @@ export class Orchestrator {
     this.emit('task_update', { task, pid: this.project.id });
 
     if (st.taskType === 'code') {
-      await this.executeCodingSubtask(task, agent, sel.provider, sel.apiKey, sel.model, st.description);
+      await this.executeCodingSubtask(task, agent, sel.provider, sel.apiKey, sel.model, st.description, st.thinkingLevel);
     } else {
-      await this.runWithRetry(task, agent, sel.provider, sel.apiKey, st.description);
+      await this.runWithRetry(task, agent, sel.provider, sel.apiKey, st.description, st.thinkingLevel);
     }
   }
 
-  private async executeCodingSubtask(task: SubAgentTask, agent: SubAgent, initialProv: Provider, initialKey: any, initialModel: Model, desc: string): Promise<void> {
+  private async executeCodingSubtask(task: SubAgentTask, agent: SubAgent, initialProv: Provider, initialKey: any, initialModel: Model, desc: string, thinkingLevel?: string): Promise<void> {
     let provider = initialProv, apiKey = initialKey, model = initialModel;
 
     while (task.attempts < task.maxAttempts) {
@@ -117,7 +125,7 @@ export class Orchestrator {
         const ctx = this.buildContext();
         const resp = await LLMClient.chatCompletion(provider, apiKey, {
           messages: [
-            { role: 'system', content: CODING_SUBAGENT_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
+            { role: 'system', content: buildThinkingPrefix(thinkingLevel || (this.preferences.thinkingMode !== 'auto' ? this.preferences.thinkingMode : '')) + CODING_SUBAGENT_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
             { role: 'user', content: 'Task: ' + desc + '\nProject base: ' + this.codingEngine.getBasePath() },
           ],
           model: model.modelId, temperature: 0.2, maxTokens: 4096,
@@ -228,7 +236,7 @@ export class Orchestrator {
     this.emit('task_update', { task, pid: this.project.id });
   }
 
-  private async runWithRetry(task: SubAgentTask, agent: SubAgent, initialProv: Provider, initialKey: any, desc: string): Promise<void> {
+  private async runWithRetry(task: SubAgentTask, agent: SubAgent, initialProv: Provider, initialKey: any, desc: string, thinkingLevel?: string): Promise<void> {
     let provider = initialProv, apiKey = initialKey;
 
     while (task.attempts < task.maxAttempts) {
@@ -240,7 +248,7 @@ export class Orchestrator {
         const ctx = this.buildContext();
         const resp = await LLMClient.chatCompletion(provider, apiKey, {
           messages: [
-            { role: 'system', content: SUBAGENT_SYSTEM_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
+            { role: 'system', content: buildThinkingPrefix(thinkingLevel || (this.preferences.thinkingMode !== 'auto' ? this.preferences.thinkingMode : '')) + SUBAGENT_SYSTEM_PROMPT + (ctx ? '\n\nContext:\n' + ctx : '') },
             { role: 'user', content: desc },
           ],
           model: this.getModelIdForAgent(task.assignedModel),

@@ -72,7 +72,7 @@ export interface AgentSummary {
 
 export interface UserPreferences {
   costEfficiencyRatio: number; defaultOrchestratorModel?: string;
-  thinkingMode: 'low' | 'medium' | 'high'; maxConcurrentAgents: number; autoRetryOnFailure: boolean;
+  thinkingMode: 'auto' | 'low' | 'medium' | 'high'; maxConcurrentAgents: number; autoRetryOnFailure: boolean;
 }
 
 export type WSMessageType = 'orchestrator_update' | 'agent_update' | 'task_update' | 'issue_created' | 'chat_message' | 'progress' | 'error';

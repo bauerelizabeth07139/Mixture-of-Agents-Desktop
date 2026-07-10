@@ -71,6 +71,8 @@ export function buildThinkingPrefix(mode: string): string {
   switch (mode) {
     case 'high': return '[Deep analysis mode. Consider all angles, edge cases, and dependencies.]\n\n';
     case 'medium': return '[Balanced analysis. Focus on key decisions.]\n\n';
+    case 'low': return '[Quick response. Be concise and direct.]\n\n';
+    case 'auto': return '[AUTO THINKING MODE - Analyze each subtask complexity and assign thinking level: "low" for simple tasks, "medium" for moderate, "high" for complex reasoning/coding. Output THINKING:<level> as first line, then proceed.]\n\n';
     default: return '';
   }
 }
@@ -88,6 +90,7 @@ Return a JSON array of subtasks. Each subtask must have:
 - "description": a clear, complete instruction that any AI can execute in one shot (include all context needed)
 - "taskType": one of "code" (writing code/files), "agent" (planning/analysis), "chat" (writing/communication), "general" (research/other)
 - "priority": 1=critical path, 2=important, 3=supplementary
+- "thinkingLevel": "low" for simple/direct tasks, "medium" for moderate complexity, "high" for complex reasoning/coding tasks
 
 CRITICAL RULES:
 - Each description must be SELF-CONTAINED (include all info the sub-agent needs)
@@ -96,7 +99,7 @@ CRITICAL RULES:
 - Create 2-5 subtasks whenever the task involves multiple files or steps. For a single simple task, 1 subtask is fine. For tasks like 'create X, Y, and Z files', create separate subtasks for EACH file.
 
 Output ONLY the JSON array, nothing else. Example:
-[{"description":"Create hello.py that prints Hello World and run it with python","taskType":"code","priority":1}]`;
+[{"description":"Create hello.py that prints Hello World and run it with python","taskType":"code","priority":1,"thinkingLevel":"low"}]`;
 }
 
 export function buildFailureEvalPrompt(task: string, model: string, error: string, attempts: number): string {

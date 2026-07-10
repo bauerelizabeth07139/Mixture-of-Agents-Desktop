@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './services/api';
 import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServerConfig, SkillConfig, Project } from './types';
 import { TerminalPanel } from './components/Terminal';
@@ -254,7 +254,7 @@ function SettingsPanel({ providers, ratio, setRatio, thinking, setThinking, mode
           {['low', 'medium', 'high'].map(m => (
             <button key={m} className={`btn btn-sm ${thinking === m ? 'btn-primary' : ''}`}
               onClick={() => setThinking(m)} style={{ flex: 1 }}>
-              {m === 'low' ? '低' : m === 'medium' ? '中' : '高'}
+              {m === 'auto' ? '自动' : m === 'low' ? '低' : m === 'medium' ? '中' : '高'}
             </button>
           ))}
         </div>
@@ -927,7 +927,7 @@ export default function App() {
   const [inputVal, setInputVal] = useState('');
   const [sending, setSending] = useState(false);
   const [modelId, setModelId] = useState('');
-  const [thinking, setThinking] = useState<'low'|'medium'|'high'>('medium');
+  const [thinking, setThinking] = useState<'auto'|'low'|'medium'|'high'>('medium');
   const [ratio, setRatio] = useState(0.5);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [attachments, setAttachments] = useState<Array<{type:'image'|'text'|'file', name: string, data: string, preview?: string, size?: number}>>([]);
@@ -1174,7 +1174,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               </div>
               <div className="prompt-meta">
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>⚙️ {modelId ? providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || '已选模型' : '自动选择'}</span>
-                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>🧠 {thinking==='low'?'低':thinking==='medium'?'中':'高'}</span>
+                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>🧠 {thinking==='auto'?'自动':thinking==='low'?'低':thinking==='medium'?'中':'高'}</span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{ratio<=0.2?'🚀 效率':ratio>=0.8?'💰 成本':'⚖️ 均衡'} {ratio}</span>
                 <span style={{ marginLeft:'auto' }}>{providers.length} 提供商 · {providers.flatMap(p=>p.models).length} 模型</span>
               </div>
