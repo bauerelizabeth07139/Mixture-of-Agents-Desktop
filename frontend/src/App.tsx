@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './services/api';
 import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServerConfig, SkillConfig, Project } from './types';
 import { TerminalPanel } from './components/Terminal';
@@ -1046,7 +1046,7 @@ export default function App() {
       const data = await res.json();
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents }]);
     } catch (err: any) {
-      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'error', content: 'Error: ' + err.message, time: new Date().toLocaleTimeString('zh-CN') }]);
+      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'error', content: err.message || '发送失败，请检查网络连接和 API 配置', time: new Date().toLocaleTimeString('zh-CN') }]);
     } finally { setSending(false); }
   }, [inputVal, attachments, modelId, thinking, ratio, providers, selectedModelSupportsVision, findVlmModel, sending]);
 

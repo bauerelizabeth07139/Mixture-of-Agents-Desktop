@@ -1,74 +1,74 @@
 {
-    "name":  "mixture-of-agents",
-    "version":  "1.0.0",
-    "description":  "Multi-model collaborative AI agent system 鈥?Desktop App",
-    "author":  "Mixture of Agents",
-    "license":  "MIT",
-    "main":  "frontend/electron-main.cjs",
-    "scripts":  {
-                    "dev":  "concurrently \"cd backend \u0026\u0026 npx tsc -w\" \"cd frontend \u0026\u0026 vite --port 5173\" \"wait-on http://localhost:5173 \u0026\u0026 electron .\"",
-                    "build:backend":  "cd backend \u0026\u0026 npx tsc",
-                    "build:frontend":  "cd frontend \u0026\u0026 npx vite build",
-                    "build:all":  "npm run build:backend \u0026\u0026 npm run build:frontend",
-                    "pack":  "npm run build:all \u0026\u0026 electron-builder --dir",
-                    "dist":  "npm run build:all \u0026\u0026 electron-builder",
-                    "start":  "electron ."
-                },
-    "dependencies":  {
-                         "express":  "^4.18.2",
-                         "cors":  "^2.8.5",
-                         "ws":  "^8.16.0",
-                         "axios":  "^1.6.0",
-                         "uuid":  "^9.0.0"
-                     },
-    "devDependencies":  {
-                            "electron":  "^43.0.0",
-                            "electron-builder":  "^25.0.0",
-                            "concurrently":  "^8.2.0",
-                            "wait-on":  "^7.2.0",
-                            "@types/express":  "^4.17.21",
-                            "@types/cors":  "^2.8.17",
-                            "@types/ws":  "^8.5.10",
-                            "@types/uuid":  "^9.0.7",
-                            "typescript":  "^5.3.3"
-                        },
-    "build":  {
-                  "directories":  {
-                                      "output":  "release"
-                                  },
-                  "files":  [
-                                "frontend/dist/**/*",
-                                "frontend/electron-main.cjs",
-                                "backend/dist/**/*",
-                                "backend/node_modules/**/*",
-                                "backend/package.json",
-                                "node_modules/**/*"
-                            ],
-                  "productName":  "Mixture of Agents",
-                  "extraResources":  [
-                                         {
-                                             "filter":  [
-                                                            "dist/**/*",
-                                                            "node_modules/**/*",
-                                                            "package.json"
-                                                        ],
-                                             "from":  "backend",
-                                             "to":  "backend"
-                                         }
-                                     ],
-                  "win":  {
-                              "target":  [
-                                             {
-                                                 "target":  "portable",
-                                                 "arch":  [
-                                                              "x64"
-                                                          ]
-                                             }
-                                         ]
-                          },
-                  "appId":  "com.moa.desktop",
-                  "portable":  {
-                                   "artifactName":  "Mixture-of-Agents--portable.exe"
-                               }
-              }
+    "name": "mixture-of-agents",
+    "version": "1.0.0",
+    "description": "Multi-model collaborative AI agent system 閳?Desktop App",
+    "author": "Mixture of Agents",
+    "license": "MIT",
+    "main": "frontend/electron-main.cjs",
+    "scripts": {
+        "dev": "concurrently \"cd backend && npx tsc -w\" \"cd frontend && npx vite --port 5173\" \"wait-on http://localhost:5173 && npx electron .\"",
+        "build:backend": "cd backend && npx tsc",
+        "build:frontend": "cd frontend && npx vite build",
+        "build:all": "npm run build:backend && npm run build:frontend",
+        "pack": "npm run build:all && electron-builder --dir",
+        "dist": "npm run build:all && electron-builder",
+        "start": "electron ."
+    },
+    "dependencies": {
+        "axios": "^1.6.0",
+        "cors": "^2.8.5",
+        "express": "^4.18.2",
+        "uuid": "^9.0.0",
+        "ws": "^8.16.0"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@types/uuid": "^9.0.7",
+        "@types/ws": "^8.5.10",
+        "concurrently": "^8.2.0",
+        "electron": "^28.0.0",
+        "electron-builder": "^25.0.0",
+        "typescript": "^5.3.3",
+        "wait-on": "^7.2.0"
+    },
+    "build": {
+        "directories": {
+            "output": "release"
+        },
+        "files": [
+            "frontend/dist/**/*",
+            "frontend/electron-main.cjs",
+            "backend/dist/**/*",
+            "backend/node_modules/**/*",
+            "backend/package.json",
+            "node_modules/**/*"
+        ],
+        "productName": "Mixture of Agents",
+        "extraResources": [
+            {
+                "filter": [
+                    "dist/**/*",
+                    "node_modules/**/*",
+                    "package.json"
+                ],
+                "from": "backend",
+                "to": "backend"
+            }
+        ],
+        "win": {
+            "target": [
+                {
+                    "target": "portable",
+                    "arch": [
+                        "x64"
+                    ]
+                }
+            ]
+        },
+        "appId": "com.moa.desktop",
+        "portable": {
+            "artifactName": "Mixture-of-Agents--portable.exe"
+        }
+    }
 }

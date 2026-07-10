@@ -71,7 +71,18 @@ export function createChatRoutes(pool: ApiPoolManager) {
       });
     } catch (err: any) {
       console.error('[Chat] Error:', err.message);
-      res.status(500).json({ error: err.message, role: 'error', content: 'Error: ' + err.message });
+      const status = err.response?.status;
+      let userMsg = err.message;
+      if (status === 401 || status === 402 || status === 403) {
+        userMsg = 'API Key 无效、额度不足或权限受限，请在「提供商」页面检查并更新 API Key';
+      } else if (status === 429) {
+        userMsg = 'API 请求频率超限，请稍后再试';
+      } else if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+        userMsg = '无法连接到 API 服务器，请检查提供商 URL 配置';
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        userMsg = 'API 请求超时，请稍后再试';
+      }
+      res.status(500).json({ error: userMsg, role: 'error', content: userMsg });
     }
   });
 
