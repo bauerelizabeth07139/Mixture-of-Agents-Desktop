@@ -463,7 +463,7 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
   );
 }
 // ─── Testing Panel (Chinese UI with Quick/Standard modes) ───
-function TestingPanel({ providers }: { providers: Provider[] }) {
+function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefresh: () => void }) {
   // 测试名中文映射
   const TEST_NAME_CN: Record<string, string> = {
     'Python Function': 'Python函数编写',
@@ -1188,7 +1188,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
           <div className="header"><h1>{tabNames[tab]}</h1></div>
           {tab === 'providers' && <ProviderPanel providers={providers} onRefresh={loadProviders} />}
           {tab === 'models' && <ModelPanel providers={providers} />}
-          {tab === 'testing' && <TestingPanel providers={providers} />}
+          {tab === 'testing' && <TestingPanel providers={providers} onRefresh={loadProviders} />}
           {tab === 'extensions' && <ExtensionsPanel />}
           {tab === 'terminal' && <div style={{height:'calc(100vh - 60px)'}}><TerminalPanel /></div>}
           {tab === 'editor' && <div style={{height:'calc(100vh - 60px)'}}><EditorPanel /></div>}

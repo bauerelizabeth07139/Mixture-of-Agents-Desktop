@@ -1,17 +1,50 @@
-import { Router } from 'express';
+ï»¿import { Router } from 'express';
 import { ApiPoolManager } from '../providers/api-pool';
 import { CapabilityTestEngine } from '../services/capability-test';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+const CAP_FILE = path.join(os.tmpdir(), 'moa-capabilities.json');
+
+function saveCapabilities(pool: ApiPoolManager) {
+  try {
+    const state: Record<string, Record<string, any>> = {};
+    for (const prov of pool.getAllProviders()) {
+      state[prov.id] = {};
+      for (const m of prov.models) {
+        state[prov.id][m.id] = m.capabilities;
+      }
+    }
+    fs.writeFileSync(CAP_FILE, JSON.stringify(state, null, 2), 'utf8');
+  } catch {}
+}
+
+function loadCapabilities(pool: ApiPoolManager) {
+  try {
+    if (!fs.existsSync(CAP_FILE)) return;
+    const state = JSON.parse(fs.readFileSync(CAP_FILE, 'utf8'));
+    for (const prov of pool.getAllProviders()) {
+      if (!state[prov.id]) continue;
+      for (const m of prov.models) {
+        if (state[prov.id][m.id]) {
+          Object.assign(m.capabilities, state[prov.id][m.id]);
+        }
+      }
+    }
+  } catch {}
+}
 
 export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function) {
   const r = Router();
 
-  // ©¤©¤©¤ Get test cases ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Get test cases ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
   r.get('/test-cases', (_req, res) => {
     res.json(CapabilityTestEngine.getTestCases());
   });
 
-  // ©¤©¤©¤ Quick test (single model) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Quick test (single model) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
   r.post('/:pid/models/:mid/test-quick', async (req, res) => {
     const prov = pool.getProvider(req.params.pid);
@@ -28,6 +61,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     try {
       const report = await CapabilityTestEngine.runQuickTest(prov, key, model);
       model.capabilities = report.capabilities;
+      saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
       res.json({ scope: 'single', testSuite: 'quick', reports: [report] });
     } catch (err: any) {
@@ -36,7 +70,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     }
   });
 
-  // ©¤©¤©¤ Full/Standard test (single model) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Full/Standard test (single model) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
   r.post('/:pid/models/:mid/test-full', async (req, res) => {
     const prov = pool.getProvider(req.params.pid);
@@ -53,6 +87,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     try {
       const report = await CapabilityTestEngine.runFullTest(prov, key, model);
       model.capabilities = report.capabilities;
+      saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
       res.json({ scope: 'single', testSuite: 'standard', reports: [report] });
     } catch (err: any) {
@@ -61,7 +96,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     }
   });
 
-  // ©¤©¤©¤ Test all models in a provider (parallel) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Test all models in a provider (parallel) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
   r.post('/:pid/test-all', async (req, res) => {
     const prov = pool.getProvider(req.params.pid);
@@ -99,6 +134,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
             ? await CapabilityTestEngine.runQuickTest(prov, key, model)
             : await CapabilityTestEngine.runFullTest(prov, key, model);
           model.capabilities = report.capabilities;
+      saveCapabilities(pool);
           return report;
         } catch (err: any) {
           handleTestError(pool, prov.id, key.id, err);
@@ -123,7 +159,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     res.json({ scope: 'provider', providerName: prov.name, reports });
   });
 
-  // ©¤©¤©¤ Test all models across all providers (parallel) ©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Test all models across all providers (parallel) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
   r.post('/test-all-models', async (req, res) => {
     const providers = pool.getAllProviders().filter(p => p.apiKeys.length > 0);
@@ -176,6 +212,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
             ? await CapabilityTestEngine.runQuickTest(prov, key, model)
             : await CapabilityTestEngine.runFullTest(prov, key, model);
           model.capabilities = report.capabilities;
+      saveCapabilities(pool);
           return report;
         } catch (err: any) {
           handleTestError(pool, prov.id, key.id, err);
@@ -200,7 +237,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     res.json({ scope: 'all', reports });
   });
 
-  // ©¤©¤©¤ Multimodal test (single model) ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Multimodal test (single model) ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
   r.post('/:pid/models/:mid/test-multimodal', async (req, res) => {
     const prov = pool.getProvider(req.params.pid);
@@ -223,7 +260,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     }
   });
 
-  // ©¤©¤©¤ Pool stats ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Pool stats ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
   r.get('/pool-stats', (_req, res) => {
     res.json({
@@ -235,7 +272,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
   return r;
 }
 
-// ©¤©¤©¤ Helper: evict key on auth/quota failure ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Helper: evict key on auth/quota failure ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 function handleTestError(pool: ApiPoolManager, providerId: string, keyId: string, error: any): void {
   const status = error?.status || error?.statusCode || error?.response?.status;
