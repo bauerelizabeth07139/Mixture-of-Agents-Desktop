@@ -135,7 +135,8 @@ export function createChatRoutes(pool: ApiPoolManager) {
               const extraPath = process.platform === 'win32'
                 ? [process.env.LOCALAPPDATA + '\\Programs\\Python\\Python311', process.env.LOCALAPPDATA + '\\Programs\\Python\\Python38', 'C:\\Program Files\\nodejs', 'C:\\Program Files\\Git\\cmd', process.env.PATH].filter(Boolean).join(path.delimiter)
                 : '/usr/local/bin:/usr/bin:' + (process.env.PATH || '');
-              const output = execSync(cmd, { cwd: workDir, timeout: 30000, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], shell: true, env: { ...process.env, FORCE_COLOR: '0', PATH: extraPath } });
+              const opts: any = { cwd: workDir, timeout: 30000, encoding: 'utf8' as const, stdio: ['pipe', 'pipe', 'pipe'] as const, shell: true, env: { ...process.env, FORCE_COLOR: '0', PATH: extraPath } };
+              const output = execSync(cmd, opts) as string;
               execResults.push({ lang: block.lang, filename, stdout: output, stderr: '', exitCode: 0 });
             } catch (e: any) {
               execResults.push({ lang: block.lang, filename: block.filename, stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: e.status || 1 });
