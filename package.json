@@ -50,7 +50,8 @@
         "filter": [
           "dist/**/*",
           "node_modules/**/*",
-          "package.json"
+          "package.json",
+          "public/**/*"
         ],
         "from": "backend",
         "to": "backend"

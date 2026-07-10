@@ -1,4 +1,5 @@
-﻿import express from 'express';
+import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
@@ -26,6 +27,9 @@ const wsManager = new WSManager();
 const extManager = new ExtensionManager();
 wss.on('connection', (ws) => { wsManager.addClient(ws); });
 
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
 app.use('/api/providers', createProviderRoutes(poolManager));
 app.use('/api/projects', createProjectRoutes(projectManager, poolManager, wsManager.broadcast.bind(wsManager), extManager));
 app.use('/api/models', createModelRoutes(poolManager));
@@ -36,4 +40,9 @@ app.use('/api/chat', createChatRoutes(poolManager));
 app.get('/api/health', (_req, res) => { res.json({ status: 'ok', providers: poolManager.getAllProviders().length, ws: wsManager.getClientCount() }); });
 
 const PORT = process.env.PORT || 3001;
+// SPA fallback - serve index.html for non-API routes
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
 server.listen(PORT, () => { console.log('MoA backend on port ' + PORT); });
