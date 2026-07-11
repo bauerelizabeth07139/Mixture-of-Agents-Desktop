@@ -40,6 +40,13 @@ Rules:
 - After writing code, ALWAYS add a run_command step to verify it works
 - If a step fails, read the error and fix it in the next step
 - Use install_deps for package managers (npm, pip, cargo)
+- IMPORTANT: The system runs on Windows. Use Windows-compatible commands:
+  - Use "npm init -y" (not "npm init --yes")
+  - Use "mkdir name" (not "mkdir -p name")
+  - Do NOT use bash operators like && or ; - put each command as a separate step
+  - Use "cd" separately after mkdir
+  - Use "node script.js" instead of "bash script.sh"
+  - Use PowerShell-compatible syntax when needed
 - Complete working code, error handling, best practices`;
 
 export class CodingEngine {
@@ -65,11 +72,21 @@ export class CodingEngine {
   async executePlan(plan: CodingPlan, task: CodingTask): Promise<CodingTask> {
     task.status = 'executing';
     task.plan = plan.steps.map(s => ({ id: uuid(), action: s.action as any, description: s.description, params: s.params, status: 'pending' as const }));
+    // Track current working directory across steps
+    let currentWorkDir = task.projectPath;
     for (let i = 0; i < task.plan.length; i++) {
       const step = task.plan[i]; task.currentStep = i; step.status = 'running';
       const start = Date.now();
       try {
-        const r = await this.execStep(step, task.projectPath);
+        const r = await this.execStep(step, task.projectPath, currentWorkDir);
+        // Track cd commands
+        if (step.action === 'run_command' && r.success) {
+          const cmd = step.params.command?.trim();
+          if (cmd && /^cd\s+(.+)/i.test(cmd)) {
+            const target = cmd.replace(/^cd\s+/i, '').trim();
+            currentWorkDir = path.resolve(currentWorkDir, target);
+          }
+        }
         step.status = r.success ? 'completed' : 'failed';
         task.results.push({ stepId: step.id, action: step.action, success: r.success, output: r.output, duration: Date.now() - start });
       } catch (e: any) {
@@ -78,7 +95,7 @@ export class CodingEngine {
       }
     }
     task.status = task.results.every(r => r.success) ? 'completed' : 'failed';
-    task.output = task.results.map(r => (r.success ? 'OK' : 'FAIL') + ' ' + r.action + ': ' + r.output.slice(0, 200)).join('\n');
+    task.output = task.results.map(r => (r.success ? '?' : '?') + ' ' + r.action + ': ' + r.output.slice(0, 200)).join('\n');
     return task;
   }
 
@@ -86,70 +103,179 @@ export class CodingEngine {
     const extra = process.platform === 'win32'
       ? [
           path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
+          path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python312'),
+          path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python311'),
           'C:\\Program Files\\nodejs',
           'C:\\node20b\\node-v20.15.1-win-x64',
           'C:\\Program Files\\Git\\cmd',
-          'C:\\node20b\\node-v20.15.1-win-x64',
           ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
         ].join(path.delimiter) + path.delimiter
       : '/usr/local/bin:/usr/bin:';
-    return { ...process.env, FORCE_COLOR: '0', PATH: extra + (process.env.PATH || '') };
+    return { ...process.env, FORCE_COLOR: '0', NODE_NO_WARNINGS: '1', PATH: extra + (process.env.PATH || '') };
   }
 
-  
-  /** Split && and ; chains, convert bash to PowerShell */
+  /** Convert bash command to PowerShell-compatible command */
+  private convertBashToPS(cmd: string): string {
+    if (process.platform !== 'win32') return cmd;
+    
+    // Already a PowerShell command - leave it
+    if (/^(powershell|cmd\.exe|Get-|Set-|New-|Remove-|Copy-|Move-|Write-|Import-|Export-)/i.test(cmd)) return cmd;
+    
+    // npm/node/python etc work fine on Windows, keep as-is
+    if (/^(node |python |npm |npx |pip |git |cargo |rustc |java |javac |go |docker |tsc |yarn |pnpm )/i.test(cmd)) return cmd;
+    
+    // Convert bash builtins
+    let c = cmd;
+    c = c.replace(/^mkdir\s+-p\s+/i, 'New-Item -ItemType Directory -Force -Path ');
+    c = c.replace(/^mkdir\s+/i, 'New-Item -ItemType Directory -Path ');
+    c = c.replace(/^rm\s+-rf\s+/i, 'Remove-Item -Recurse -Force -LiteralPath ');
+    c = c.replace(/^rm\s+-f\s+/i, 'Remove-Item -Force -LiteralPath ');
+    c = c.replace(/^rm\s+/i, 'Remove-Item -LiteralPath ');
+    c = c.replace(/^cat\s+/i, 'Get-Content ');
+    c = c.replace(/^ls\s*$/i, 'Get-ChildItem');
+    c = c.replace(/^ls\s+/i, 'Get-ChildItem ');
+    c = c.replace(/^touch\s+/i, 'New-Item -ItemType File -Force -Path ');
+    c = c.replace(/^cp\s+/i, 'Copy-Item ');
+    c = c.replace(/^mv\s+/i, 'Move-Item ');
+    c = c.replace(/^chmod\s+\+x\s+/i, '# chmod not needed on Windows: ');
+    c = c.replace(/^echo\s+"([^"]+)"\s*>\s*(.+)/i, 'Set-Content -Path $2 -Value "$1"');
+    c = c.replace(/^echo\s+'([^']+)'\s*>\s*(.+)/i, "Set-Content -Path $2 -Value '$1'");
+    c = c.replace(/^echo\s+/i, 'Write-Host ');
+    
+    // Handle bash/sh script execution
+    if (/^(bash |sh )/.test(c)) {
+      c = 'powershell -Command "' + c.replace(/^(bash|sh)\s+/, '').replace(/"/g, '\\"') + '"';
+    }
+    return c;
+  }
+
+  /** Split compound commands (&&, ;) and convert each part */
   private splitAndConvertCommands(cmd: string): string[] {
     if (process.platform !== 'win32') return [cmd];
-    // Split && chains
+    
+    // First, handle && chains
     if (cmd.includes(' && ')) {
-      return cmd.split(' && ').map(c => c.trim()).filter(Boolean).flatMap(c => this.splitAndConvertCommands(c));
+      const parts = cmd.split(/\s*&&\s*/).map(c => c.trim()).filter(Boolean);
+      return parts.map(p => this.convertBashToPS(p));
     }
-    // Split ; chains (but not inside strings)
+    
+    // Handle ; chains (but not inside strings/PowerShell)
     if (cmd.includes('; ') && !cmd.includes('powershell') && !cmd.includes('Write-Host')) {
-      const parts = cmd.split(';').map(c => c.trim()).filter(Boolean);
-      if (parts.length > 1) return parts.flatMap(c => this.splitAndConvertCommands(c));
+      const parts = cmd.split(/\s*;\s*/).map(c => c.trim()).filter(Boolean);
+      if (parts.length > 1) return parts.map(p => this.convertBashToPS(p));
     }
-    return [this.mapSingleBashToPowerShell(cmd)];
+    
+    return [this.convertBashToPS(cmd)];
   }
 
-  private mapSingleBashToPowerShell(cmd: string): string {
-    if (process.platform !== 'win32') return cmd;
-    // Already PowerShell or known commands
-    if (/^(powershell|cmd|Get-|Set-|New-|Remove-|Copy-|Move-|Write-|cd |dir)/i.test(cmd)) return cmd;
-    // Keep common dev commands as-is
-    if (/^(node |python |npm |npx |pip |git |cargo |rustc |java |javac |go |docker |tsc |vite )/i.test(cmd)) return cmd;
-    // Convert common bash builtins
-    cmd = cmd.replace(/^mkdir -p\s+/i, 'New-Item -ItemType Directory -Force -Path ');
-    cmd = cmd.replace(/^mkdir\s+/i, 'New-Item -ItemType Directory -Path ');
-    cmd = cmd.replace(/^rm -rf\s+/i, 'Remove-Item -Recurse -Force -Path ');
-    cmd = cmd.replace(/^rm\s+/i, 'Remove-Item ');
-    cmd = cmd.replace(/^cat\s+/i, 'Get-Content ');
-    cmd = cmd.replace(/^ls\s*/i, 'Get-ChildItem ');
-    cmd = cmd.replace(/^touch\s+/i, 'New-Item -ItemType File -Force -Path ');
-    cmd = cmd.replace(/^cp\s+/i, 'Copy-Item ');
-    cmd = cmd.replace(/^mv\s+/i, 'Move-Item ');
-    cmd = cmd.replace(/^chmod\s+\+x\s+/i, '# chmod not needed on Windows: ');
-    if (/^(bash |sh )/.test(cmd)) {
-      cmd = 'powershell -Command "' + cmd.replace(/^(bash|sh)\s+/, '').replace(/"/g, '\\"') + '"';
-    }
-    return cmd;
-  }
-
-  private async execStep(step: CodingStep, projectPath: string): Promise<{success: boolean; output: string}> {
+  private async execStep(step: CodingStep, projectPath: string, workDir?: string): Promise<{success: boolean; output: string}> {
     const p = step.params;
     switch (step.action) {
-      case 'create_project': { const d = path.resolve(this.basePath, p.path||''); fs.mkdirSync(d,{recursive:true}); return {success:true,output:'Created: '+d}; }
-      case 'write_file': { const wf = path.resolve(this.basePath, p.path); fs.mkdirSync(path.dirname(wf),{recursive:true}); fs.writeFileSync(wf, p.content||'', 'utf8'); return {success:true,output:'Written: '+p.path+' ('+((p.content||'').length)+' bytes)'}; }
-      case 'edit_file': { const ef = path.resolve(this.basePath, p.path); if(!fs.existsSync(ef)) return {success:false,output:'Not found: '+p.path}; let c = fs.readFileSync(ef,'utf8'); if(!c.includes(p.old)) return {success:false,output:'Pattern not found in '+p.path}; c = c.replace(p.old, p.new); fs.writeFileSync(ef,c,'utf8'); return {success:true,output:'Edited: '+p.path}; }
-      case 'run_command': { const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : this.basePath; fs.mkdirSync(wd, {recursive:true}); try { const cmds = this.splitAndConvertCommands(p.command); let allOutput = ''; for (const mappedCmd of cmds) { const o = String(execSync(mappedCmd, {cwd:wd,timeout:Math.min(p.timeout||60000,120000),encoding:'utf8',shell:'powershell' as const,env:this.getEnv()})); allOutput += (o||'') + '\n'; } return {success:true,output:allOutput.slice(0,4000)}; } catch(e:any) { return {success:false,output:((e.stdout||'')+'\n'+(e.stderr||e.message||'')).slice(0,4000)}; } }
-      case 'install_deps': { const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : this.basePath; fs.mkdirSync(wd, {recursive:true}); const m = p.manager||'npm'; const pkgs = Array.isArray(p.packages)?p.packages.join(' '):''; try { execSync(m+' install '+pkgs,{cwd:wd,timeout:120000,encoding:'utf8',shell:'powershell' as const,env:this.getEnv()}); return {success:true,output:'Installed: '+pkgs}; } catch(e:any) { return {success:false,output:((e.stdout||'')+'\\n'+(e.stderr||e.message||'')).slice(0,4000)}; } }
-      case 'read_file': { const rf = path.resolve(this.basePath, p.path); if(!fs.existsSync(rf)) return {success:false,output:'Not found: '+p.path}; const content=fs.readFileSync(rf,'utf8'); return {success:true,output:content.slice(0,8000)+(content.length>8000?'\\n... [truncated '+content.length+' total chars]':'')}; }
-      case 'list_dir': { const d = p.path ? path.resolve(this.basePath, p.path) : projectPath; if(!fs.existsSync(d)) return {success:false,output:'Not found: '+d}; const entries=fs.readdirSync(d,{withFileTypes:true}); const listing=entries.map(e=>(e.isDirectory()?'[DIR] ':'     ')+e.name).join('\\n'); return {success:true,output:listing.slice(0,4000)}; }
-      case 'append_file': { const f = path.resolve(this.basePath, p.path); fs.mkdirSync(path.dirname(f),{recursive:true}); fs.appendFileSync(f, p.content||'', 'utf8'); return {success:true,output:'Appended to: '+p.path}; }
-      case 'delete_file': { const f = path.resolve(this.basePath, p.path); if(!fs.existsSync(f)) return {success:false,output:'Not found: '+p.path}; fs.unlinkSync(f); return {success:true,output:'Deleted: '+p.path}; }
-      case 'move_file': { const src = path.resolve(this.basePath, p.path); const dst = path.resolve(this.basePath, p.newPath||p.new); if(!fs.existsSync(src)) return {success:false,output:'Source not found: '+p.path}; fs.renameSync(src, dst); return {success:true,output:'Moved: '+p.path+' -> '+(p.newPath||p.new)}; }
-      case 'check_exists': { const f = path.resolve(this.basePath, p.path); return {success:true,output:fs.existsSync(f)?'EXISTS':'NOT_FOUND'}; }
-      default: return {success:false,output:'Unknown action: '+step.action+'. Available: read_file, write_file, edit_file, run_command, create_project, install_deps, list_dir, append_file, delete_file, move_file, check_exists'};
+      case 'create_project': {
+        const d = path.resolve(this.basePath, p.path || '');
+        fs.mkdirSync(d, { recursive: true });
+        return { success: true, output: 'Created directory: ' + d };
+      }
+      case 'write_file': {
+        const wf = path.resolve(this.basePath, p.path);
+        fs.mkdirSync(path.dirname(wf), { recursive: true });
+        fs.writeFileSync(wf, p.content || '', 'utf8');
+        return { success: true, output: 'Written: ' + p.path + ' (' + ((p.content || '').length) + ' bytes)' };
+      }
+      case 'edit_file': {
+        const ef = path.resolve(this.basePath, p.path);
+        if (!fs.existsSync(ef)) return { success: false, output: 'Not found: ' + p.path };
+        let c = fs.readFileSync(ef, 'utf8');
+        if (!c.includes(p.old)) return { success: false, output: 'Pattern not found in ' + p.path };
+        c = c.replace(p.old, p.new);
+        fs.writeFileSync(ef, c, 'utf8');
+        return { success: true, output: 'Edited: ' + p.path };
+      }
+      case 'run_command': {
+        const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : (workDir || this.basePath);
+        fs.mkdirSync(wd, { recursive: true });
+        try {
+          const cmds = this.splitAndConvertCommands(p.command);
+          let allOutput = '';
+          for (const mappedCmd of cmds) {
+            // Skip pure cd commands (we track directory ourselves)
+            if (/^cd\s+/i.test(mappedCmd.trim())) {
+              allOutput += '[cd tracked]\n';
+              continue;
+            }
+            const o = String(execSync(mappedCmd, {
+              cwd: wd,
+              timeout: Math.min(p.timeout || 60000, 120000),
+              encoding: 'utf8',
+              shell: 'powershell' as const,
+              env: this.getEnv(),
+              windowsHide: true,
+            }));
+            allOutput += (o || '') + '\n';
+          }
+          return { success: true, output: allOutput.slice(0, 4000) };
+        } catch (e: any) {
+          return { success: false, output: ((e.stdout || '') + '\n' + (e.stderr || e.message || '')).slice(0, 4000) };
+        }
+      }
+      case 'install_deps': {
+        const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : (workDir || this.basePath);
+        fs.mkdirSync(wd, { recursive: true });
+        const m = p.manager || 'npm';
+        const pkgs = Array.isArray(p.packages) ? p.packages.join(' ') : '';
+        try {
+          const cmd = m + ' install' + (pkgs ? ' ' + pkgs : '');
+          execSync(cmd, {
+            cwd: wd,
+            timeout: 120000,
+            encoding: 'utf8',
+            shell: 'powershell' as const,
+            env: this.getEnv(),
+            windowsHide: true,
+          });
+          return { success: true, output: 'Installed: ' + (pkgs || '(all deps from package.json)') };
+        } catch (e: any) {
+          return { success: false, output: ((e.stdout || '') + '\n' + (e.stderr || e.message || '')).slice(0, 4000) };
+        }
+      }
+      case 'read_file': {
+        const rf = path.resolve(this.basePath, p.path);
+        if (!fs.existsSync(rf)) return { success: false, output: 'Not found: ' + p.path };
+        const content = fs.readFileSync(rf, 'utf8');
+        return { success: true, output: content.slice(0, 8000) + (content.length > 8000 ? '\n... [truncated ' + content.length + ' total chars]' : '') };
+      }
+      case 'list_dir': {
+        const d = p.path ? path.resolve(this.basePath, p.path) : projectPath;
+        if (!fs.existsSync(d)) return { success: false, output: 'Not found: ' + d };
+        const entries = fs.readdirSync(d, { withFileTypes: true });
+        const listing = entries.map(e => (e.isDirectory() ? '[DIR] ' : '     ') + e.name).join('\n');
+        return { success: true, output: listing.slice(0, 4000) };
+      }
+      case 'append_file': {
+        const f = path.resolve(this.basePath, p.path);
+        fs.mkdirSync(path.dirname(f), { recursive: true });
+        fs.appendFileSync(f, p.content || '', 'utf8');
+        return { success: true, output: 'Appended to: ' + p.path };
+      }
+      case 'delete_file': {
+        const f = path.resolve(this.basePath, p.path);
+        if (!fs.existsSync(f)) return { success: false, output: 'Not found: ' + p.path };
+        fs.unlinkSync(f);
+        return { success: true, output: 'Deleted: ' + p.path };
+      }
+      case 'move_file': {
+        const src = path.resolve(this.basePath, p.path);
+        const dst = path.resolve(this.basePath, p.newPath || p.new);
+        if (!fs.existsSync(src)) return { success: false, output: 'Source not found: ' + p.path };
+        fs.renameSync(src, dst);
+        return { success: true, output: 'Moved: ' + p.path + ' -> ' + (p.newPath || p.new) };
+      }
+      case 'check_exists': {
+        const f = path.resolve(this.basePath, p.path);
+        return { success: true, output: fs.existsSync(f) ? 'EXISTS' : 'NOT_FOUND' };
+      }
+      default:
+        return { success: false, output: 'Unknown action: ' + step.action + '. Available: read_file, write_file, edit_file, run_command, create_project, install_deps, list_dir, append_file, delete_file, move_file, check_exists' };
     }
   }
 
@@ -157,5 +283,3 @@ export class CodingEngine {
     return { id: uuid(), description, projectPath: path.resolve(this.basePath, projectPath), status: 'planning', plan: [], currentStep: 0, results: [], output: '', createdAt: new Date().toISOString() };
   }
 }
-
-

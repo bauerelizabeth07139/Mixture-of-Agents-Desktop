@@ -263,14 +263,28 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
         </div>
       )}
       <div className="settings-section">
-        <div className="settings-section-title">思考强度</div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {['low', 'medium', 'high'].map(m => (
-            <button key={m} className={`btn btn-sm ${orchThinking === m ? 'btn-primary' : ''}`}
+        <div className="settings-section-title">调控模型 思考强度</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {["auto", "low", "medium", "high"].map(m => (
+            <button key={m} className={`btn btn-sm ${orchThinking === m ? "btn-primary" : ""}`}
               onClick={() => setOrchThinking(m as any)} style={{ flex: 1 }}>
-              {m === 'auto' ? '自动' : m === 'low' ? '低' : m === 'medium' ? '中' : '高'}
+              {m === "auto" ? "自动" : m === "low" ? "低" : m === "medium" ? "中" : "高"}
             </button>
           ))}
+        </div>
+      </div>
+      <div className="settings-section">
+        <div className="settings-section-title">全局 子代理 思考强度</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {["auto", "low", "medium", "high"].map(m => (
+            <button key={m} className={`btn btn-sm ${agentThinking === m ? "btn-primary" : ""}`}
+              onClick={() => setAgentThinking(m as any)} style={{ flex: 1 }}>
+              {m === "auto" ? "自动" : m === "low" ? "低" : m === "medium" ? "中" : "高"}
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+          {agentThinking === "auto" ? "由调控模型决定每个子任务的思考强度" : `全部子代理将使用${agentThinking === "low" ? "低" : agentThinking === "medium" ? "中" : "高"}思考`}
         </div>
       </div>
       <div className="settings-section">
@@ -941,7 +955,7 @@ export default function App() {
   const [inputVal, setInputVal] = useState('');
   const [sending, setSending] = useState(false);
   const [modelId, setModelId] = useState('');
-  const [orchThinking, setOrchThinking] = useState<'low'|'medium'|'high'>('medium');
+  const [orchThinking, setOrchThinking] = useState<'auto'|'low'|'medium'|'high'>('medium');
   const [agentThinking, setAgentThinking] = useState<'auto'|'low'|'medium'|'high'>('auto');
   const [ratio, setRatio] = useState(0.5);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1227,7 +1241,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               </div>
               <div className="prompt-meta">
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>⚙️ {modelId ? providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || '已选模型' : '自动选择'}</span>
-                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>🧠 {orchThinking==='low'?'低':orchThinking==='medium'?'中':'高'}</span>
+                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>💠 {orchThinking==='auto'?'自动':orchThinking==='low'?'低':orchThinking==='medium'?'中':'高'} | 子代理: {agentThinking==='auto'?'自动':agentThinking==='low'?'低':agentThinking==='medium'?'中':'高'}</span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{ratio<=0.2?'🚀 效率':ratio>=0.8?'💰 成本':'⚖️ 均衡'} {ratio}</span>
                 <span style={{ marginLeft:'auto' }}>{providers.length} 提供商 · {providers.flatMap(p=>p.models).length} 模型</span>
               </div>

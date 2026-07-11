@@ -10,7 +10,7 @@ const MAX_KEYS_PER_POOL = 50;
 /** Maximum number of provider pools total */
 const MAX_POOLS = 25;
 /** HTTP status codes that indicate auth/quota failure �� immediate key removal */
-const EVICT_STATUS_CODES = new Set([401, 403]);
+const EVICT_STATUS_CODES = new Set([401, 402, 403]);
 
 export interface PoolStats {
   providerId: string;

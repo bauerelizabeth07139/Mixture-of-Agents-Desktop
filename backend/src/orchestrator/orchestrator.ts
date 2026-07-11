@@ -1,4 +1,4 @@
-﻿import { v4 as uuid } from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { Project, SubAgent, SubAgentTask, Model, Provider, UserPreferences } from '../types';
 import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient, QuotaExhaustedError } from '../services/llm-client';
@@ -186,25 +186,41 @@ export class Orchestrator {
           }
         }
 
-              // Map bash/sh commands to PowerShell on Windows
+              // Sanitize commands for Windows compatibility
       if (process.platform === 'win32' && plan?.steps) {
+        const sanitizedSteps: typeof plan.steps = [];
         for (const step of plan.steps) {
           if (step.action === 'run_command' && step.params?.command) {
-            let cmd = step.params.command;
+            let cmd = step.params.command.trim();
+            // Split && chains into separate steps
+            if (cmd.includes(' && ')) {
+              const parts = cmd.split(/\s*&&\s*/).map((c: string) => c.trim()).filter(Boolean);
+              for (const part of parts) {
+                sanitizedSteps.push({ ...step, description: step.description + ' (part)', params: { ...step.params, command: part } });
+              }
+              continue;
+            }
+            // Convert bash builtins
             cmd = cmd.replace(/^mkdir -p\s+/i, 'New-Item -ItemType Directory -Force -Path ');
-            cmd = cmd.replace(/^rm -rf\s+/i, 'Remove-Item -Recurse -Force -Path ');
+            cmd = cmd.replace(/^mkdir\s+/i, 'New-Item -ItemType Directory -Path ');
+            cmd = cmd.replace(/^rm -rf\s+/i, 'Remove-Item -Recurse -Force -LiteralPath ');
+            cmd = cmd.replace(/^rm\s+-f\s+/i, 'Remove-Item -Force -LiteralPath ');
+            cmd = cmd.replace(/^rm\s+/i, 'Remove-Item -LiteralPath ');
             cmd = cmd.replace(/^cat\s+/i, 'Get-Content ');
-            cmd = cmd.replace(/^ls\s*/i, 'Get-ChildItem ');
+            cmd = cmd.replace(/^ls\s*$/i, 'Get-ChildItem');
+            cmd = cmd.replace(/^ls\s+/i, 'Get-ChildItem ');
             cmd = cmd.replace(/^echo\s+/i, 'Write-Host ');
             cmd = cmd.replace(/^touch\s+/i, 'New-Item -ItemType File -Force -Path ');
             cmd = cmd.replace(/^cp\s+/i, 'Copy-Item ');
             cmd = cmd.replace(/^mv\s+/i, 'Move-Item ');
             if (cmd.startsWith('bash ') || cmd.startsWith('sh ')) {
-              cmd = 'powershell -Command "' + cmd.replace(/^bash\s+|sh\s+/, '').replace(/^"|"$/g, '') + '"';
+              cmd = 'powershell -Command "' + cmd.replace(/^(bash|sh)\s+/, '').replace(/"/g, '\\"') + '"';
             }
             step.params.command = cmd;
           }
+          sanitizedSteps.push(step);
         }
+        plan.steps = sanitizedSteps;
       }
 
       const codingTask = this.codingEngine.createTask(desc, 'project-' + task.id.slice(0, 8));

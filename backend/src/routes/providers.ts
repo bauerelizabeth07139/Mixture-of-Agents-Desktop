@@ -1,42 +1,28 @@
-import { Router, Request, Response } from 'express';
+ï»¿import { Router, Request, Response } from 'express';
 import { ApiPoolManager } from '../providers/api-pool';
 import { PROVIDER_PRESETS } from '../providers/presets';
 import { ModelCapabilityScorer } from '../models/capability-scorer';
 import { LLMClient } from '../services/llm-client';
 import { v4 as uuid } from 'uuid';
 import { Provider, Model, ModelType } from '../types';
-// ©¤©¤©¤ Model Type Classification ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
-// Classifies a model based on its ID and API metadata.
-// Works across providers: OpenAI, MiMo, SiliconFlow, DeepSeek, etc.
+
 function classifyModelType(modelId: string, raw?: any): ModelType {
   const id = modelId.toLowerCase();
-
-  // ©¤©¤ Video generation ©¤©¤
   if (/\b(video|cogvideo|sora|kling|pika|runway|minimax-video|hailuo|wan-video)\b/.test(id)) return 'video';
   if (raw?.model_type === 'video' || raw?.task === 'video-generation') return 'video';
-
-  // ©¤©¤ Image generation ©¤©¤
   if (/\b(dall-?e|stable-?diffusion|sd[123x]|sdxl|flux|midjourney|imagen|wanx|wan\b|cogview|cogview-?4|playground|kandinsky|firefly|ideogram|recraft)\b/.test(id)) return 'image';
   if (/\b(txt2img|img2img|text-to-image|image-generation)\b/.test(id)) return 'image';
   if (raw?.model_type === 'image' || raw?.task === 'text-to-image' || raw?.task === 'image-generation') return 'image';
-
-  // ©¤©¤ Text-to-Speech ©¤©¤
   if (/\b(tts|text.to.speech|speech.synthesis|voice.synth|bark|coqui|xtts|fish.audio|cosyvoice|chat-tts|f5-tts)\b/.test(id)) return 'tts';
   if (raw?.model_type === 'tts' || raw?.task === 'text-to-speech' || raw?.task === 'tts') return 'tts';
-
-  // ©¤©¤ Speech-to-Text / ASR ©¤©¤
   if (/\b(whisper|asr|stt|speech.to.text|transcri|paraformer|sense.voice|funasr)\b/.test(id)) return 'stt';
   if (raw?.model_type === 'stt' || raw?.task === 'speech-recognition' || raw?.task === 'asr') return 'stt';
-
-  // ©¤©¤ Vision-Language Models (VLM / multimodal LLM) ©¤©¤
-  // These are LLMs that can also process images/video input
   if (/\b(gpt-4o(?!-mini)|gpt-4-turbo|gpt-4-vision|claude-3|claude-sonnet-4|claude-opus|gemini-pro-vision|gemini-1\.5|gemini-2|qwen-vl|qwen2-vl|qwen2\.5-vl|internvl|minicpm-v|llava|cogvlm|glm-4v|deepseek-vl|mimo-v2-omni|omni)\b/.test(id)) return 'vlm';
   if (/\b(vision|vl|vlm|multimodal|omni)\b/.test(id)) return 'vlm';
   if (raw?.model_type === 'vlm' || raw?.model_type === 'multimodal') return 'vlm';
-
-  // ©¤©¤ Default: plain LLM ©¤©¤
   return 'llm';
 }
+
 import axios from 'axios';
 
 export function createProviderRoutes(pool: ApiPoolManager) {
@@ -45,7 +31,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
   r.get('/presets', (_req, res) => res.json(PROVIDER_PRESETS));
   r.get('/', (_req, res) => res.json(pool.getAllProviders()));
 
-  // Add provider from preset
   r.post('/from-preset', (req: Request, res: Response) => {
     const preset = PROVIDER_PRESETS.find(p => p.id === req.body.presetId);
     if (!preset) return res.status(404).json({ error: 'Preset not found' });
@@ -62,7 +47,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
     res.json(prov);
   });
 
-  // Add custom provider
   r.post('/custom', (req: Request, res: Response) => {
     const prov: Provider = {
       id: uuid(), name: req.body.name, baseUrl: req.body.baseUrl,
@@ -74,64 +58,49 @@ export function createProviderRoutes(pool: ApiPoolManager) {
     res.json(prov);
   });
 
-  // Add API key to provider
   r.post('/:pid/keys', (req: Request, res: Response) => {
     const entry = pool.addApiKey(req.params.pid, req.body.key);
     if (!entry) return res.status(400).json({ error: 'Max 50 keys or provider not found' });
     res.json(entry);
   });
 
-  // Remove API key
   r.delete('/:pid/keys/:kid', (req: Request, res: Response) => {
     res.json({ success: pool.removeApiKey(req.params.pid, req.params.kid) });
   });
 
-  // Fetch models from provider API using the key
   r.post('/:pid/fetch-models', async (req: Request, res: Response) => {
     const prov = pool.getProvider(req.params.pid);
     if (!prov) return res.status(404).json({ error: 'Provider not found' });
     const key = pool.getNextApiKey(prov.id);
     if (!key) return res.status(400).json({ error: 'No API keys available. Add a key first.' });
-
     const endpoint = prov.modelsEndpoint || '/models';
     const url = prov.baseUrl + endpoint;
-
     try {
       let modelsData: any[] = [];
-
       if (prov.type === 'anthropic') {
-        // Anthropic doesn't have a models endpoint, return defaults
         return res.json({ models: prov.models, source: 'default' });
       }
-
       const response = await axios.get(url, {
         headers: { 'Authorization': 'Bearer ' + key.key },
         timeout: 15000,
       });
-
       const data = response.data;
       if (data.data && Array.isArray(data.data)) {
-        // OpenRouter/SiliconFlow style with detailed info
         for (const m of data.data) {
           const modelId = m.id || m.model || '';
           if (!modelId) continue;
-
           const mtype = classifyModelType(modelId, m);
-
-          // Extract pricing if available
           let inputPrice = 1, outputPrice = 2;
           if (m.pricing) {
             inputPrice = parseFloat(m.pricing.prompt || m.pricing.input || '1') * 1000000;
             outputPrice = parseFloat(m.pricing.completion || m.pricing.output || '2') * 1000000;
           }
-
           const existingModel = prov.models.find(em => em.modelId === modelId);
           if (!existingModel) {
             const caps = ModelCapabilityScorer.getDefaultProfile(modelId);
             caps.pricing.inputPer1M = inputPrice;
             caps.pricing.outputPer1M = outputPrice;
             if (m.context_length) caps.context = Math.min(10, Math.log2(m.context_length / 1000));
-
             prov.models.push({
               id: uuid(),
               name: m.name || m.id,
@@ -146,7 +115,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
           }
         }
       } else if (Array.isArray(data)) {
-        // Simple array of model IDs
         for (const m of data) {
           const modelId = typeof m === 'string' ? m : m.id;
           if (!modelId) continue;
@@ -159,7 +127,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
           }
         }
       }
-
       res.json({ models: prov.models, source: 'api', count: prov.models.length });
     } catch (err: any) {
       const status = err.response?.status;
@@ -168,7 +135,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
     }
   });
 
-  // Add model to provider manually
   r.post('/:pid/models', (req: Request, res: Response) => {
     const prov = pool.getProvider(req.params.pid);
     if (!prov) return res.status(404).json({ error: 'Provider not found' });
@@ -178,7 +144,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
     res.json(m);
   });
 
-  // Test a model
   r.post('/:pid/models/:mid/test', async (req: Request, res: Response) => {
     const prov = pool.getProvider(req.params.pid);
     if (!prov) return res.status(404).json({ error: 'Provider not found' });
@@ -189,7 +154,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
     res.json(await LLMClient.testModel(prov, k, m.modelId));
   });
 
-  // Remove provider
   r.delete('/:pid', (req: Request, res: Response) => {
     pool.removeProvider(req.params.pid);
     res.json({ success: true });
@@ -197,4 +161,3 @@ export function createProviderRoutes(pool: ApiPoolManager) {
 
   return r;
 }
-
