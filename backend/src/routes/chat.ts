@@ -124,33 +124,49 @@ export function createChatRoutes(pool: ApiPoolManager) {
         
         const workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'moa-exec-'));
         
+                // Phase 1: Write ALL non-run files first
+        const runBlocks: typeof codeBlocks = [];
         for (const block of codeBlocks) {
-          if (['python', 'py', 'javascript', 'js', 'node', 'powershell', 'bash', 'sh', 'shell', 'typescript', 'ts'].includes(block.lang.toLowerCase())) {
-            try {
-              const ext = block.lang === 'python' || block.lang === 'py' ? '.py' 
-                : block.lang === 'javascript' || block.lang === 'js' || block.lang === 'node' ? '.js'
-                : block.lang === 'typescript' || block.lang === 'ts' ? '.ts'
-                : block.lang === 'powershell' ? '.ps1' : '.sh';
-              const filename = block.filename || ('script' + ext);
-              const filePath = path.join(workDir, filename);
-              fs.writeFileSync(filePath, block.code, 'utf8');
-              
-              let cmd = '';
-              if (ext === '.py') cmd = `python "${filePath}"`;
-              else if (ext === '.js') cmd = `node "${filePath}"`;
-              else if (ext === '.ts') cmd = `npx ts-node "${filePath}"`;
-              else if (ext === '.ps1') cmd = `powershell -File "${filePath}"`;
-              else { const ps1Path = filePath.replace(/\.sh$/, '.ps1'); fs.writeFileSync(ps1Path, block.code, 'utf8'); cmd = process.platform === 'win32' ? `powershell -ExecutionPolicy Bypass -File "${ps1Path}"` : `bash "${filePath}"`; }
-              
-              const extraPath = process.platform === 'win32'
-                ? [process.env.LOCALAPPDATA + '\\Programs\\Python\\Python311', process.env.LOCALAPPDATA + '\\Programs\\Python\\Python38', 'C:\\Program Files\\nodejs', 'C:\\Program Files\\Git\\cmd', 'C:\\node20b\\node-v20.15.1-win-x64', process.env.PATH].filter(Boolean).join(path.delimiter)
-                : '/usr/local/bin:/usr/bin:' + (process.env.PATH || '');
-              const opts: any = { cwd: workDir, timeout: 30000, encoding: 'utf8' as const, stdio: ['pipe', 'pipe', 'pipe'] as const, shell: true, env: { ...process.env, FORCE_COLOR: '0', PATH: extraPath } };
-              const output = execSync(cmd, opts) as string;
-              execResults.push({ lang: block.lang, filename, stdout: output, stderr: '', exitCode: 0 });
-            } catch (e: any) {
-              execResults.push({ lang: block.lang, filename: block.filename, stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: e.status || 1 });
+          const isRunBlock = ['powershell', 'bash', 'sh', 'shell'].includes(block.lang.toLowerCase());
+          if (isRunBlock) { runBlocks.push(block); continue; }
+          const ext = block.lang === 'python' || block.lang === 'py' ? '.py'
+            : block.lang === 'javascript' || block.lang === 'js' || block.lang === 'node' ? '.js'
+            : block.lang === 'typescript' || block.lang === 'ts' ? '.ts'
+            : block.lang === 'json' ? '.json' : block.lang === 'html' ? '.html' : '.txt';
+          const filename = block.filename || ('script' + ext);
+          const filePath = path.join(workDir, filename);
+          fs.mkdirSync(path.dirname(filePath), { recursive: true });
+          fs.writeFileSync(filePath, block.code, 'utf8');
+        }
+        
+        // Phase 2: Auto-install dependencies if package.json or requirements.txt exists
+        const extraPath = process.platform === 'win32'
+          ? [process.env.LOCALAPPDATA + '\Programs\Python\Python311', process.env.LOCALAPPDATA + '\Programs\Python\Python38', 'C:\Program Files\nodejs', 'C:\Program Files\Git\cmd', 'C:\node20b\node-v20.15.1-win-x64', process.env.PATH].filter(Boolean).join(path.delimiter)
+          : '/usr/local/bin:/usr/bin:' + (process.env.PATH || '');
+        const execOpts = { cwd: workDir, timeout: 60000, encoding: 'utf8' as const, shell: 'powershell' as const, env: { ...process.env, FORCE_COLOR: '0', PATH: extraPath } };
+        if (fs.existsSync(path.join(workDir, 'package.json'))) {
+          try { execSync('npm install', execOpts); execResults.push({ lang: 'powershell', filename: 'npm install', stdout: 'OK', stderr: '', exitCode: 0 }); } catch (e: any) { execResults.push({ lang: 'powershell', filename: 'npm install', stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: 1 }); }
+        }
+        if (fs.existsSync(path.join(workDir, 'requirements.txt'))) {
+          try { execSync('pip install -r requirements.txt', execOpts); execResults.push({ lang: 'powershell', filename: 'pip install', stdout: 'OK', stderr: '', exitCode: 0 }); } catch (e: any) { execResults.push({ lang: 'powershell', filename: 'pip install', stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: 1 }); }
+        }
+        
+        // Phase 3: Execute run blocks
+        for (const block of runBlocks) {
+          const cmds = block.code.split('\n').map((l: string) => l.trim()).filter((l: string) => l && !l.startsWith('#'));
+          for (const rawCmd of cmds) {
+            let cmd = rawCmd;
+            if (process.platform === 'win32') {
+              if (/^(bash |sh )/.test(cmd)) cmd = cmd.replace(/^(bash|sh)\s+/, '');
+              if (cmd.includes(' && ')) {
+                const parts = cmd.split(' && ').map((p: string) => p.trim()).filter(Boolean);
+                for (const part of parts) {
+                  try { execSync(part, { ...execOpts, timeout: 30000 }); execResults.push({ lang: 'powershell', filename: part.slice(0,60), stdout: 'OK', stderr: '', exitCode: 0 }); } catch (e: any) { execResults.push({ lang: 'powershell', filename: part.slice(0,60), stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: 1 }); }
+                }
+                continue;
+              }
             }
+            try { const o = execSync(cmd, { ...execOpts, timeout: 30000 }); execResults.push({ lang: block.lang, filename: cmd.slice(0,60), stdout: String(o), stderr: '', exitCode: 0 }); } catch (e: any) { execResults.push({ lang: block.lang, filename: cmd.slice(0,60), stdout: e.stdout || '', stderr: e.stderr || e.message, exitCode: e.status || 1 }); }
           }
         }
         // Cleanup
