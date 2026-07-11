@@ -87,7 +87,9 @@ export class CodingEngine {
       ? [
           path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
           'C:\\Program Files\\nodejs',
+          'C:\\node20b\\node-v20.15.1-win-x64',
           'C:\\Program Files\\Git\\cmd',
+          'C:\\node20b\\node-v20.15.1-win-x64',
           ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
         ].join(path.delimiter) + path.delimiter
       : '/usr/local/bin:/usr/bin:';

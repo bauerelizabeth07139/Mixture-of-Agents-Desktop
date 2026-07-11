@@ -140,11 +140,10 @@ export function createChatRoutes(pool: ApiPoolManager) {
               else if (ext === '.js') cmd = `node "${filePath}"`;
               else if (ext === '.ts') cmd = `npx ts-node "${filePath}"`;
               else if (ext === '.ps1') cmd = `powershell -File "${filePath}"`;
-              else if (process.platform === 'win32') cmd = `powershell -File "${filePath}"`;
-              else cmd = `bash "${filePath}"`;
+              else { const ps1Path = filePath.replace(/\.sh$/, '.ps1'); fs.writeFileSync(ps1Path, block.code, 'utf8'); cmd = process.platform === 'win32' ? `powershell -ExecutionPolicy Bypass -File "${ps1Path}"` : `bash "${filePath}"`; }
               
               const extraPath = process.platform === 'win32'
-                ? [process.env.LOCALAPPDATA + '\\Programs\\Python\\Python311', process.env.LOCALAPPDATA + '\\Programs\\Python\\Python38', 'C:\\Program Files\\nodejs', 'C:\\Program Files\\Git\\cmd', process.env.PATH].filter(Boolean).join(path.delimiter)
+                ? [process.env.LOCALAPPDATA + '\\Programs\\Python\\Python311', process.env.LOCALAPPDATA + '\\Programs\\Python\\Python38', 'C:\\Program Files\\nodejs', 'C:\\Program Files\\Git\\cmd', 'C:\\node20b\\node-v20.15.1-win-x64', process.env.PATH].filter(Boolean).join(path.delimiter)
                 : '/usr/local/bin:/usr/bin:' + (process.env.PATH || '');
               const opts: any = { cwd: workDir, timeout: 30000, encoding: 'utf8' as const, stdio: ['pipe', 'pipe', 'pipe'] as const, shell: true, env: { ...process.env, FORCE_COLOR: '0', PATH: extraPath } };
               const output = execSync(cmd, opts) as string;

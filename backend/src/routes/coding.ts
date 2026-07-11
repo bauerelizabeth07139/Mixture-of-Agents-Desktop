@@ -39,7 +39,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     }
   });
 
-  // ©¤©¤©¤ Enhanced Environment Detection ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Enhanced Environment Detection ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   r.get('/environment', (_req, res) => {
     const env: any = {
       cwd: workDir,
@@ -61,7 +61,9 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
           path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
           path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python311'),
           'C:\\Program Files\\nodejs',
+          'C:\\node20b\\node-v20.15.1-win-x64',
           'C:\\Program Files\\Git\\cmd',
+          'C:\\node20b\\node-v20.15.1-win-x64',
           // Packaged Electron: add resources dir for bundled node.exe
           ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
         ].join(path.delimiter) + path.delimiter
@@ -119,7 +121,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     res.json(env);
   });
 
-  // ©¤©¤©¤ Shell Execution ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Shell Execution ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   r.post('/shell', async (req, res) => {
     const { command, workdir, timeout } = req.body;
     if (!command) return res.status(400).json({ error: 'Missing command' });
@@ -145,7 +147,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     }
   });
 
-  // ©¤©¤©¤ File Operations ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ File Operations ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   r.post('/read-file', (req, res) => {
     const { filePath, workdir } = req.body;
     if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
@@ -204,7 +206,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
 
-  // ©¤©¤©¤ Read from any absolute path ©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤©¤
+  // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Read from any absolute path ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
   r.post('/read-absolute', (req, res) => {
     const { absolutePath } = req.body;
     if (!absolutePath) return res.status(400).json({ error: 'Missing path' });
