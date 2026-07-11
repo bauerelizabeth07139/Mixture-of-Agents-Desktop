@@ -97,10 +97,25 @@ export class CodingEngine {
   }
 
   
-  private mapBashToPowerShell(cmd: string): string {
+  /** Split && and ; chains, convert bash to PowerShell */
+  private splitAndConvertCommands(cmd: string): string[] {
+    if (process.platform !== 'win32') return [cmd];
+    // Split && chains
+    if (cmd.includes(' && ')) {
+      return cmd.split(' && ').map(c => c.trim()).filter(Boolean).flatMap(c => this.splitAndConvertCommands(c));
+    }
+    // Split ; chains (but not inside strings)
+    if (cmd.includes('; ') && !cmd.includes('powershell') && !cmd.includes('Write-Host')) {
+      const parts = cmd.split(';').map(c => c.trim()).filter(Boolean);
+      if (parts.length > 1) return parts.flatMap(c => this.splitAndConvertCommands(c));
+    }
+    return [this.mapSingleBashToPowerShell(cmd)];
+  }
+
+  private mapSingleBashToPowerShell(cmd: string): string {
     if (process.platform !== 'win32') return cmd;
     // Already PowerShell or known commands
-    if (/^(powershell|cmd|Get-|Set-|New-|Remove-|Copy-|Move-|Write-|cd |dir|echo )/i.test(cmd)) return cmd;
+    if (/^(powershell|cmd|Get-|Set-|New-|Remove-|Copy-|Move-|Write-|cd |dir)/i.test(cmd)) return cmd;
     // Keep common dev commands as-is
     if (/^(node |python |npm |npx |pip |git |cargo |rustc |java |javac |go |docker |tsc |vite )/i.test(cmd)) return cmd;
     // Convert common bash builtins
@@ -126,7 +141,7 @@ export class CodingEngine {
       case 'create_project': { const d = path.resolve(this.basePath, p.path||''); fs.mkdirSync(d,{recursive:true}); return {success:true,output:'Created: '+d}; }
       case 'write_file': { const wf = path.resolve(this.basePath, p.path); fs.mkdirSync(path.dirname(wf),{recursive:true}); fs.writeFileSync(wf, p.content||'', 'utf8'); return {success:true,output:'Written: '+p.path+' ('+((p.content||'').length)+' bytes)'}; }
       case 'edit_file': { const ef = path.resolve(this.basePath, p.path); if(!fs.existsSync(ef)) return {success:false,output:'Not found: '+p.path}; let c = fs.readFileSync(ef,'utf8'); if(!c.includes(p.old)) return {success:false,output:'Pattern not found in '+p.path}; c = c.replace(p.old, p.new); fs.writeFileSync(ef,c,'utf8'); return {success:true,output:'Edited: '+p.path}; }
-      case 'run_command': { const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : this.basePath; fs.mkdirSync(wd, {recursive:true}); try { const mappedCmd = this.mapBashToPowerShell(p.command); const o = String(execSync(mappedCmd, {cwd:wd,timeout:Math.min(p.timeout||60000,120000),encoding:'utf8',shell:'powershell' as const,env:this.getEnv()})); return {success:true,output:(o||'').slice(0,4000)}; } catch(e:any) { return {success:false,output:((e.stdout||'')+'\\n'+(e.stderr||e.message||'')).slice(0,4000)}; } }
+      case 'run_command': { const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : this.basePath; fs.mkdirSync(wd, {recursive:true}); try { const cmds = this.splitAndConvertCommands(p.command); let allOutput = ''; for (const mappedCmd of cmds) { const o = String(execSync(mappedCmd, {cwd:wd,timeout:Math.min(p.timeout||60000,120000),encoding:'utf8',shell:'powershell' as const,env:this.getEnv()})); allOutput += (o||'') + '\n'; } return {success:true,output:allOutput.slice(0,4000)}; } catch(e:any) { return {success:false,output:((e.stdout||'')+'\n'+(e.stderr||e.message||'')).slice(0,4000)}; } }
       case 'install_deps': { const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : this.basePath; fs.mkdirSync(wd, {recursive:true}); const m = p.manager||'npm'; const pkgs = Array.isArray(p.packages)?p.packages.join(' '):''; try { execSync(m+' install '+pkgs,{cwd:wd,timeout:120000,encoding:'utf8',shell:'powershell' as const,env:this.getEnv()}); return {success:true,output:'Installed: '+pkgs}; } catch(e:any) { return {success:false,output:((e.stdout||'')+'\\n'+(e.stderr||e.message||'')).slice(0,4000)}; } }
       case 'read_file': { const rf = path.resolve(this.basePath, p.path); if(!fs.existsSync(rf)) return {success:false,output:'Not found: '+p.path}; const content=fs.readFileSync(rf,'utf8'); return {success:true,output:content.slice(0,8000)+(content.length>8000?'\\n... [truncated '+content.length+' total chars]':'')}; }
       case 'list_dir': { const d = p.path ? path.resolve(this.basePath, p.path) : projectPath; if(!fs.existsSync(d)) return {success:false,output:'Not found: '+d}; const entries=fs.readdirSync(d,{withFileTypes:true}); const listing=entries.map(e=>(e.isDirectory()?'[DIR] ':'     ')+e.name).join('\\n'); return {success:true,output:listing.slice(0,4000)}; }
