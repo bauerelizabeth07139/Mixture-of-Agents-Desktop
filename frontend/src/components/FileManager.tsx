@@ -12,7 +12,7 @@ const extOf = (n: string) => (n.split(".").pop()||"").toLowerCase();
 export function FileManager({ onFileRun }: FileManagerProps) {
   const [workspace, setWorkspace] = useState(() => localStorage.getItem("moa-workspace") || "");
   const [tree, setTree] = useState<FileEntry[]>([]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set([localStorage.getItem("moa-workspace") || ""]));
   const [selectedFile, setSelectedFile] = useState("");
   const [fileContent, setFileContent] = useState("");
   const [editContent, setEditContent] = useState("");
@@ -65,7 +65,7 @@ export function FileManager({ onFileRun }: FileManagerProps) {
         </div>
         {item.isDir && isExp && (<>
           {item.children && renderTree(item.children, depth+1)}
-          {newItem?.parentPath===item.path && <div style={{paddingLeft:8+(depth+1)*16,padding:"2px 8px",display:"flex",alignItems:"center",gap:4}}><span style={{width:14}}/><span className="fm-icon">{newItem.isDir?"\ud83d\udcc1":"\ud83d\udcc4"}</span><input className="fm-rename" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")createItem();if(e.key==="Escape")setNewItem(null);}} onBlur={createItem} autoFocus placeholder={newItem.isDir?"\u65b0\u6587\u4ef6\u5939...":"\u65b0\u6587\u4ef6..."}/></div>}
+          {newItem?.parentPath===item.path && <div style={{paddingLeft:8+(depth+1)*16,padding:"2px 8px",display:"flex",alignItems:"center",gap:4}}><span style={{width:14}}/><span className="fm-icon">{newItem.isDir?"\ud83d\udcc1":"\ud83d\udcc4"}</span><input className="fm-rename" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")createItem();if(e.key==="Escape")setNewItem(null);}} onBlur={()=>{if(newName.trim())createItem();else{setNewItem(null);setNewName("");}}} autoFocus placeholder={newItem.isDir?"\u65b0\u6587\u4ef6\u5939...":"\u65b0\u6587\u4ef6..."}/></div>}
           {(!item.children||item.children.length===0)&&!newItem?.parentPath&&<div style={{paddingLeft:8+(depth+1)*16+18,padding:"2px 8px",fontSize:11,color:"#484f58",fontStyle:"italic"}}>(\u7a7a)</div>}
         </>)}
       </React.Fragment>
@@ -96,7 +96,7 @@ export function FileManager({ onFileRun }: FileManagerProps) {
       </div>
       <div className="fm-breadcrumb">{workspace.split(/[\\/]/).filter(Boolean).map((part,i,arr)=>{const p2=workspace.split(/[\\/]/).slice(0,i+1).join(workspace.includes("/")?"/":"\\");return <React.Fragment key={i}>{i>0&&<span className="fm-bsep">/</span>}<span className={"fm-bpart"+(i===arr.length-1?" cur":"")} onClick={()=>{if(i<arr.length-1){setWorkspace(p2);setTree([]);}}}>{i===0?"🌐 "+part:part}</span></React.Fragment>;})}</div>
       <div className="fm-split">
-        <div className="fm-tree">{tree.length===0?<div className="fm-empty">加载中...</div>:renderTree(tree,0)}</div>
+        <div className="fm-tree">{newItem && newItem.parentPath===workspace &&<div style={{padding:2,paddingLeft:8,display:"flex",alignItems:"center",gap:4}}><span style={{width:14}}/><span className="fm-icon">{newItem.isDir?"📁":"📄"}</span><input className="fm-rename" value={newName}  onChange={e=>setNewName(e.target.value)}  onKeyDown={e=>{if(e.key==="Enter")createItem();if(e.key==="Escape"){setNewItem(null);setNewName("");}}}  onBlur={()=>{if(newName.trim())createItem();else{setNewItem(null);setNewName("");}}}  autoFocus placeholder={newItem.isDir?"new folder...":"new file..."}/></div>}{tree.length===0?<div className="fm-empty">加载中...</div>:renderTree(tree,0)}</div>
         {selectedFile ? <div className="fm-editor-panel">
           <div className="fm-tab-bar"><div className="fm-tab active"><span>{ICON[ext]||"\ud83d\udcc4"}</span><span>{selectedFile.split(/[\\/]/).pop()}</span>{dirty&&<span className="fm-dot">●</span>}</div><div style={{flex:1}}/><span className="fm-lang">{LANG[ext]||"text"}</span><button className={"fm-tbtn"+(isEditing?" editing":"")} onClick={()=>{if(isEditing&&dirty)saveFile();else{setIsEditing(!isEditing);setEditContent(fileContent);setDirty(false);}}}>{isEditing?"💾 保存":"✏️ 编辑"}</button><button className="fm-tbtn run" onClick={runFile} disabled={running}>{running?"⏳ ...":"▶ 运行"}</button></div>
           {isEditing ? <textarea className="fm-textarea" value={editContent} onChange={e=>{setEditContent(e.target.value);setDirty(true);}} onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==="s"){e.preventDefault();saveFile();}}}/> : <pre className="fm-pre">{fileContent.slice(0,100000)}{fileContent.length>100000?"\n...[截断]":""}</pre>}
