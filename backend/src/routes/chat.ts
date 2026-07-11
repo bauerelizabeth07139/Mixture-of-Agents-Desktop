@@ -140,6 +140,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
               else if (ext === '.js') cmd = `node "${filePath}"`;
               else if (ext === '.ts') cmd = `npx ts-node "${filePath}"`;
               else if (ext === '.ps1') cmd = `powershell -File "${filePath}"`;
+              else if (process.platform === 'win32') cmd = `powershell -File "${filePath}"`;
               else cmd = `bash "${filePath}"`;
               
               const extraPath = process.platform === 'win32'

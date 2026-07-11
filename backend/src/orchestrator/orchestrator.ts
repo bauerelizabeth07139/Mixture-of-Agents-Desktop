@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+﻿import { v4 as uuid } from 'uuid';
 import { Project, SubAgent, SubAgentTask, Model, Provider, UserPreferences } from '../types';
 import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient, QuotaExhaustedError } from '../services/llm-client';
@@ -186,7 +186,28 @@ export class Orchestrator {
           }
         }
 
-        const codingTask = this.codingEngine.createTask(desc, 'project-' + task.id.slice(0, 8));
+              // Map bash/sh commands to PowerShell on Windows
+      if (process.platform === 'win32' && plan?.steps) {
+        for (const step of plan.steps) {
+          if (step.action === 'run_command' && step.params?.command) {
+            let cmd = step.params.command;
+            cmd = cmd.replace(/^mkdir -p\s+/i, 'New-Item -ItemType Directory -Force -Path ');
+            cmd = cmd.replace(/^rm -rf\s+/i, 'Remove-Item -Recurse -Force -Path ');
+            cmd = cmd.replace(/^cat\s+/i, 'Get-Content ');
+            cmd = cmd.replace(/^ls\s*/i, 'Get-ChildItem ');
+            cmd = cmd.replace(/^echo\s+/i, 'Write-Host ');
+            cmd = cmd.replace(/^touch\s+/i, 'New-Item -ItemType File -Force -Path ');
+            cmd = cmd.replace(/^cp\s+/i, 'Copy-Item ');
+            cmd = cmd.replace(/^mv\s+/i, 'Move-Item ');
+            if (cmd.startsWith('bash ') || cmd.startsWith('sh ')) {
+              cmd = 'powershell -Command "' + cmd.replace(/^bash\s+|sh\s+/, '').replace(/^"|"$/g, '') + '"';
+            }
+            step.params.command = cmd;
+          }
+        }
+      }
+
+      const codingTask = this.codingEngine.createTask(desc, 'project-' + task.id.slice(0, 8));
         await this.codingEngine.executePlan(plan, codingTask);
 
         const failedSteps = codingTask.results.filter(r => !r.success);
