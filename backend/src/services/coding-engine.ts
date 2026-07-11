@@ -108,6 +108,8 @@ export class CodingEngine {
           'C:\\Program Files\\nodejs',
           'C:\\node20b\\node-v20.15.1-win-x64',
           'C:\\Program Files\\Git\\cmd',
+          'C:\\Windows\\System32\\WindowsPowerShell\\v1.0',
+          'C:\\Windows',
           ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
         ].join(path.delimiter) + path.delimiter
       : '/usr/local/bin:/usr/bin:';
@@ -207,7 +209,7 @@ export class CodingEngine {
               cwd: wd,
               timeout: Math.min(p.timeout || 60000, 120000),
               encoding: 'utf8',
-              shell: 'powershell' as const,
+              shell: (process.env.ComSpec || 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe') as any,
               env: this.getEnv(),
               windowsHide: true,
             }));

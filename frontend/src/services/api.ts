@@ -57,5 +57,13 @@ export const api = {
   // Run quick/standard test on all models (parallel)
   runQuickTestAll: () => fetch(B+'/testing/test-all-models', {method:'POST', headers:h, body:JSON.stringify({quick: true})}).then(r=>r.json()),
   runStandardTestAll: () => fetch(B+'/testing/test-all-models', {method:'POST', headers:h, body:JSON.stringify({quick: false})}).then(r=>r.json()),
+  // File Manager
+  setWorkspace: (workspacePath: string) => fetch(B+'/coding/set-workspace',{method:'POST',headers:h,body:JSON.stringify({workspacePath})}).then(r=>r.json()),
+  browseFiles: (browsePath?: string) => fetch(B+'/coding/browse',{method:'POST',headers:h,body:JSON.stringify({browsePath:browsePath||''})}).then(r=>r.json()),
+  listTree: (dirPath?: string, depth?: number) => fetch(B+'/coding/list-tree',{method:'POST',headers:h,body:JSON.stringify({dirPath,depth})}).then(r=>r.json()),
+  runFile: (filePath: string, timeout?: number) => fetch(B+'/coding/run-file',{method:'POST',headers:h,body:JSON.stringify({filePath,timeout})}).then(r=>r.json()),
+  createFile: (filePath: string, content?: string, isDirectory?: boolean) => fetch(B+'/coding/create-file',{method:'POST',headers:h,body:JSON.stringify({filePath,content:content||'',isDirectory})}).then(r=>r.json()),
+  deleteFile: (filePath: string) => fetch(B+'/coding/delete-file',{method:'POST',headers:h,body:JSON.stringify({filePath})}).then(r=>r.json()),
+  renameFile: (oldPath: string, newPath: string) => fetch(B+'/coding/rename-file',{method:'POST',headers:h,body:JSON.stringify({oldPath,newPath})}).then(r=>r.json()),
+  getSupportedExtensions: () => fetch(B+'/coding/supported-extensions').then(r=>r.json()),
 };
-

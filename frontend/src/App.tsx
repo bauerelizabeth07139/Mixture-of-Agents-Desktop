@@ -4,6 +4,7 @@ import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServer
 import { TerminalPanel } from './components/Terminal';
 import { EditorPanel } from './components/Editor';
 import { EnvironmentPanel } from './components/Environment';
+import { FileManager } from './components/FileManager';
 
 // --- Model Notes ---
 const MODEL_NOTES: Record<string, string> = {
@@ -949,7 +950,7 @@ function ExtensionsPanel() {
 // ─── Main App ───
 
 export default function App() {
-  const [tab, setTab] = useState<'chat'|'providers'|'models'|'testing'|'extensions'|'terminal'|'editor'|'environment'>('chat');
+  const [tab, setTab] = useState<'chat'|'providers'|'models'|'testing'|'extensions'|'terminal'|'editor'|'files'|'environment'>('chat');
   const [providers, setProviders] = useState<Provider[]>([]);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [inputVal, setInputVal] = useState('');
@@ -979,7 +980,7 @@ export default function App() {
 
   const tabNames: Record<string, string> = {
     chat: '对话', providers: '提供商', models: '模型', testing: '测试',
-    extensions: '扩展', terminal: '终端', editor: '编辑器', environment: '环境',
+    extensions: '扩展', files: '文件', terminal: '终端', editor: '编辑器', environment: '环境',
   };
 
   const loadProviders = useCallback(async () => {
@@ -1150,9 +1151,9 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
       <div className="sidebar">
         <div className="sidebar-logo"><span style={{ fontSize:22 }}>🧬</span><span style={{ fontWeight:700, fontSize:14 }}>Mixture of Agents</span></div>
         <div className="sidebar-nav">
-          {(['chat','providers','models','testing','extensions','terminal','editor','environment'] as const).map(k => (
+          {(['chat','providers','models','testing','extensions','files','terminal','editor','environment'] as const).map(k => (
             <div key={k} className={`sidebar-item ${tab===k?'active':''}`} onClick={() => setTab(k)}>
-              <span>{k==='chat'?'💬':k==='providers'?'🔑':k==='models'?'🤖':k==='testing'?'🧪':k==='extensions'?'🧩':k==='terminal'?'💻':k==='editor'?'📝':'🌐'}</span>
+              <span>{k==='chat'?'💬':k==='providers'?'🔑':k==='models'?'🤖':k==='testing'?'🧪':k==='extensions'?'🧩':k==='files'?'📂':k==='terminal'?'💻':k==='editor'?'📝':'🌐'}</span>
               <span>{tabNames[k]}</span>
             </div>
           ))}
@@ -1257,6 +1258,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
           {tab === 'models' && <ModelPanel providers={providers} />}
           {tab === 'testing' && <TestingPanel providers={providers} onRefresh={loadProviders} />}
           {tab === 'extensions' && <ExtensionsPanel />}
+          {tab === 'files' && <div style={{height:'calc(100vh - 60px)'}}><FileManager /></div>}
           {tab === 'terminal' && <div style={{height:'calc(100vh - 60px)'}}><TerminalPanel /></div>}
           {tab === 'editor' && <div style={{height:'calc(100vh - 60px)'}}><EditorPanel /></div>}
           {tab === 'environment' && <EnvironmentPanel />}

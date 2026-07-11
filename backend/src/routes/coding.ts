@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { execSync, spawn, ChildProcess } from 'child_process';
+import { runFile, detectLanguage, getSupportedExtensions } from '../services/file-runner';
 
 export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, projectManager?: any) {
   const r = Router();
@@ -138,7 +139,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
           ].join(path.delimiter) + path.delimiter
         : '/usr/local/bin:/usr/bin:';
       const output = execSync(command, {
-        cwd, encoding: 'utf8', timeout: t, shell: 'powershell' as const,
+        cwd, encoding: 'utf8', timeout: t, shell: (process.env.ComSpec || 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe') as any,
         env: { ...process.env, FORCE_COLOR: '0', PATH: extra + (process.env.PATH || '') }
       });
       res.json({ success: true, output: (output || '').slice(0, 16000), exitCode: 0 });
@@ -221,6 +222,132 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
       res.json({ type: 'file', content: fs.readFileSync(absolutePath, 'utf8'), truncated: false });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
+
+  // ===== FILE MANAGER & WORKSPACE ROUTES =====
+
+  // Set workspace directory (user picks project folder)
+  r.post('/set-workspace', (req, res) => {
+    const { workspacePath } = req.body;
+    if (!workspacePath) return res.status(400).json({ error: 'Missing workspacePath' });
+    const resolved = path.resolve(workspacePath);
+    if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'Directory not found' });
+    if (!fs.statSync(resolved).isDirectory()) return res.status(400).json({ error: 'Not a directory' });
+    res.json({ success: true, workspace: resolved });
+  });
+
+  // Browse filesystem
+  r.post('/browse', (req, res) => {
+    const { browsePath } = req.body;
+    try {
+      if (!browsePath) {
+        if (process.platform === 'win32') {
+          const drives = [];
+          for (let i = 65; i <= 90; i++) {
+            const letter = String.fromCharCode(i) + ':\\';
+            if (fs.existsSync(letter)) drives.push(letter);
+          }
+          return res.json({ path: '', entries: drives.map(d => ({ name: d, path: d, isDir: true })) });
+        }
+        return res.json({ path: '/', entries: [] });
+      }
+      const resolved = path.resolve(browsePath);
+      if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'Path not found' });
+      if (!fs.statSync(resolved).isDirectory()) return res.status(400).json({ error: 'Not a directory' });
+      const entries = fs.readdirSync(resolved, { withFileTypes: true })
+        .filter(e => !e.name.startsWith('.'))
+        .map(e => ({ name: e.name, path: path.join(resolved, e.name), isDir: e.isDirectory() }))
+        .sort((a, b) => { if (a.isDir === b.isDir) return a.name.localeCompare(b.name); return a.isDir ? -1 : 1; });
+      res.json({ path: resolved, entries });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // List files as tree
+  r.post('/list-tree', (req, res) => {
+    const { dirPath, depth } = req.body;
+    const target = dirPath || workDir;
+    const maxDepth = Math.min(depth || 2, 5);
+    if (!fs.existsSync(target)) return res.status(404).json({ error: 'Directory not found' });
+    try {
+      const walk = (d: string, currentDepth: number): any[] => {
+        if (currentDepth > maxDepth) return [];
+        const entries = fs.readdirSync(d, { withFileTypes: true });
+        return entries.filter(e => !e.name.startsWith('.') && e.name !== 'node_modules' && e.name !== '.git').map(e => {
+          const fullPath = path.join(d, e.name);
+          const item: any = { name: e.name, path: fullPath, isDir: e.isDirectory() };
+          if (e.isDirectory()) { item.children = walk(fullPath, currentDepth + 1); }
+          else { try { item.size = fs.statSync(fullPath).size; } catch {} }
+          return item;
+        });
+      };
+      res.json({ path: target, tree: walk(target, 0) });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Run a file
+  r.post('/run-file', (req, res) => {
+    const { filePath, timeout } = req.body;
+    if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
+    const resolved = path.resolve(filePath);
+    if (!fs.existsSync(resolved)) return res.status(404).json({ error: 'File not found' });
+    try {
+      const lang = detectLanguage(resolved);
+      if (lang === 'Unknown') {
+        return res.json({ success: false, output: 'Unsupported file type. Supported: ' + getSupportedExtensions().join(', '), exitCode: 1, language: 'Unknown', duration: 0 });
+      }
+      const cwd = path.dirname(resolved);
+      const result = runFile(resolved, cwd, timeout || 30000);
+      res.json(result);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Create file or directory
+  r.post('/create-file', (req, res) => {
+    const { filePath, content: fileContent, isDirectory } = req.body;
+    if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
+    try {
+      if (isDirectory) {
+        fs.mkdirSync(filePath, { recursive: true });
+        res.json({ success: true, path: filePath, type: 'directory' });
+      } else {
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        fs.writeFileSync(filePath, fileContent || '', 'utf8');
+        res.json({ success: true, path: filePath, type: 'file', size: 0 });
+      }
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Delete file or directory
+  r.post('/delete-file', (req, res) => {
+    const { filePath } = req.body;
+    if (!filePath) return res.status(400).json({ error: 'Missing filePath' });
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
+    try {
+      const stat = fs.statSync(filePath);
+      if (stat.isDirectory()) { fs.rmSync(filePath, { recursive: true, force: true }); }
+      else { fs.unlinkSync(filePath); }
+      res.json({ success: true, deleted: filePath });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Rename/move
+  r.post('/rename-file', (req, res) => {
+    const { oldPath, newPath } = req.body;
+    if (!oldPath || !newPath) return res.status(400).json({ error: 'Missing paths' });
+    if (!fs.existsSync(oldPath)) return res.status(404).json({ error: 'Source not found' });
+    try {
+      fs.renameSync(oldPath, newPath);
+      res.json({ success: true, from: oldPath, to: newPath });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Supported extensions
+  r.get('/supported-extensions', (_req, res) => {
+    try {
+      const exts = getSupportedExtensions();
+      res.json({ extensions: exts.map(e => ({ ext: e, language: detectLanguage('file' + e) })) });
+    } catch (e: any) { res.json({ extensions: [] }); }
+  });
+
 
   return r;
 }

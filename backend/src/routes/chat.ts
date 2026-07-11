@@ -153,6 +153,8 @@ function buildAugmentedPath(): string {
     'C:\\Program Files\\nodejs',
     'C:\\Program Files\\Git\\cmd',
     'C:\\node20b\\node-v20.15.1-win-x64',
+          'C:\\Windows\\System32\\WindowsPowerShell\\v1.0',
+          'C:\\Windows',
     process.env.PATH || '',
   ];
 
@@ -269,7 +271,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         }
 
         const augmentedPath = buildAugmentedPath();
-        const execOpts = { cwd: workDir, timeout: 60000, encoding: 'utf8' as const, shell: 'powershell' as const, env: { ...process.env, FORCE_COLOR: '0', PATH: augmentedPath } };
+        const execOpts = { cwd: workDir, timeout: 60000, encoding: 'utf8' as const, shell: (process.env.ComSpec || 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe') as any, env: { ...process.env, FORCE_COLOR: '0', PATH: augmentedPath } };
 
         const runCommand = (command: string, label: string) => {
           try {
