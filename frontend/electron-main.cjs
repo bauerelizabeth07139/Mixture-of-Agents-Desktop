@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+﻿const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 const { fork } = require('child_process');
@@ -97,3 +97,7 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => { if (backendProcess) backendProcess.kill(); app.quit(); });
 app.on('before-quit', () => { if (backendProcess) backendProcess.kill(); });
+
+
+
+
