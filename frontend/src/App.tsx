@@ -140,6 +140,7 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
         <div className="message-header">
           <span className="message-name">{roleName}</span>
           {msg.model && <span className="message-model">{msg.model}</span>}
+          {msg.thinkingMode && <span className="message-model" style={{ background: 'var(--info-bg)', color: 'var(--info)', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>🧠 {msg.thinkingMode}</span>}
           {msg.visionModel && (
             <span className="message-model" style={{ background: 'var(--warning)', color: '#000', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>
               👁️ 视觉: {msg.visionModel}
@@ -227,7 +228,7 @@ interface ChatMsg {
   content: string; time: string; model?: string; agentName?: string;
   visionModel?: string;
   attachments?: Array<{type:'image'|'text'|'file', name: string, data: string, preview?: string, size?: number}>;
-  codeExecution?: Array<{lang: string; filename?: string; stdout: string; stderr: string; exitCode: number}>;
+  codeExecution?: Array<{lang: string; filename?: string; stdout: string; stderr: string; exitCode: number}>; thinkingMode?: string;
   tools?: Array<{ name: string; status: string; output?: string; icon: string }>;
   agents?: Array<{ name: string; status: string; task: string; model: string }>;
 }
@@ -1075,7 +1076,7 @@ export default function App() {
       const chatHistory = messages.filter(m => m.role === 'user' || m.role === 'orchestrator').map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: typeof m.content === 'string' ? m.content : '' }));
       const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, thinkingMode: thinking, costEfficiencyRatio: ratio, history: chatHistory }) });
       const data = await res.json();
-      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents, codeExecution: data.codeExecution }]);
+      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents, codeExecution: data.codeExecution, thinkingMode: data.thinkingMode }]);
 
       // Auto-name thread from first user message
       if (activeThreadId) {
