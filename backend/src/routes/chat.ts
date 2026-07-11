@@ -39,7 +39,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
   r.post('/', async (req, res) => {
     try {
-      const { message, modelId, attachments, thinkingMode, costEfficiencyRatio, history } = req.body;
+      const { message, modelId, attachments, orchestratorThinkingMode, agentThinkingMode, thinkingMode, costEfficiencyRatio, history } = req.body;
       if (!message && (!attachments || attachments.length === 0)) {
         return res.status(400).json({ error: 'Empty message' });
       }
@@ -92,7 +92,8 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       // Map thinkingMode to LLM reasoning effort
       const effortMap: Record<string, string> = { low: 'low', medium: 'medium', high: 'high', auto: 'medium' };
-      const resolvedThinking = (thinkingMode && effortMap[thinkingMode]) || 'medium';
+      const effectiveThinking = orchestratorThinkingMode || thinkingMode || 'medium';
+      const resolvedThinking = effortMap[effectiveThinking] || 'medium';
       const systemPrefix = resolvedThinking === 'high' ? '[Deep analysis mode. Consider all angles, edge cases, and dependencies.]\n\n'
         : resolvedThinking === 'low' ? '[Quick response. Be concise and direct.]\n\n'
         : '';

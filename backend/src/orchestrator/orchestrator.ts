@@ -34,11 +34,11 @@ export class Orchestrator {
   /** Resolve the actual thinking level for a sub-agent */
   private resolveThinkingLevel(perTaskLevel?: string): string {
     if (perTaskLevel && ['low', 'medium', 'high'].includes(perTaskLevel)) return perTaskLevel;
-    if (this.preferences.thinkingMode === 'auto') return 'medium'; // auto default
-    return this.preferences.thinkingMode;
+    if (this.preferences.agentThinkingMode === 'auto') return 'medium'; // auto default
+    return this.preferences.agentThinkingMode;
   }
   private getThinkingEffort(): 'none'|'low'|'medium'|'high' {
-    const mode = this.preferences.thinkingMode;
+    const mode = this.preferences.orchestratorThinkingMode;
     if (mode === 'auto') return 'medium'; // Auto: let orchestrator decide per-task later
     const map: Record<string, 'none'|'low'|'medium'|'high'> = { low: 'none', medium: 'low', high: 'high' };
     return map[mode] || 'low';
@@ -386,7 +386,7 @@ export class Orchestrator {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const m = this.getOrchestratorModel(excludedProviders);
       if (!m) throw new Error("No orchestrator model available - all providers exhausted");
-      const tp = buildThinkingPrefix(this.preferences.thinkingMode);
+      const tp = buildThinkingPrefix(this.preferences.orchestratorThinkingMode);
       try {
         const resp = await LLMClient.chatCompletion(m.provider, m.apiKey, {
           messages: [

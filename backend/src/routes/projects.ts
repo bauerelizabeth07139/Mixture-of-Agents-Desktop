@@ -13,7 +13,7 @@ export function createProjectRoutes(pm: ProjectManager, pool: ApiPoolManager, ws
   r.post('/', (req, res) => { const { name, description, task, modelId } = req.body; res.json(pm.createProject(name || 'Project', description || '', task || '', modelId || '')); });
   r.post('/:id/execute', async (req, res) => {
     const proj = pm.getProject(req.params.id); if (!proj) return res.status(404).json({ error: 'Not found' });
-    const prefs: UserPreferences = { costEfficiencyRatio: req.body.costEfficiencyRatio ?? 0.5, defaultOrchestratorModel: req.body.orchestratorModel, thinkingMode: req.body.thinkingMode ?? 'medium', maxConcurrentAgents: 5, autoRetryOnFailure: true };
+    const prefs: UserPreferences = { costEfficiencyRatio: req.body.costEfficiencyRatio ?? 0.5, defaultOrchestratorModel: req.body.orchestratorModel, orchestratorThinkingMode: req.body.orchestratorThinkingMode ?? 'medium', agentThinkingMode: req.body.agentThinkingMode ?? 'auto', maxConcurrentAgents: 5, autoRetryOnFailure: true };
     const orch = new Orchestrator(proj, pool, prefs, extManager);
     orch.onEvent((evt, data) => wsBroadcast(evt, data));
     orch.execute().catch((err: Error) => wsBroadcast('error', { message: err.message }));

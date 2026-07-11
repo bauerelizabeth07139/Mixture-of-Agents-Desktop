@@ -233,9 +233,10 @@ interface ChatMsg {
   agents?: Array<{ name: string; status: string; task: string; model: string }>;
 }
 // ─── Settings Panel (right side) ───
-function SettingsPanel({ providers, ratio, setRatio, thinking, setThinking, modelId, setModelId, visible, onClose }: {
+function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinking, agentThinking, setAgentThinking, modelId, setModelId, visible, onClose }: {
   providers: Provider[]; ratio: number; setRatio: (v: number) => void;
-  thinking: string; setThinking: (v: any) => void;
+  orchThinking: string; setOrchThinking: (v: any) => void;
+  agentThinking: string; setAgentThinking: (v: any) => void;
   modelId: string; setModelId: (v: string) => void;
   visible: boolean; onClose: () => void;
 }) {
@@ -940,7 +941,8 @@ export default function App() {
   const [inputVal, setInputVal] = useState('');
   const [sending, setSending] = useState(false);
   const [modelId, setModelId] = useState('');
-  const [thinking, setThinking] = useState<'auto'|'low'|'medium'|'high'>('medium');
+  const [orchThinking, setOrchThinking] = useState<'low'|'medium'|'high'>('medium');
+  const [agentThinking, setAgentThinking] = useState<'auto'|'low'|'medium'|'high'>('auto');
   const [ratio, setRatio] = useState(0.5);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -1074,7 +1076,7 @@ export default function App() {
 
     try {
       const chatHistory = messages.filter(m => m.role === 'user' || m.role === 'orchestrator').map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: typeof m.content === 'string' ? m.content : '' }));
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, thinkingMode: thinking, costEfficiencyRatio: ratio, history: chatHistory }) });
+      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, history: chatHistory }) });
       const data = await res.json();
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents, codeExecution: data.codeExecution, thinkingMode: data.thinkingMode }]);
 
@@ -1091,7 +1093,7 @@ export default function App() {
     } catch (err: any) {
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'error', content: err.message || '发送失败，请检查网络连接和 API 配置', time: new Date().toLocaleTimeString('zh-CN') }]);
     } finally { setSending(false); }
-  }, [inputVal, attachments, modelId, thinking, ratio, providers, selectedModelSupportsVision, findVlmModel, sending]);
+  }, [inputVal, attachments, modelId, orchThinking, agentThinking, ratio, providers, selectedModelSupportsVision, findVlmModel, sending]);
 
   // --- Thread management ---
   const createNewThread = () => {
@@ -1231,7 +1233,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               </div>
             </div>
           </div>
-          <SettingsPanel providers={providers} ratio={ratio} setRatio={setRatio} thinking={thinking} setThinking={setThinking}
+          <SettingsPanel providers={providers} ratio={ratio} setRatio={setRatio} orchThinking={orchThinking} setOrchThinking={setOrchThinking} agentThinking={agentThinking} setAgentThinking={setAgentThinking}
             modelId={modelId} setModelId={setModelId} visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
       ) : (
