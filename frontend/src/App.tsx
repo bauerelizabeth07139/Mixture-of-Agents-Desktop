@@ -266,8 +266,8 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
         <div className="settings-section-title">思考强度</div>
         <div style={{ display: 'flex', gap: 6 }}>
           {['low', 'medium', 'high'].map(m => (
-            <button key={m} className={`btn btn-sm ${thinking === m ? 'btn-primary' : ''}`}
-              onClick={() => setThinking(m)} style={{ flex: 1 }}>
+            <button key={m} className={`btn btn-sm ${orchThinking === m ? 'btn-primary' : ''}`}
+              onClick={() => setOrchThinking(m as any)} style={{ flex: 1 }}>
               {m === 'auto' ? '自动' : m === 'low' ? '低' : m === 'medium' ? '中' : '高'}
             </button>
           ))}
@@ -1227,7 +1227,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               </div>
               <div className="prompt-meta">
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>⚙️ {modelId ? providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || '已选模型' : '自动选择'}</span>
-                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>🧠 {thinking==='auto'?'自动':thinking==='low'?'低':thinking==='medium'?'中':'高'}</span>
+                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>🧠 {orchThinking==='low'?'低':orchThinking==='medium'?'中':'高'}</span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{ratio<=0.2?'🚀 效率':ratio>=0.8?'💰 成本':'⚖️ 均衡'} {ratio}</span>
                 <span style={{ marginLeft:'auto' }}>{providers.length} 提供商 · {providers.flatMap(p=>p.models).length} 模型</span>
               </div>
