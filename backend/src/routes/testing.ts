@@ -60,7 +60,8 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     wsBroadcast('test_started', { modelId: model.modelId, providerName: prov.name, scope: 'quick' });
 
     try {
-      const report = await CapabilityTestEngine.runQuickTest(prov, key, model);
+      const activeKeyCount = getActiveKeysForProvider(pool, prov.id);
+      const report = await CapabilityTestEngine.runQuickTest(prov, key, model, undefined, { activeKeyCount });
       model.capabilities = report.capabilities;
       saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
@@ -86,7 +87,8 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     wsBroadcast('test_started', { modelId: model.modelId, providerName: prov.name, scope: 'standard' });
 
     try {
-      const report = await CapabilityTestEngine.runFullTest(prov, key, model);
+      const activeKeyCount = getActiveKeysForProvider(pool, prov.id);
+      const report = await CapabilityTestEngine.runFullTest(prov, key, model, undefined, { activeKeyCount });
       model.capabilities = report.capabilities;
       saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
@@ -132,8 +134,8 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
 
         try {
           const report = useQuick
-            ? await CapabilityTestEngine.runQuickTest(prov, key, model)
-            : await CapabilityTestEngine.runFullTest(prov, key, model);
+            ? await CapabilityTestEngine.runQuickTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) })
+            : await CapabilityTestEngine.runFullTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) });
           model.capabilities = report.capabilities;
       saveCapabilities(pool);
           return report;
@@ -210,8 +212,8 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
 
         try {
           const report = useQuick
-            ? await CapabilityTestEngine.runQuickTest(prov, key, model)
-            : await CapabilityTestEngine.runFullTest(prov, key, model);
+            ? await CapabilityTestEngine.runQuickTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) })
+            : await CapabilityTestEngine.runFullTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) });
           model.capabilities = report.capabilities;
       saveCapabilities(pool);
           return report;
@@ -281,14 +283,18 @@ function distributeKey<T>(items: T[], pool: ApiPoolManager, providerId: string):
   return items.map((item, idx) => ({ item, key: keys[idx % keys.length] }));
 }
 
-function estimateMs(useQuick: boolean, modelCount: number): number {
+function estimateMs(useQuick: boolean, modelCount: number, testsPerModel: number = 8): number {
   const base = useQuick ? 180000 : 720000;
-  return Math.min(base * modelCount, useQuick ? 540000 : 1800000);
+  const perModel = base * testsPerModel;
+  return Math.min(perModel * modelCount, useQuick ? 540000 : 1800000);
 }
 
 function handleTestError(pool: ApiPoolManager, providerId: string, keyId: string, error: any): void {
   const status = error?.status || error?.statusCode || error?.response?.status;
-  if (status === 401 || status === 403) {
+  if (status === 401 || status === 402 || status === 403) {
     pool.removeExhaustedKey(providerId, keyId);
   }
+}
+function getActiveKeysForProvider(pool: ApiPoolManager, providerId: string): number {
+  return pool.getActiveKeyCount(providerId);
 }

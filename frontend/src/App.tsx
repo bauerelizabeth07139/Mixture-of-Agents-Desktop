@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './services/api';
 import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServerConfig, SkillConfig, Project } from './types';
 import { TerminalPanel } from './components/Terminal';
@@ -46,7 +46,7 @@ function CapabilityBar({ label, value, color }: { label: string; value: number; 
   return (
     <div className="capability-bar">
       <span className="capability-label">{label}</span>
-      <div className="capability-track"><div className="capability-fill" style={{ width: value * 10 + '%', background: color }} /></div>
+      <div className="capability-track"><div className="capability-fill" style={{ width: value * 20 + '%', background: color }} /></div>
       <span className="capability-value">{value}</span>
     </div>
   );

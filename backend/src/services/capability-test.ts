@@ -15,7 +15,7 @@ export interface TestCase {
 
 export interface TestResult {
   testId: string; testName: string; category: string;
-  score: number; // 0-1 time-based
+  score: number; // 0-5 time-based
   details: string; latencyMs: number; tokensUsed: number;
 }
 
@@ -32,12 +32,13 @@ const QUICK_TIMEOUT_MS = 180000;   // 3 min per test
 const STANDARD_TIMEOUT_MS = 720000; // 12 min per test
 
 // --- Time-based scoring ---
-// Solved within 50% time limit => 1.0, linear decay to 0.8 at 100% time
+// Solved within 50% time limit => 5.0, linear decay to 2.0 at 100% time; unsolved => 0
 function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean): number {
   if (!passed) return 0;
   const half = timeLimitMs * 0.5;
-  if (latencyMs <= half) return 1.0;
-  return 0.8 + 0.2 * (1 - (latencyMs - half) / half);
+  if (latencyMs <= half) return 5;
+  // linear interpolation: half -> 5, full -> 2
+  return 2 + (5 - 2) * (1 - (latencyMs - half) / half);
 }
 
 // ============================================================
@@ -67,26 +68,7 @@ const QUICK_TESTS: TestCase[] = [
       const has = /def\s+two_sum/i.test(r) && (/dict|hashmap|enumerate/i.test(r) || /\{.*:.*\}/i.test(r));
       return { pass: has, details: has ? 'O(n) solution' : 'Missing or brute-force' };
     }
-  },
-  { id: 'q-code-3', name: 'Reverse String', category: 'code', difficulty: 'quick',
-    description: 'In-place string reverse (LeetCode #344)',
-    prompt: 'Write Python function reverse_string(s: list[str]) -> None that reverses the list in-place. Return ONLY the function.',
-    maxTokens: 400,
-    evaluate: (r) => {
-      const has = /def\s+reverse_string/i.test(r) && (/reverse|swap|\[::-1\]|left.*right|two.pointer/i.test(r));
-      return { pass: has, details: has ? 'Correct reverse' : 'Missing logic' };
-    }
-  },
-  { id: 'q-code-4', name: 'Valid Parentheses', category: 'code', difficulty: 'quick',
-    description: 'Valid Parentheses (LeetCode #20)',
-    prompt: 'Write Python function is_valid(s: str) -> bool that checks if brackets ()[]{} are properly matched. Return ONLY the function.',
-    maxTokens: 500,
-    evaluate: (r) => {
-      const has = /def\s+is_valid/i.test(r) && (/stack|append|pop|\[.*\]/i.test(r)) && /\(|\[|\{/.test(r);
-      return { pass: has, details: has ? 'Stack-based solution' : 'Missing bracket logic' };
-    }
-  },
-  // --- Reasoning (3 tests) - GSM8K/ARC style ---
+  },  // --- Reasoning (3 tests) - GSM8K/ARC style ---
   { id: 'q-reason-1', name: 'Multi-step Arithmetic', category: 'reasoning', difficulty: 'quick',
     description: 'GSM8K-style word problem',
     prompt: 'A store sells shirts for $15 each. On Monday they sold 23 shirts. On Tuesday they sold 17 shirts. On Wednesday they sold twice as many as Monday. What was the total revenue for the 3 days? Answer with just the dollar amount.',
@@ -104,17 +86,7 @@ const QUICK_TESTS: TestCase[] = [
       const has = /\bno\b/i.test(r) && (/not necessarily|cannot|doesn.t follow|not.*valid/i.test(r));
       return { pass: has, details: has ? 'Correct: cannot conclude' : 'Wrong logic' };
     }
-  },
-  { id: 'q-reason-3', name: 'Pattern Completion', category: 'reasoning', difficulty: 'quick',
-    description: 'Number sequence reasoning',
-    prompt: 'What comes next: 2, 6, 12, 20, 30, ?  Answer with just the number and explain the pattern in one sentence.',
-    maxTokens: 300,
-    evaluate: (r) => {
-      const has = /\b42\b/.test(r);
-      return { pass: has, details: has ? 'Correct: 42 (n*(n+1))' : 'Wrong pattern' };
-    }
-  },
-  // --- Instruction (2 tests) - IFEval style ---
+  },  // --- Instruction (2 tests) - IFEval style ---
   { id: 'q-inst-1', name: 'Strict Format', category: 'instruction', difficulty: 'quick',
     description: 'IFEval strict format following',
     prompt: 'Respond with EXACTLY this format, nothing else:\nName: GPT-4\nYear: 2023\nType: Language Model\nWords: 3\nNo extra text before or after.',
@@ -174,26 +146,7 @@ const STANDARD_TESTS: TestCase[] = [
       const has = /def\s+level_order/i.test(r) && (/deque|queue|BFS|level/i.test(r)) && /TreeNode/i.test(r);
       return { pass: has, details: has ? 'BFS level traversal' : 'Missing BFS logic' };
     }
-  },
-  { id: 's-code-3', name: 'Merge Intervals', category: 'code', difficulty: 'standard',
-    description: 'Merge Intervals (LeetCode #56)',
-    prompt: 'Write Python function merge(intervals: list[list[int]]) -> list[list[int]] that merges overlapping intervals. Return ONLY the function.',
-    maxTokens: 600,
-    evaluate: (r) => {
-      const has = /def\s+merge/i.test(r) && (/sort|sorted/i.test(r)) && (/append|push|result|merged/i.test(r));
-      return { pass: has, details: has ? 'Sort + merge approach' : 'Missing merge logic' };
-    }
-  },
-  { id: 's-code-4', name: 'Trie Implementation', category: 'code', difficulty: 'standard',
-    description: 'Implement Trie (LeetCode #208)',
-    prompt: 'Implement a Trie (prefix tree) class with insert(word), search(word) -> bool, startsWith(prefix) -> bool. Return ONLY the class in Python.',
-    maxTokens: 800,
-    evaluate: (r) => {
-      const has = /class\s+Trie/i.test(r) && /def\s+(insert|search|startsWith)/i.test(r) && (/children|dict|\{.*:.*\}/i.test(r));
-      return { pass: has, details: has ? 'Trie with children dict' : 'Missing trie structure' };
-    }
-  },
-  // --- Reasoning (3 tests) - MATH/Competition style ---
+  },  // --- Reasoning (3 tests) - MATH/Competition style ---
   { id: 's-reason-1', name: 'Combinatorics', category: 'reasoning', difficulty: 'standard',
     description: 'MATH-competition level combinatorics',
     prompt: 'In how many ways can 8 people be seated at a round table if two specific people must NOT sit next to each other? Show your reasoning step by step and give the final number.',
@@ -211,17 +164,7 @@ const STANDARD_TESTS: TestCase[] = [
       const has = (/contradiction|irrational/i.test(r)) && (/\^2|square|squared/i.test(r)) && (/rational|integer|even|odd|prime/i.test(r)) && r.length > 200;
       return { pass: has, details: has ? 'Valid proof structure' : 'Incomplete proof' };
     }
-  },
-  { id: 's-reason-3', name: 'Multi-constraint Puzzle', category: 'reasoning', difficulty: 'standard',
-    description: 'Complex multi-constraint logic',
-    prompt: 'Five houses in a row are painted different colors. Each owner has a different nationality, pet, drink, and car.\n1. The Brit lives in the red house.\n2. The Swede has a dog.\n3. The Dane drinks tea.\n4. The green house is immediately left of the white house.\n5. The green house owner drinks coffee.\n6. The person with a BMW has birds.\n7. The yellow house owner drives a Volvo.\n8. The person in the center house drinks milk.\n9. The Norwegian lives in the first house.\n10. The person who drives a Honda lives next to the person with cats.\n11. The person with a horse lives next to the Volvo driver.\n12. The Toyota driver drinks beer.\n13. The German drives a Mercedes.\n14. The Norwegian lives next to the blue house.\n15. The Honda driver has a neighbor who drinks water.\nWho owns the fish? Show step-by-step deduction.',
-    maxTokens: 2000,
-    evaluate: (r) => {
-      const has = /german|deutsch/i.test(r) && /fish/i.test(r);
-      return { pass: has, details: has ? 'Correct: German owns fish' : 'Wrong answer' };
-    }
-  },
-  // --- Instruction (2 tests) - Complex IFEval ---
+  },  // --- Instruction (2 tests) - Complex IFEval ---
   { id: 's-inst-1', name: 'Multi-constraint Output', category: 'instruction', difficulty: 'standard',
     description: 'Multiple simultaneous constraints',
     prompt: 'Write a recipe for pancakes following ALL these rules:\n1. Exactly 5 steps\n2. Each step starts with a number and period (e.g. "1.")\n3. Each step is between 15-25 words\n4. Step 3 must mention "butter"\n5. The last word of step 5 must be "golden"\n6. No step may use the word "then"\n7. Include exactly 3 ingredients mentioned total across all steps',
@@ -298,16 +241,17 @@ export class CapabilityTestEngine {
     tests: TestCase[],
     suite: 'quick' | 'standard',
     onProgress?: (current: number, total: number, testName: string) => void,
-    opts?: { perKeyConcurrency?: number; maxTotalConcurrency?: number },
+    opts?: { perKeyConcurrency?: number; maxTotalConcurrency?: number; activeKeyCount?: number },
   ): Promise<ModelTestReport> {
     const timeLimit = suite === 'quick' ? QUICK_TIMEOUT_MS : STANDARD_TIMEOUT_MS;
     const thinkingEffort = suite === 'quick' ? 'none' : 'high';
     const results: TestResult[] = [];
     const totalStart = Date.now();
 
+    const activeKeys = opts?.activeKeyCount ?? 1;
     const perKey = opts?.perKeyConcurrency ?? (suite === 'quick' ? 20 : 10);
     const maxTotal = opts?.maxTotalConcurrency ?? 80;
-    const concurrency = Math.min(perKey, maxTotal, Math.max(1, tests.length));
+    const concurrency = Math.min(perKey, maxTotal, activeKeys, Math.max(1, tests.length));
     let completed = 0;
 
     const tasks = tests.map((test, i) => async () => {
@@ -402,13 +346,13 @@ export class CapabilityTestEngine {
   }
 
   static async runQuickTest(provider: Provider, apiKey: ApiKeyEntry, model: Model,
-    onProgress?: (current: number, total: number, testName: string) => void): Promise<ModelTestReport> {
-    return this.runTest(provider, apiKey, model, QUICK_TESTS, 'quick', onProgress, { perKeyConcurrency: 20, maxTotalConcurrency: 80 });
+    onProgress?: (current: number, total: number, testName: string) => void, opts?: { activeKeyCount?: number }): Promise<ModelTestReport> {
+    return this.runTest(provider, apiKey, model, QUICK_TESTS, 'quick', onProgress, { perKeyConcurrency: 20, maxTotalConcurrency: 80, activeKeyCount: opts?.activeKeyCount ?? 1 });
   }
 
   static async runFullTest(provider: Provider, apiKey: ApiKeyEntry, model: Model,
-    onProgress?: (current: number, total: number, testName: string) => void): Promise<ModelTestReport> {
-    return this.runTest(provider, apiKey, model, STANDARD_TESTS, 'standard', onProgress, { perKeyConcurrency: 10, maxTotalConcurrency: 80 });
+    onProgress?: (current: number, total: number, testName: string) => void, opts?: { activeKeyCount?: number }): Promise<ModelTestReport> {
+    return this.runTest(provider, apiKey, model, STANDARD_TESTS, 'standard', onProgress, { perKeyConcurrency: 10, maxTotalConcurrency: 80, activeKeyCount: opts?.activeKeyCount ?? 1 });
   }
 
   static async testMultimodal(provider: Provider, apiKey: ApiKeyEntry, model: Model, imageUrl: string): Promise<{ score: number; details: string; latencyMs: number }> {
