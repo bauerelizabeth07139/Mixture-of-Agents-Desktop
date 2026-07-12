@@ -242,7 +242,8 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
   visible: boolean; onClose: () => void;
 }) {
   if (!visible) return null;
-  const allModels = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon })));
+  const allModelsRaw = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon })));
+  const allModels = [...new Map(allModelsRaw.map(m => [m.modelId, m])).values()];
   const totalKeys = providers.reduce((s, p) => s + p.apiKeys.length, 0);
   return (
     <div className="settings-drawer">
@@ -436,7 +437,8 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
 }
 // ─── Model Capabilities Panel ───
 function ModelPanel({ providers }: { providers: Provider[] }) {
-  const allModels = providers.flatMap(p => p.models.map(m => ({ ...m, providerName: p.name, providerIcon: p.icon })));
+  const allModelsRaw = providers.flatMap(p => p.models.map(m => ({ ...m, providerName: p.name, providerIcon: p.icon })));
+    const allModels = [...new Map(allModelsRaw.map(m => [m.modelId, m])).values()];
   const [selected, setSelected] = useState('');
   const model = allModels.find(m => m.id === selected);
   return (
@@ -556,7 +558,8 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
   const cnDetail = (d: string) => DETAIL_CN[d] || d;
 
 
-  const allModels = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
+  const allModelsRaw = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
+  const allModels = [...new Map(allModelsRaw.map(m => [m.modelId, m])).values()];
   const [scope, setScope] = useState<'single' | 'provider' | 'all'>('single');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('');
@@ -607,6 +610,7 @@ const estimateLabel = (ms?: number | null) => {
         setProgress({ current: totalCount, total: totalCount, label: '完成' });
       }
     } catch (e: any) { alert('测试失败: ' + e.message); }
+    onRefresh();
     setTesting(false);
   };
 

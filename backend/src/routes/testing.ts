@@ -63,6 +63,14 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
       const activeKeyCount = getActiveKeysForProvider(pool, prov.id);
       const report = await CapabilityTestEngine.runQuickTest(prov, key, model, undefined, { activeKeyCount });
       model.capabilities = report.capabilities;
+      // Sync capabilities to all models with the same modelId
+      for (const p of pool.getAllProviders()) {
+        for (const m of p.models) {
+          if (m.modelId === model.modelId && m.id !== model.id) {
+            m.capabilities = { ...report.capabilities };
+          }
+        }
+      }
       saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
       res.json({ scope: 'single', testSuite: 'quick', reports: [report], estimatedMs: estimateMs(true, 8), exceedsEstimated: report.totalTimeMs > estimateMs(true, 8) });
@@ -90,6 +98,14 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
       const activeKeyCount = getActiveKeysForProvider(pool, prov.id);
       const report = await CapabilityTestEngine.runFullTest(prov, key, model, undefined, { activeKeyCount });
       model.capabilities = report.capabilities;
+      // Sync capabilities to all models with the same modelId
+      for (const p of pool.getAllProviders()) {
+        for (const m of p.models) {
+          if (m.modelId === model.modelId && m.id !== model.id) {
+            m.capabilities = { ...report.capabilities };
+          }
+        }
+      }
       saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
       res.json({ scope: 'single', testSuite: 'standard', reports: [report], estimatedMs: estimateMs(false, 8), exceedsEstimated: report.totalTimeMs > estimateMs(false, 8) });
@@ -137,6 +153,14 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
             ? await CapabilityTestEngine.runQuickTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) })
             : await CapabilityTestEngine.runFullTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) });
           model.capabilities = report.capabilities;
+      // Sync capabilities to all models with the same modelId
+      for (const p of pool.getAllProviders()) {
+        for (const m of p.models) {
+          if (m.modelId === model.modelId && m.id !== model.id) {
+            m.capabilities = { ...report.capabilities };
+          }
+        }
+      }
       saveCapabilities(pool);
           return report;
         } catch (err: any) {
@@ -215,6 +239,14 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
             ? await CapabilityTestEngine.runQuickTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) })
             : await CapabilityTestEngine.runFullTest(prov, key, model, undefined, { activeKeyCount: getActiveKeysForProvider(pool, prov.id) });
           model.capabilities = report.capabilities;
+      // Sync capabilities to all models with the same modelId
+      for (const p of pool.getAllProviders()) {
+        for (const m of p.models) {
+          if (m.modelId === model.modelId && m.id !== model.id) {
+            m.capabilities = { ...report.capabilities };
+          }
+        }
+      }
       saveCapabilities(pool);
           return report;
         } catch (err: any) {
