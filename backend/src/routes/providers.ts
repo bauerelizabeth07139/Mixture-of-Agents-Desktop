@@ -17,7 +17,7 @@ function classifyModelType(modelId: string, raw?: any): ModelType {
   if (raw?.model_type === 'tts' || raw?.task === 'text-to-speech' || raw?.task === 'tts') return 'tts';
   if (/\b(whisper|asr|stt|speech.to.text|transcri|paraformer|sense.voice|funasr)\b/.test(id)) return 'stt';
   if (raw?.model_type === 'stt' || raw?.task === 'speech-recognition' || raw?.task === 'asr') return 'stt';
-  if (/\b(gpt-4o(?!-mini)|gpt-4-turbo|gpt-4-vision|claude-3|claude-sonnet-4|claude-opus|gemini-pro-vision|gemini-1\.5|gemini-2|qwen-vl|qwen2-vl|qwen2\.5-vl|internvl|minicpm-v|llava|cogvlm|glm-4v|deepseek-vl|mimo-v2-omni|omni)\b/.test(id)) return 'vlm';
+  if (/\b(gpt-4o(?!-mini)|gpt-4-turbo|gpt-4-vision|claude-3|claude-sonnet-4|claude-opus|gemini-pro-vision|gemini-1\.5|gemini-2|qwen-vl|qwen2-vl|qwen2\.5-vl|internvl|minicpm-v|llava|cogvlm|glm-4v|deepseek-vl|mimo-v2-omni|mimo-v2\.5|mimo-v2\.5-pro|omni)\b/.test(id)) return 'vlm';
   if (/\b(vision|vl|vlm|multimodal|omni)\b/.test(id)) return 'vlm';
   if (raw?.model_type === 'vlm' || raw?.model_type === 'multimodal') return 'vlm';
   return 'llm';

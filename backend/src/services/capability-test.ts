@@ -1,4 +1,4 @@
-import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
+﻿import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
 import { LLMClient } from './llm-client';
 import { updateModelPricing } from './price-fetcher';
 
@@ -22,54 +22,62 @@ function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean, corr
   return Math.round(base * correctness * 1000) / 1000;
 }
 
+
 const QUICK_TESTS: TestCase[] = [
-  { id: 'q-code-1', name: 'Rotate Array', category: 'code', difficulty: 'quick',
-    description: 'LeetCode #56', prompt: 'Write Python function merge(intervals: list[list[int]]) -> list[list[int]] that merges all overlapping intervals. Return ONLY the function.', maxTokens: 800,
+  { id: 'q-code-1', name: 'Merge Intervals', category: 'code', difficulty: 'quick',
+    description: 'LeetCode #56', prompt: 'Write Python function merge(intervals: list[list[int]]) -> list[list[int]] that merges all overlapping intervals. Intervals overlap if start <= previous end. Return sorted merged list. Return ONLY the function, no explanation.', maxTokens: 800,
     evaluate: (r) => {
-      const checks = [/def\s+rotate/i, /k\s*%|k\s*mod|reverse|n\s*-\s*k/i, /nums|len|length/i, /return|None/i, r.length > 50 ? /./ : /(?!)/];
+      const checks = [/def\s+merge/i, /sort|sorted/i, /append|push|\bresult\b/i, /for|while/i, /return/i, r.length > 60 ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: m+'/'+checks.length+' checks' };
+      return { pass: m >= 4, correctness: m/checks.length, details: m+'/'+checks.length+' checks' };
     }
   },
-  { id: 'q-code-2', name: 'Valid BST', category: 'code', difficulty: 'quick',
-    description: 'LeetCode #208', prompt: 'Implement a Trie (prefix tree) with insert(word), search(word)->bool, startsWith(prefix)->bool. Return ONLY the Python class.', maxTokens: 800,
+  { id: 'q-code-2', name: 'Trie Implementation', category: 'code', difficulty: 'quick',
+    description: 'LeetCode #208', prompt: 'Implement class Trie with methods insert(word), search(word)->bool, startsWith(prefix)->bool. Use a dict-based trie. Return ONLY the Python class, no explanation.', maxTokens: 800,
     evaluate: (r) => {
-      const checks = [/def\s+is_valid_bst|def\s+isValidBST/i, /class\s+TreeNode/i, /left|right/i, /float|inf|None|NoneType|less|greater/i, /inorder|recurs|helper|range/i];
+      const checks = [/class\s+Trie/i, /def\s+insert/i, /def\s+search/i, /def\s+startsWith/i, /children|next|\{|\}/i, /return\s+(True|False|bool)/i];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: m+'/'+checks.length+' checks' };
+      return { pass: m >= 4, correctness: m/checks.length, details: m+'/'+checks.length+' checks' };
     }
   },
-  { id: 'q-reason-1', name: 'Factory Widgets', category: 'reasoning', difficulty: 'quick',
-    description: 'GSM8K harder', prompt: 'A train travels 120km at 60km/h, stops for 15min, then travels 180km at 90km/h. What is the average speed for the entire journey (including stop time)? Show each step with exact values.', maxTokens: 600,
+  { id: 'q-reason-1', name: 'Train Speed', category: 'reasoning', difficulty: 'quick',
+    description: 'GSM8K applied math', prompt: 'A train travels 120km at 60km/h, stops for 15min, then travels 180km at 90km/h. What is the average speed for the entire journey including stop time? Show each step with exact values and final answer as a decimal.', maxTokens: 600,
     evaluate: (r) => {
-      const checks = [/[12].*defect|5.*%|240.*0\.05|240.*5/, /228|good|remaining|non.?defect/, /37|leftover|total|265/, /33.*box|full.*box|box.*33/];
+      const checks = [/120.*60|60.*120|2\s*h/i, /180.*90|90.*180|2\s*h/i, /15\s*min|0\.25\s*h|1\/4/i, /300|total.*dist|dist.*total/i, /4\.25|4\s*h\s*15|4\.\d+.*h/i, /70\.\d|average.*speed|speed.*aver/i];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: m+'/4 steps' };
+      return { pass: m >= 4, correctness: m/checks.length, details: m+'/'+checks.length+' steps' };
     }
   },
-  { id: 'q-reason-2', name: 'Logic Puzzle', category: 'reasoning', difficulty: 'quick',
-    description: 'ARC harder', prompt: 'Five houses in a row are painted red, blue, green, yellow, white. 1) Red is left of blue. 2) Green is immediately right of yellow. 3) White is not adjacent to green. 4) Yellow is not at either end. What is the order? Show deduction.', maxTokens: 600,
+  { id: 'q-reason-2', name: 'House Colors', category: 'reasoning', difficulty: 'quick',
+    description: 'Logic puzzle', prompt: 'Five houses in a row painted red, blue, green, yellow, white. 1) Red is left of blue. 2) Green is immediately right of yellow. 3) White is not adjacent to green. 4) Yellow is not at either end. What is the order from left to right? Show deduction steps.', maxTokens: 600,
     evaluate: (r) => {
-      const checks = [/yellow|green/i, /red|blue/i, /white/i, /order|position|left|right|adjacent/i];
+      const checks = [/yellow/i, /green/i, /red.*blue|blue.*red/i, /white/i, /position|left|right|adjacent|constraint/i, /order|row|排列|顺序/i];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 2, correctness: m/checks.length, details: m+'/4 logic' };
+      return { pass: m >= 3, correctness: m/checks.length, details: m+'/'+checks.length+' logic' };
     }
   },
   { id: 'q-inst-1', name: 'YAML Format', category: 'instruction', difficulty: 'quick',
-    description: 'IFEval strict YAML', prompt: 'Respond with EXACTLY this YAML format, nothing else:\nlanguage: Python\nversion: 3.12\nfeatures:\n  - dynamic typing\n  - garbage collection\n  - list comprehensions', maxTokens: 200,
+    description: 'IFEval strict YAML', prompt: 'Output EXACTLY this YAML, nothing else, no code block:\nframework: Django\nversion: 5.0\nfeatures:\n  - ORM\n  - migrations\n  - middleware', maxTokens: 200,
     evaluate: (r) => {
-      const checks = [/language:\s*Python/i, /version:\s*3\.12/i, /features:/i, /dynamic\s*typing|garbage|list\s*comprehension/i];
-      const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: m+'/4 format' };
+      const clean = r.replace(/```yaml?\s*/g,'').replace(/```\s*/g,'').trim();
+      const checks = [/framework:\s*Django/i, /version:\s*5\.0/i, /features:/i, /ORM/i, /migrations/i, /middleware/i];
+      const m = checks.filter(c => c.test(clean)).length;
+      return { pass: m >= 5, correctness: m/checks.length, details: m+'/'+checks.length+' format' };
     }
   },
   { id: 'q-inst-2', name: 'Bullet Constraints', category: 'instruction', difficulty: 'quick',
-    description: 'IFEval bullets', prompt: 'List exactly 3 benefits of exercise. Each bullet: "- " prefix, one sentence, 10-20 words. No numbering, no extra text.', maxTokens: 400,
+    description: 'IFEval bullets', prompt: 'List exactly 4 benefits of exercise. Rules: Each bullet starts with "- ", one sentence, 12-20 words. No numbering. No extra text before or after.', maxTokens: 400,
     evaluate: (r) => {
-      const bullets = r.match(/^-.+$/gm) || [];
-      const checks = [bullets.length === 3 ? /./ : /(?!)/, bullets.every((b: string) => /^-\s/.test(b)) ? /./ : /(?!)/, r.length > 50 ? /./ : /(?!)/];
-      const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 2, correctness: m/checks.length, details: bullets.length+' bullets, '+m+'/3' };
+      const bullets = r.trim().split('\n').filter((l: string) => /^-\s/.test(l.trim()));
+      const wordCounts = bullets.map((b: string) => b.replace(/^-\s*/, '').split(/\s+/).length);
+      const checks = [
+        bullets.length === 4 ? /./ : /(?!)/,
+        bullets.every((b: string) => /^-\s/.test(b.trim())) ? /./ : /(?!)/,
+        wordCounts.every((w: number) => w >= 10 && w <= 22) ? /./ : /(?!)/,
+        r.trim().split('\n').filter((l: string) => l.trim().length > 0).length === 4 ? /./ : /(?!)/,
+      ];
+      const m = checks.filter(Boolean).length;
+      return { pass: m >= 3, correctness: m/checks.length, details: bullets.length+' bullets, '+m+'/4' };
     }
   },
   { id: 'q-chat-1', name: 'Recursion Analogy', category: 'chat', difficulty: 'quick',
@@ -82,9 +90,9 @@ const QUICK_TESTS: TestCase[] = [
     }
   },
   { id: 'q-chat-2', name: 'Multi-translate', category: 'chat', difficulty: 'quick',
-    description: 'MT-Bench translation', prompt: 'Translate "Knowledge is power" into Chinese, German, and Arabic. One per line, labeled.', maxTokens: 400,
+    description: 'MT-Bench translation', prompt: 'Translate "Knowledge is power" into Chinese, Japanese, and Arabic. One per line, labeled with language name.', maxTokens: 400,
     evaluate: (r) => {
-      const checks = [/chinese|[\u4e00-\u9fff]/i, /german|wissen|[\u00c4-\u00fc]/i, /arabic|[\u0600-\u06ff]/i, r.trim().split('\n').length >= 3 ? /./ : /(?!)/];
+      const checks = [/[\u4e00-\u9fff]/i, /[\u3040-\u30ff]/i, /[\u0600-\u06ff]/i, r.trim().split('\n').filter((l:string)=>l.trim().length>3).length >= 3 ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 3, correctness: m/checks.length, details: m+'/4 langs' };
     }
@@ -93,60 +101,63 @@ const QUICK_TESTS: TestCase[] = [
 
 const STANDARD_TESTS: TestCase[] = [
   { id: 's-code-1', name: 'LRU Cache', category: 'code', difficulty: 'standard',
-    description: 'LeetCode #146', prompt: 'Implement class LRUCache with O(1) get/put. OrderedDict or doubly-linked list + dict. Return ONLY Python class.', maxTokens: 1500,
+    description: 'LeetCode #146', prompt: 'Implement class LRUCache with O(1) get(key) and put(key,value). Use OrderedDict or doubly-linked list + dict. Return ONLY the Python class, no explanation.', maxTokens: 1500,
     evaluate: (r) => {
-      const checks = [/class\s+LRUCache/i, /def\s+__init__/i, /def\s+get/i, /def\s+put/i, /OrderedDict|DLinkedNode|move_to_end|double.*link/i, /dict|\{|:\s/i, /popitem|remove|evict|delete/i];
+      const checks = [/class\s+LRUCache/i, /def\s+__init__/i, /def\s+get/i, /def\s+put/i, /OrderedDict|DLinkedNode|move_to_end|double.*link|node/i, /capacity/i, /popitem|remove|evict|delete|tail/i];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 5, correctness: m/checks.length, details: m+'/7 impl' };
     }
   },
-  { id: 's-code-2', name: 'Topological Sort', category: 'code', difficulty: 'standard',
-    description: 'LeetCode #200', prompt: 'Write Python function num_islands(grid: list[list[str]]) -> int counting connected 1s (land) in a 2D grid of 0s and 1s. Return ONLY the function.', maxTokens: 1200,
+  { id: 's-code-2', name: 'Number of Islands', category: 'code', difficulty: 'standard',
+    description: 'LeetCode #200', prompt: 'Write Python function numIslands(grid: list[list[str]]) -> int counting connected groups of "1" (land) in a 2D grid of "0"s and "1"s using BFS or DFS. Return ONLY the function.', maxTokens: 1200,
     evaluate: (r) => {
-      const checks = [/def\s+find_order/i, /deque|queue|BFS|popleft|topological/i, /prerequisite|graph|adjacen/i, /indegree|in_degree|degree/i, /append|result|order/i, /return\s*\[\]|return\s*result/i];
+      const checks = [/def\s*numIslands|def\s*num_islands/i, /visited|seen|marked|grid\[|grid\[/i, /BFS|DFS|deque|stack|queue|bfs|dfs/i, /for|while|directions|neighbor|adjacent|dx|dy/i, /return\s+\w/i, /len\(grid|len\(grid\[0\]|rows|cols|m\s*,\s*n/i];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: m+'/6 topo' };
+      return { pass: m >= 4, correctness: m/checks.length, details: m+'/6 island' };
     }
   },
-  { id: 's-reason-1', name: 'Modular Arithmetic', category: 'reasoning', difficulty: 'standard',
-    description: 'AIME number theory', prompt: 'Find the last two digits of 7^2024. Show the cycle pattern of last two digits and modular arithmetic. Give the final two-digit answer.', maxTokens: 800,
+  { id: 's-reason-1', name: 'Last Two Digits', category: 'reasoning', difficulty: 'standard',
+    description: 'AIME number theory', prompt: 'Find the last two digits of 7^2024. Show the cycle pattern of last two digits of powers of 7, use modular arithmetic, and give the final two-digit answer.', maxTokens: 800,
     evaluate: (r) => {
-      const checks = [/07|49|43|01|cycle|pattern|last.*two/i, /\b4\b.*cycle|cycle.*\b4\b|repeats?.*\b4\b|period/i, /2024\s*(mod|%)|mod.*4|remainder.*0/i, /\b01\b|answer.*01|last.*two.*01/i];
+      const checks = [/07|49|43|01/i, /cycle|period|repeat|pattern/i, /mod\s*100|%\s*100|modular/i, /2024.*mod|mod.*2024|remainder/i, /\b01\b/];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: m+'/4 modular' };
+      return { pass: m >= 3, correctness: m/checks.length, details: m+'/'+checks.length+' mod' };
     }
   },
-  { id: 's-reason-2', name: 'Sum of Squares Proof', category: 'reasoning', difficulty: 'standard',
-    description: 'MATH competition', prompt: 'Prove by induction: 1^2+2^2+...+n^2 = n(n+1)(2n+1)/6 for all n>=1. Complete proof with base case and inductive step. Show all algebra.', maxTokens: 2000,
+  { id: 's-reason-2', name: 'Sum of Squares', category: 'reasoning', difficulty: 'standard',
+    description: 'MATH competition', prompt: 'Prove by mathematical induction: 1^2 + 2^2 + ... + n^2 = n(n+1)(2n+1)/6 for all n>=1. Show base case and inductive step with all algebra.', maxTokens: 2000,
     evaluate: (r) => {
-      const checks = [/base\s*case|n\s*=\s*1|n=1/i, /1\s*=\s*1|1\s*\*\s*2\s*\*\s*3|1\^2.*=.*1/i, /inductive.*hypothes|assum.*k|suppose.*k/i, /k\s*\+\s*1|k\+1/i, /k\s*\(k\s*\+\s*1\)\s*\(2k\s*\+\s*1\)|sigma|summation/i, /\(k\s*\+\s*1\)\s*\(k\s*\+\s*2\)\s*\(2k\s*\+\s*3\)|2k\s*\+\s*3/i];
+      const checks = [/base\s*case|n\s*=\s*1|n=1/i, /1\s*=\s*1|1\^2.*=.*1|1\s*\*\s*2/i, /inductive.*hypothes|assum.*k|suppose.*k/i, /k\s*\+\s*1|k\+1/i, /k\s*\(k\s*\+\s*1\)\s*\(2k|k.*k.*1.*2k/i, /\(k\s*\+\s*1\)\s*\(k\s*\+\s*2\)|2k\s*\+\s*3|2\(k\+1\)\+1/i];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 4, correctness: m/checks.length, details: m+'/6 proof' };
     }
   },
-  { id: 's-inst-1', name: 'Quantum Essay', category: 'instruction', difficulty: 'standard',
-    description: 'IFEval expert', prompt: 'Write exactly 5 sentences about machine learning. Rules: 1) Each starts with different letter (M,A,C,I,N) 2) Sentence 2 contains "gradient" 3) Sentence 4 is a question 4) Last ends with "intelligence." 5) No sentence may contain the word "is" 6) Each sentence 10-18 words.', maxTokens: 600,
+  { id: 's-inst-1', name: 'ML Essay', category: 'instruction', difficulty: 'standard',
+    description: 'IFEval expert', prompt: 'Write exactly 5 sentences about machine learning. Rules: 1) Each sentence starts with a different letter from M,A,C,I,N 2) Sentence 2 must contain "gradient" 3) Sentence 4 must be a question 4) Last sentence must end with the word "intelligence." 5) No sentence may contain the word "is" 6) Each sentence must be 10-18 words.', maxTokens: 600,
     evaluate: (r) => {
-      const lines = r.split(/[.!?]+/).map((s: string) => s.trim()).filter((s: string) => s.length > 3);
+      const lines = r.split(/[.!?]+/).map((s: string) => s.trim()).filter((s: string) => s.length > 5);
       const starts = lines.slice(0, 5).map((s: string) => s.charAt(0).toUpperCase());
       const uniqStarts = new Set(starts);
       const checks = [
         lines.length >= 4 && lines.length <= 6 ? /./ : /(?!)/,
         uniqStarts.size >= 4 ? /./ : /(?!)/,
-        /entanglement/i.test(r) ? /./ : /(?!)/,
-        /computing\.?\s*$/mi.test(r.trim()) ? /./ : /(?!)/,
-        !/\bthe\b/i.test(r) ? /./ : /(?!)/, !/\bis\b/i.test(r) ? /./ : /(?!)/,
+        /gradient/i.test(r) ? /./ : /(?!)/,
+        /\?/.test(r) ? /./ : /(?!)/,
+        /intelligence\.?\s*$/i.test(r.trim()) ? /./ : /(?!)/,
+        !/\bis\b/i.test(r) ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: lines.length+' sent, starts='+starts.join('')+', '+m+'/5' };
+      return { pass: m >= 4, correctness: m/checks.length, details: lines.length+' sent, starts='+starts.join('')+', '+m+'/6' };
     }
   },
   { id: 's-inst-2', name: 'Complex JSON', category: 'instruction', difficulty: 'standard',
-    description: 'IFEval complex JSON', prompt: 'Generate JSON company: {"name":string,"founded":1900-2024,"employees":[{"name":string,"role":string,"salary":number>30000}],"active":boolean,"website":https URL,"rating":float 1.00-5.00 2 decimals}. 3 employees, ONLY JSON.', maxTokens: 1000,
+    description: 'IFEval complex JSON', prompt: 'Generate a JSON object for a company with: name (string), founded (number 1900-2024), employees (array of exactly 3 objects each with name:string, role:string, salary:number>30000), active (boolean), website (string starting with https://), rating (number between 1.00-5.00 with exactly 2 decimal places). Output ONLY valid JSON, no markdown.', maxTokens: 1000,
     evaluate: (r) => {
       try {
         const clean = r.replace(/```json?\s*/g,'').replace(/```\s*/g,'').trim();
         const obj = JSON.parse(clean);
+        const ratingStr = String(obj.rating || '');
+        const ratingOk = /^\d+\.\d{2}$/.test(ratingStr) && obj.rating >= 1 && obj.rating <= 5;
         const checks = [
           typeof obj.name==='string'&&obj.name.length>0,
           typeof obj.founded==='number'&&obj.founded>=1900&&obj.founded<=2024,
@@ -154,7 +165,7 @@ const STANDARD_TESTS: TestCase[] = [
           obj.employees?.every((e:any)=>typeof e.name==='string'&&typeof e.role==='string'&&typeof e.salary==='number'&&e.salary>30000),
           typeof obj.active==='boolean',
           typeof obj.website==='string'&&/^https:\/\//.test(obj.website),
-          typeof obj.rating==='number'&&/^\d+\.\d{2}$/.test(String(obj.rating)),
+          ratingOk,
         ];
         const m = checks.filter(Boolean).length;
         return { pass: m>=6, correctness: m/checks.length, details: m+'/7 JSON' };
@@ -162,32 +173,30 @@ const STANDARD_TESTS: TestCase[] = [
     }
   },
   { id: 's-chat-1', name: 'Code Review', category: 'chat', difficulty: 'standard',
-    description: 'MT-Bench expert review', prompt: 'Senior dev review. 3 numbered suggestions, 1-2 sentences each:\n\npython\ndef process(data):\n  result = []\n  for d in data:\n    if d != None:\n      result.append(d * 2)\n  return result', maxTokens: 800,
+    description: 'MT-Bench expert review', prompt: 'Act as a senior developer. Provide exactly 3 numbered suggestions (1-2 sentences each) to improve this code:\n\npython\ndef process(data):\n  result = []\n  for d in data:\n    if d != None:\n      result.append(d * 2)\n  return result', maxTokens: 800,
     evaluate: (r) => {
       const sug = r.match(/\d+[\.\)]\s*.+/g) || [];
-      const checks = [sug.length >= 3 ? /./ : /(?!)/, /is\s+not\s*None|is\s+None/i, /type.*hint|annotation|->|:.*list|:.*int/i, /error|edge|empty|exception|comprehension/i];
+      const checks = [sug.length >= 3 ? /./ : /(?!)/, /is\s+not\s*None|is\s+None|!=\s*None/i, /type.*hint|annotation|->|:.*list|:.*int/i, /edge|empty|exception|comprehension|filter|list\s*comp/i];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 3, correctness: m/checks.length, details: sug.length+' sug, '+m+'/4' };
     }
   },
-  { id: 's-chat-2', name: 'Mystery Story', category: 'chat', difficulty: 'standard',
-    description: 'MT-Bench expert', prompt: 'Write a 7-sentence thriller story. Rules: 1) First word "She" 2) Last word "silence." 3) Three dialogues in quotes 4) Contains "shadow" and "secret" and "midnight" 5) No two sentences start with same letter 6) Sentence 4 is a question 7) Each sentence 10-25 words.', maxTokens: 800,
+  { id: 's-chat-2', name: 'Thriller Story', category: 'chat', difficulty: 'standard',
+    description: 'MT-Bench creative', prompt: 'Write a 7-sentence thriller story. Rules: 1) First word must be "She" 2) Last word must be "silence." 3) Must contain exactly 3 dialogues in double quotes 4) Must contain words "shadow", "secret", and "midnight" 5) No two sentences may start with the same letter 6) Sentence 4 must be a question 7) Each sentence must be 10-25 words.', maxTokens: 800,
     evaluate: (r) => {
       const sent = r.trim().split(/[.!?]+/).filter((s:string) => s.trim().length > 5);
-      const starts = sent.slice(0, 6).map((s:string) => s.trim().charAt(0).toUpperCase());
+      const starts = sent.slice(0, 7).map((s:string) => s.trim().charAt(0).toUpperCase());
       const uniqStarts = new Set(starts);
-      const dialogs = r.match(/"[^"]+"|'[^']+'/g) || [];
-      const checks = [/\bShe\b/i.test(r) ? /./ : /(?!)/, /silence\.?\s*$/i.test(r.trim()) ? /./ : /(?!)/, dialogs.length >= 3 ? /./ : /(?!)/, /shadow/i.test(r) ? /./ : /(?!)/, /secret/i.test(r) ? /./ : /(?!)/, /midnight/i.test(r) ? /./ : /(?!)/, /\?/.test(r) ? /./ : /(?!)/];
+      const dialogs = r.match(/"[^"]{5,}"/g) || [];
+      const checks = [/\bShe\b/.test(r) ? /./ : /(?!)/, /silence\.?\s*$/i.test(r.trim()) ? /./ : /(?!)/, dialogs.length >= 3 ? /./ : /(?!)/, /shadow/i.test(r) ? /./ : /(?!)/, /secret/i.test(r) ? /./ : /(?!)/, /midnight/i.test(r) ? /./ : /(?!)/, /\?/.test(r) ? /./ : /(?!)/, uniqStarts.size >= 5 ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: sent.length+' sent, '+dialogs.length+' dialog, '+m+'/7' };
+      return { pass: m >= 5, correctness: m/checks.length, details: sent.length+' sent, '+dialogs.length+' dialog, '+m+'/8' };
     }
   },
 ];
 
 
 // Test Engine
-// ============================================================
-
 export class CapabilityTestEngine {
   private static async runWithConcurrency(tasks: Array<() => Promise<any>>, limit: number): Promise<any[]> {
     const results = new Array(tasks.length);
@@ -195,11 +204,7 @@ export class CapabilityTestEngine {
     const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
       while (idx < tasks.length) {
         const current = idx++;
-        try {
-          results[current] = await tasks[current]();
-        } catch (err) {
-          results[current] = err;
-        }
+        try { results[current] = await tasks[current](); } catch (err) { results[current] = err; }
       }
     });
     await Promise.all(workers);
