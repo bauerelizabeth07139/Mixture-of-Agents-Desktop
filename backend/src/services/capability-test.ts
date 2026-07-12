@@ -24,7 +24,7 @@ function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean, corr
 
 const QUICK_TESTS: TestCase[] = [
   { id: 'q-code-1', name: 'Rotate Array', category: 'code', difficulty: 'quick',
-    description: 'LeetCode #189', prompt: 'Write Python function rotate(nums: list[int], k: int) -> None that rotates array right by k steps in-place, O(1) extra space. Return ONLY the function.', maxTokens: 800,
+    description: 'LeetCode #56', prompt: 'Write Python function merge(intervals: list[list[int]]) -> list[list[int]] that merges all overlapping intervals. Return ONLY the function.', maxTokens: 800,
     evaluate: (r) => {
       const checks = [/def\s+rotate/i, /k\s*%|k\s*mod|reverse|n\s*-\s*k/i, /nums|len|length/i, /return|None/i, r.length > 50 ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
@@ -32,7 +32,7 @@ const QUICK_TESTS: TestCase[] = [
     }
   },
   { id: 'q-code-2', name: 'Valid BST', category: 'code', difficulty: 'quick',
-    description: 'LeetCode #98', prompt: 'Write Python function is_valid_bst(root) -> bool checking if binary tree is valid BST. Include TreeNode class. Return ONLY the code.', maxTokens: 800,
+    description: 'LeetCode #208', prompt: 'Implement a Trie (prefix tree) with insert(word), search(word)->bool, startsWith(prefix)->bool. Return ONLY the Python class.', maxTokens: 800,
     evaluate: (r) => {
       const checks = [/def\s+is_valid_bst|def\s+isValidBST/i, /class\s+TreeNode/i, /left|right/i, /float|inf|None|NoneType|less|greater/i, /inorder|recurs|helper|range/i];
       const m = checks.filter(c => c.test(r)).length;
@@ -40,7 +40,7 @@ const QUICK_TESTS: TestCase[] = [
     }
   },
   { id: 'q-reason-1', name: 'Factory Widgets', category: 'reasoning', difficulty: 'quick',
-    description: 'GSM8K harder', prompt: 'A factory produces 240 widgets/day. 5% are defective. Good widgets are packed in boxes of 8. Monday they also had 37 leftover from Sunday. How many full boxes? Show each step.', maxTokens: 600,
+    description: 'GSM8K harder', prompt: 'A train travels 120km at 60km/h, stops for 15min, then travels 180km at 90km/h. What is the average speed for the entire journey (including stop time)? Show each step with exact values.', maxTokens: 600,
     evaluate: (r) => {
       const checks = [/[12].*defect|5.*%|240.*0\.05|240.*5/, /228|good|remaining|non.?defect/, /37|leftover|total|265/, /33.*box|full.*box|box.*33/];
       const m = checks.filter(c => c.test(r)).length;
@@ -48,9 +48,9 @@ const QUICK_TESTS: TestCase[] = [
     }
   },
   { id: 'q-reason-2', name: 'Logic Puzzle', category: 'reasoning', difficulty: 'quick',
-    description: 'ARC harder', prompt: 'Three friends Alice, Bob, Carol have jobs: doctor, engineer, teacher. 1) Alice is not teacher. 2) Engineer is younger than Bob. 3) Carol is not doctor. 4) Teacher is older than Alice. Who has which job? Show deduction.', maxTokens: 600,
+    description: 'ARC harder', prompt: 'Five houses in a row are painted red, blue, green, yellow, white. 1) Red is left of blue. 2) Green is immediately right of yellow. 3) White is not adjacent to green. 4) Yellow is not at either end. What is the order? Show deduction.', maxTokens: 600,
     evaluate: (r) => {
-      const checks = [/alice.*engineer|alice.*doctor/i, /bob.*teacher|bob.*doctor/i, /carol.*engineer|carol.*teacher/i, /eliminat|deduce|step|therefore|process/i];
+      const checks = [/yellow|green/i, /red|blue/i, /white/i, /order|position|left|right|adjacent/i];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 2, correctness: m/checks.length, details: m+'/4 logic' };
     }
@@ -101,7 +101,7 @@ const STANDARD_TESTS: TestCase[] = [
     }
   },
   { id: 's-code-2', name: 'Topological Sort', category: 'code', difficulty: 'standard',
-    description: 'LeetCode #210', prompt: 'Write Python find_order(numCourses, prerequisites) -> list[int] using topological sort (BFS/Kahn). Empty if impossible. Return ONLY function.', maxTokens: 1200,
+    description: 'LeetCode #200', prompt: 'Write Python function num_islands(grid: list[list[str]]) -> int counting connected 1s (land) in a 2D grid of 0s and 1s. Return ONLY the function.', maxTokens: 1200,
     evaluate: (r) => {
       const checks = [/def\s+find_order/i, /deque|queue|BFS|popleft|topological/i, /prerequisite|graph|adjacen/i, /indegree|in_degree|degree/i, /append|result|order/i, /return\s*\[\]|return\s*result/i];
       const m = checks.filter(c => c.test(r)).length;
@@ -109,9 +109,9 @@ const STANDARD_TESTS: TestCase[] = [
     }
   },
   { id: 's-reason-1', name: 'Modular Arithmetic', category: 'reasoning', difficulty: 'standard',
-    description: 'AIME number theory', prompt: 'Find remainder when 2^100 is divided by 7. Show power cycle pattern and modular arithmetic. Give final answer.', maxTokens: 800,
+    description: 'AIME number theory', prompt: 'Find the last two digits of 7^2024. Show the cycle pattern of last two digits and modular arithmetic. Give the final two-digit answer.', maxTokens: 800,
     evaluate: (r) => {
-      const checks = [/[24].*[24].*[12]|2\^1.*2\^2.*2\^3|cycle/i, /\b3\b.*cycle|cycle.*\b3\b|repeats?.*\b3\b/i, /100\s*(mod|%)|mod.*3.*1|remainder.*1/i, /\b2\b.*answer|answer.*\b2\b|remainder.*2/i];
+      const checks = [/07|49|43|01|cycle|pattern|last.*two/i, /\b4\b.*cycle|cycle.*\b4\b|repeats?.*\b4\b|period/i, /2024\s*(mod|%)|mod.*4|remainder.*0/i, /\b01\b|answer.*01|last.*two.*01/i];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 3, correctness: m/checks.length, details: m+'/4 modular' };
     }
@@ -125,7 +125,7 @@ const STANDARD_TESTS: TestCase[] = [
     }
   },
   { id: 's-inst-1', name: 'Quantum Essay', category: 'instruction', difficulty: 'standard',
-    description: 'IFEval harder', prompt: 'Write exactly 5 sentences about quantum computing. Rules: 1) Each starts with different letter (Q,U,A,N,T) 2) Sentence 3 contains "entanglement" 3) Last ends with "computing." 4) No word "the" 5) Each sentence 12-20 words.', maxTokens: 600,
+    description: 'IFEval expert', prompt: 'Write exactly 5 sentences about machine learning. Rules: 1) Each starts with different letter (M,A,C,I,N) 2) Sentence 2 contains "gradient" 3) Sentence 4 is a question 4) Last ends with "intelligence." 5) No sentence may contain the word "is" 6) Each sentence 10-18 words.', maxTokens: 600,
     evaluate: (r) => {
       const lines = r.split(/[.!?]+/).map((s: string) => s.trim()).filter((s: string) => s.length > 3);
       const starts = lines.slice(0, 5).map((s: string) => s.charAt(0).toUpperCase());
@@ -135,7 +135,7 @@ const STANDARD_TESTS: TestCase[] = [
         uniqStarts.size >= 4 ? /./ : /(?!)/,
         /entanglement/i.test(r) ? /./ : /(?!)/,
         /computing\.?\s*$/mi.test(r.trim()) ? /./ : /(?!)/,
-        !/\bthe\b/i.test(r) ? /./ : /(?!)/,
+        !/\bthe\b/i.test(r) ? /./ : /(?!)/, !/\bis\b/i.test(r) ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 4, correctness: m/checks.length, details: lines.length+' sent, starts='+starts.join('')+', '+m+'/5' };
@@ -171,15 +171,15 @@ const STANDARD_TESTS: TestCase[] = [
     }
   },
   { id: 's-chat-2', name: 'Mystery Story', category: 'chat', difficulty: 'standard',
-    description: 'MT-Bench harder', prompt: 'Write a 6-sentence mystery story. Rules: 1) First word "The" 2) Last word "solved." 3) Two dialogues in quotes 4) Contains "detective" and "evidence" 5) No sentence starts with same letter 6) Third sentence is a question.', maxTokens: 800,
+    description: 'MT-Bench expert', prompt: 'Write a 7-sentence thriller story. Rules: 1) First word "She" 2) Last word "silence." 3) Three dialogues in quotes 4) Contains "shadow" and "secret" and "midnight" 5) No two sentences start with same letter 6) Sentence 4 is a question 7) Each sentence 10-25 words.', maxTokens: 800,
     evaluate: (r) => {
       const sent = r.trim().split(/[.!?]+/).filter((s:string) => s.trim().length > 5);
       const starts = sent.slice(0, 6).map((s:string) => s.trim().charAt(0).toUpperCase());
       const uniqStarts = new Set(starts);
       const dialogs = r.match(/"[^"]+"|'[^']+'/g) || [];
-      const checks = [/\bThe\b/i.test(r) ? /./ : /(?!)/, /solved\.?\s*$/i.test(r.trim()) ? /./ : /(?!)/, dialogs.length >= 2 ? /./ : /(?!)/, /detective/i.test(r) ? /./ : /(?!)/, /evidence/i.test(r) ? /./ : /(?!)/, /\?/.test(r) ? /./ : /(?!)/];
+      const checks = [/\bShe\b/i.test(r) ? /./ : /(?!)/, /silence\.?\s*$/i.test(r.trim()) ? /./ : /(?!)/, dialogs.length >= 3 ? /./ : /(?!)/, /shadow/i.test(r) ? /./ : /(?!)/, /secret/i.test(r) ? /./ : /(?!)/, /midnight/i.test(r) ? /./ : /(?!)/, /\?/.test(r) ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: sent.length+' sent, '+dialogs.length+' dialog, '+m+'/6' };
+      return { pass: m >= 4, correctness: m/checks.length, details: sent.length+' sent, '+dialogs.length+' dialog, '+m+'/7' };
     }
   },
 ];

@@ -608,7 +608,7 @@ const estimateLabel = (ms?: number | null) => {
         setProgress({ current: totalCount, total: totalCount, label: '完成' });
       }
     } catch (e: any) { alert('测试失败: ' + e.message); }
-    onRefresh();
+    await onRefresh();
     setTesting(false);
   };
 
