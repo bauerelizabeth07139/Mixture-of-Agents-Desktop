@@ -36,6 +36,22 @@ function escapePowerShellArg(s: string): string {
   return s.replace(/'/g, "''");
 }
 
+function mergeContinuationLines(code: string): string {
+  const rawLines = code.split('\n');
+  const merged: string[] = [];
+  let i = 0;
+  while (i < rawLines.length) {
+    let line = rawLines[i];
+    while (line.endsWith('\\') && !line.endsWith('\\\\') && i + 1 < rawLines.length) {
+      line = line.slice(0, -1) + rawLines[i + 1].trim();
+      i++;
+    }
+    merged.push(line);
+    i++;
+  }
+  return merged.join('\n');
+}
+
 function convertToPowerShellCommand(cmd: string): string {
   const original = cmd;
 
@@ -137,6 +153,26 @@ function convertToPowerShellCommand(cmd: string): string {
 
   if (cmd.startsWith('chmod ')) {
     return `# chmod not needed on Windows`;
+  }
+
+  if (cmd.startsWith('npm init')) {
+    return `npm init -y`;
+  }
+
+  if (/^curl\s/i.test(cmd)) {
+    const urlMatch = cmd.match(/(?:curl\s+(?:-[A-Za-z]+\s+)*)(https?:\/\/[^\s"']+)/);
+    if (urlMatch) {
+      const url = urlMatch[1];
+      const methodMatch = cmd.match(/-X\s+(GET|POST|PUT|PATCH|DELETE)/i);
+      const method = methodMatch ? methodMatch[1].toUpperCase() : (cmd.match(/-d\s/) ? 'POST' : 'GET');
+      const dataMatch = cmd.match(/-d\s+['"](.+?)['"]/);
+      const headerMatch = cmd.match(/-H\s+['"](.+?)['"]/);
+      const parts = [`Invoke-RestMethod -Uri '${url}' -Method ${method}`];
+      if (headerMatch && headerMatch[1].includes('application/json')) parts.push("-ContentType 'application/json'");
+      if (dataMatch) parts.push("-Body '" + dataMatch[1].replace(/'/g, "''") + "'");
+      return parts.join(' ');
+    }
+    return 'curl.exe ' + cmd.slice(5);
   }
 
   return cmd;
@@ -271,7 +307,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         }
 
         const augmentedPath = buildAugmentedPath();
-        const execOpts = { cwd: workDir, timeout: 60000, encoding: 'utf8' as const, shell: (process.env.ComSpec || 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe') as any, env: { ...process.env, FORCE_COLOR: '0', PATH: augmentedPath } };
+        const execOpts = { cwd: workDir, timeout: 60000, encoding: 'utf8' as const, shell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' as any, env: { ...process.env, FORCE_COLOR: '0', PATH: augmentedPath } };
 
         const runCommand = (command: string, label: string) => {
           try {
@@ -298,7 +334,8 @@ export function createChatRoutes(pool: ApiPoolManager) {
         let currentDir = workDir;
 
         for (const block of runBlocks) {
-          const lines = block.code.split('\n').map((l: string) => l.trim()).filter((l: string) => l && !l.startsWith('#'));
+          const mergedCode = mergeContinuationLines(block.code);
+          const lines = mergedCode.split('\n').map((l: string) => l.trim()).filter((l: string) => l && !l.startsWith('#'));
           for (const rawLine of lines) {
             let cmd = rawLine;
 

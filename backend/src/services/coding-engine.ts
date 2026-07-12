@@ -49,6 +49,22 @@ Rules:
   - Use PowerShell-compatible syntax when needed
 - Complete working code, error handling, best practices`;
 
+function mergeContinuationLines(code: string): string {
+  const rawLines = code.split('\n');
+  const merged: string[] = [];
+  let i = 0;
+  while (i < rawLines.length) {
+    let line = rawLines[i];
+    while (line.endsWith('\\') && !line.endsWith('\\\\') && i + 1 < rawLines.length) {
+      line = line.slice(0, -1) + rawLines[i + 1].trim();
+      i++;
+    }
+    merged.push(line);
+    i++;
+  }
+  return merged.join('\n');
+}
+
 export class CodingEngine {
   private basePath: string;
   constructor(basePath: string) { this.basePath = basePath; }
@@ -197,7 +213,8 @@ export class CodingEngine {
         const wd = p.workdir ? path.resolve(this.basePath, p.workdir) : (workDir || this.basePath);
         fs.mkdirSync(wd, { recursive: true });
         try {
-          const cmds = this.splitAndConvertCommands(p.command);
+          const mergedCmd = mergeContinuationLines(p.command);
+          const cmds = this.splitAndConvertCommands(mergedCmd);
           let allOutput = '';
           for (const mappedCmd of cmds) {
             // Skip pure cd commands (we track directory ourselves)
@@ -209,7 +226,7 @@ export class CodingEngine {
               cwd: wd,
               timeout: Math.min(p.timeout || 60000, 120000),
               encoding: 'utf8',
-              shell: (process.env.ComSpec || 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe') as any,
+              shell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' as any,
               env: this.getEnv(),
               windowsHide: true,
             }));

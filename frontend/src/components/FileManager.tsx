@@ -43,6 +43,7 @@ export function FileManager({ onFileRun }: FileManagerProps) {
   const [renaming, setRenaming] = useState<string|null>(null);
   const [renameName, setRenameName] = useState("");
   const [showWelcome, setShowWelcome] = useState(!localStorage.getItem("moa-workspace"));
+  const templateClickedRef = useRef(false);
   const [recent, setRecent] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem("moa-recent") || "[]"); } catch { return []; } });
   const [browseVis, setBrowseVis] = useState(false);
   const [browsePath, setBrowsePath] = useState("");
@@ -67,7 +68,8 @@ export function FileManager({ onFileRun }: FileManagerProps) {
   const createItemWithTemplate = async (tpl: typeof FILE_TEMPLATES[string]) => {
     if (!newItem) return;
     const sep = newItem.parentPath.includes("/") ? "/" : "\\";
-    const fileName = "file" + tpl.ext;
+    let fileName = newName.trim() || ("file" + tpl.ext);
+    if (!fileName.endsWith(tpl.ext)) fileName += tpl.ext;
     await api.createFile(newItem.parentPath + sep + fileName, tpl.content, false);
     setNewItem(null); setNewName("");
     loadTree();
@@ -96,13 +98,13 @@ export function FileManager({ onFileRun }: FileManagerProps) {
                 <span style={{width:14}}/><span className="fm-icon">{newItem.isDir?"📁":"📄"}</span>
                 <input className="fm-rename" value={newName} onChange={e=>setNewName(e.target.value)}
                   onKeyDown={e=>{if(e.key==="Enter")createItem();if(e.key==="Escape"){setNewItem(null);setNewName("");}}}
-                  onBlur={()=>{setTimeout(()=>{if(newName.trim())createItem();else{setNewItem(null);setNewName("");}},200);}}
+                  onBlur={()=>{setTimeout(()=>{if(templateClickedRef.current){templateClickedRef.current=false;return;} if(newName.trim())createItem();else{setNewItem(null);setNewName("");}},200);}}
                   autoFocus placeholder={newItem.isDir?"新文件夹...":"文件名 如 main.py"}/>
               </div>
               {!newItem.isDir && <div style={{padding:"2px 8px 6px 26px",display:"flex",flexWrap:"wrap",gap:4}}>
                 {Object.values(FILE_TEMPLATES).map(t => (
                   <button key={t.ext} className="fm-tpl-btn" title={t.ext}
-                    onClick={()=>{const nm="file"+t.ext; setNewName(nm); setTimeout(()=>createItemWithTemplate(t),50);}}>
+                    onClick={()=>{templateClickedRef.current=true; const base=newName.trim(); const nm=base?(base.endsWith(t.ext)?base:base+t.ext):("file"+t.ext); setNewName(nm); setTimeout(()=>createItemWithTemplate(t),50);}}>
                     {t.icon} {t.label}
                   </button>
                 ))}
@@ -146,13 +148,13 @@ export function FileManager({ onFileRun }: FileManagerProps) {
         <input className="fm-rename" value={newName}
           onChange={e=>setNewName(e.target.value)}
           onKeyDown={e=>{if(e.key==="Enter")createItem();if(e.key==="Escape"){setNewItem(null);setNewName("");}}}
-          onBlur={()=>{setTimeout(()=>{if(newName.trim())createItem();else{setNewItem(null);setNewName("");}},200);}}
+          onBlur={()=>{setTimeout(()=>{if(templateClickedRef.current){templateClickedRef.current=false;return;} if(newName.trim())createItem();else{setNewItem(null);setNewName("");}},200);}}
           autoFocus placeholder={newItem.isDir?"新文件夹名...":"文件名 如 main.py"}/>
       </div>
       {!newItem.isDir && <div style={{padding:"2px 8px 6px 38px",display:"flex",flexWrap:"wrap",gap:4}}>
         {Object.values(FILE_TEMPLATES).map(t => (
           <button key={t.ext} className="fm-tpl-btn" title={t.ext}
-            onClick={()=>{const nm="file"+t.ext; setNewName(nm); setTimeout(()=>createItemWithTemplate(t),50);}}>
+            onClick={()=>{templateClickedRef.current=true; const base=newName.trim(); const nm=base?(base.endsWith(t.ext)?base:base+t.ext):("file"+t.ext); setNewName(nm); setTimeout(()=>createItemWithTemplate(t),50);}}>
             {t.icon} {t.label}
           </button>
         ))}

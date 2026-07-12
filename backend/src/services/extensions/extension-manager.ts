@@ -1,10 +1,11 @@
-import { McpServerConfig, SkillConfig, McpPreset, SkillPreset } from '../../types';
+import { McpServerConfig, SkillConfig, McpPreset, SkillPreset, SkillServerConfig, SkillServerPreset } from '../../types';
 import { v4 as uuid } from 'uuid';
-import { MCP_PRESETS, SKILL_PRESETS } from './presets';
+import { MCP_PRESETS, SKILL_PRESETS, SKILL_SERVER_PRESETS } from './presets';
 
 export class ExtensionManager {
   private mcpServers: Map<string, McpServerConfig> = new Map();
   private skills: Map<string, SkillConfig> = new Map();
+  private skillServers: Map<string, SkillServerConfig> = new Map();
 
   // MCP Server CRUD
   getAllMcpServers(): McpServerConfig[] {
@@ -108,8 +109,61 @@ export class ExtensionManager {
     return this.skills.delete(id);
   }
 
+  // Skill Server CRUD
+  getAllSkillServers(): SkillServerConfig[] {
+    return Array.from(this.skillServers.values());
+  }
+
+  getSkillServer(id: string): SkillServerConfig | undefined {
+    return this.skillServers.get(id);
+  }
+
+  addSkillServer(config: Omit<SkillServerConfig, 'id' | 'createdAt' | 'updatedAt'>): SkillServerConfig {
+    const server: SkillServerConfig = {
+      ...config,
+      id: uuid(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.skillServers.set(server.id, server);
+    return server;
+  }
+
+  addSkillServerFromPreset(presetId: string, overrides?: Partial<SkillServerConfig>): SkillServerConfig | null {
+    const preset = SKILL_SERVER_PRESETS.find(p => p.id === presetId);
+    if (!preset) return null;
+    const existing = Array.from(this.skillServers.values()).find(s => s.name === preset.name);
+    if (existing) return existing;
+    return this.addSkillServer({
+      name: preset.name,
+      description: preset.description,
+      transport: preset.transport,
+      command: preset.command,
+      args: preset.args,
+      env: preset.env || {},
+      url: preset.url,
+      enabled: true,
+      category: preset.category,
+      icon: preset.icon,
+      ...overrides,
+    });
+  }
+
+  updateSkillServer(id: string, updates: Partial<SkillServerConfig>): SkillServerConfig | null {
+    const existing = this.skillServers.get(id);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates, id: existing.id, updatedAt: new Date().toISOString() };
+    this.skillServers.set(id, updated);
+    return updated;
+  }
+
+  removeSkillServer(id: string): boolean {
+    return this.skillServers.delete(id);
+  }
+
   // Presets
   getMcpPresets(): McpPreset[] { return MCP_PRESETS; }
+  getSkillServerPresets(): SkillServerPreset[] { return SKILL_SERVER_PRESETS; }
   getSkillPresets(): SkillPreset[] { return SKILL_PRESETS; }
 
   // Build context for orchestrator

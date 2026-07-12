@@ -37,6 +37,7 @@ export const api = {
   addMcpCustom: (config: any) => fetch(B+'/extensions/mcp',{method:'POST',headers:h,body:JSON.stringify(config)}).then(r=>r.json()),
   updateMcp: (id: string, updates: any) => fetch(B+'/extensions/mcp/'+id,{method:'PUT',headers:h,body:JSON.stringify(updates)}).then(r=>r.json()),
   removeMcp: (id: string) => fetch(B+'/extensions/mcp/'+id,{method:'DELETE'}).then(r=>r.json()),
+  testMcp: (id: string) => fetch(B+'/extensions/mcp/'+id+'/test',{method:'POST',headers:h}).then(r=>r.json()),
   // Extensions - Skills
   fetchSkills: () => fetch(B+'/extensions/skills').then(r=>r.json()),
   fetchSkillPresets: () => fetch(B+'/extensions/skills/presets').then(r=>r.json()),
@@ -44,6 +45,15 @@ export const api = {
   addSkillCustom: (config: any) => fetch(B+'/extensions/skills',{method:'POST',headers:h,body:JSON.stringify(config)}).then(r=>r.json()),
   updateSkill: (id: string, updates: any) => fetch(B+'/extensions/skills/'+id,{method:'PUT',headers:h,body:JSON.stringify(updates)}).then(r=>r.json()),
   removeSkill: (id: string) => fetch(B+'/extensions/skills/'+id,{method:'DELETE'}).then(r=>r.json()),
+  testSkill: (id: string) => fetch(B+'/extensions/skills/'+id+'/test',{method:'POST',headers:h}).then(r=>r.json()),
+  // Skill Servers
+  fetchSkillServers: () => fetch(B+'/extensions/skill-servers').then(r=>r.json()),
+  fetchSkillServerPresets: () => fetch(B+'/extensions/skill-servers/presets').then(r=>r.json()),
+  addSkillServerFromPreset: (pid: string) => fetch(B+'/extensions/skill-servers/from-preset',{method:'POST',headers:h,body:JSON.stringify({presetId:pid})}).then(r=>r.json()),
+  addSkillServerCustom: (config: any) => fetch(B+'/extensions/skill-servers',{method:'POST',headers:h,body:JSON.stringify(config)}).then(r=>r.json()),
+  updateSkillServer: (id: string, updates: any) => fetch(B+'/extensions/skill-servers/'+id,{method:'PUT',headers:h,body:JSON.stringify(updates)}).then(r=>r.json()),
+  removeSkillServer: (id: string) => fetch(B+'/extensions/skill-servers/'+id,{method:'DELETE'}).then(r=>r.json()),
+  testSkillServer: (id: string) => fetch(B+'/extensions/skill-servers/'+id+'/test',{method:'POST',headers:h}).then(r=>r.json()),
   // File write
   writeFile: (filePath: string, content: string, workdir?: string) => fetch(B+'/coding/write-file',{method:'POST',headers:h,body:JSON.stringify({filePath,content,workdir})}).then(r=>r.json()),
   // Read absolute path

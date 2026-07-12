@@ -28,7 +28,12 @@ const extManager = new ExtensionManager();
 wss.on('connection', (ws) => { wsManager.addClient(ws); });
 
 // Serve frontend static files
-app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    else if (filePath.endsWith('.js') || filePath.endsWith('.css')) res.setHeader('Cache-Control', 'public, max-age=3600');
+  }
+}));
 
 app.use('/api/providers', createProviderRoutes(poolManager));
 app.use('/api/projects', createProjectRoutes(projectManager, poolManager, wsManager.broadcast.bind(wsManager), extManager));

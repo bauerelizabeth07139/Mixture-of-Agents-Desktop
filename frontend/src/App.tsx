@@ -418,7 +418,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                 {p.models.map(m => (
                   <div key={m.id} style={{ padding: '3px 0', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>{m.name}</span>
-                    <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : 'badge-success'}`}>{m.type}</span>
+                    <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : m.type === 'multimodal' ? 'badge-primary' : 'badge-success'}`}>{m.type}</span>
                     {m.capabilities.multimodal && <span className="badge badge-warning">👁️ 多模态</span>}
                     {m.capabilities.multimodal && (m.capabilities as any).visionScore != null && (
                       <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>视觉 {(m.capabilities as any).visionScore}/10</span>
@@ -475,7 +475,7 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span>{m.providerIcon}</span>
               <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{m.name}</span>
-              <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : 'badge-warning'}`}>{m.type}</span>
+              <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : m.type === 'multimodal' ? 'badge-primary' : 'badge-success'}`}>{m.type}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, fontSize: 10, flexWrap: 'wrap' }}>
               {m.capabilities.multimodal && <span className="badge badge-warning" style={{ fontSize: 9 }}>👁️ 多模态</span>}
@@ -786,7 +786,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
 }
 // ─── Extensions Panel ───
 function ExtensionsPanel() {
-  const [subTab, setSubTab] = useState<'mcp' | 'skills'>('mcp');
+  const [subTab, setSubTab] = useState<'mcp' | 'skill-servers' | 'skills'>('mcp');
   const [mcpServers, setMcpServers] = useState<any[]>([]);
   const [mcpPresets, setMcpPresets] = useState<any[]>([]);
   const [skills, setSkills] = useState<any[]>([]);
@@ -796,11 +796,15 @@ function ExtensionsPanel() {
   const [customMcp, setCustomMcp] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: '自定义', icon: '🔧' });
   const [customSkill, setCustomSkill] = useState({ name: '', description: '', content: '', category: '自定义', icon: '🔧' });
   const [editingSkill, setEditingSkill] = useState<any>(null);
+  const [skillServers, setSkillServers] = useState<any[]>([]);
+  const [skillServerPresets, setSkillServerPresets] = useState<any[]>([]);
+  const [showAddSkillServer, setShowAddSkillServer] = useState(false);
+  const [customSkillServer, setCustomSkillServer] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: '自定义', icon: '🔧' });
 
   const loadAll = useCallback(async () => {
-    const [mp, sp] = await Promise.all([api.fetchMcpPresets(), api.fetchSkillPresets()]);
-    setMcpPresets(mp); setSkillPresets(sp);
-    try { const [ms, sk] = await Promise.all([api.fetchMcpServers(), api.fetchSkills()]); setMcpServers(ms); setSkills(sk); } catch {}
+    const [mp, sp, ssp] = await Promise.all([api.fetchMcpPresets(), api.fetchSkillPresets(), api.fetchSkillServerPresets()]);
+    setMcpPresets(mp); setSkillPresets(sp); setSkillServerPresets(ssp);
+    try { const [ms, sk, ss] = await Promise.all([api.fetchMcpServers(), api.fetchSkills(), api.fetchSkillServers()]); setMcpServers(ms); setSkills(sk); setSkillServers(ss); } catch {}
   }, []);
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -808,7 +812,8 @@ function ExtensionsPanel() {
     <div className="tab-panel">
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
         <button className={`btn ${subTab === 'mcp' ? 'btn-primary' : ''}`} onClick={() => setSubTab('mcp')} style={{ borderRadius: '6px 6px 0 0' }}>🔌 MCP 服务器</button>
-        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>⚡ 技能库</button>
+        <button className={`btn ${subTab === 'skill-servers' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skill-servers')} style={{ borderRadius: '6px 6px 0 0' }}>🔧 Skill 服务器</button>
+        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>⚡ 专家库</button>
       </div>
 
       {subTab === 'mcp' && (
@@ -867,8 +872,80 @@ function ExtensionsPanel() {
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.transport === 'stdio' ? s.command + ' ' + (s.args || []).join(' ') : s.url}</div>
                   </div>
                   <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '启用' : '禁用'}</span>
+                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '测试通过' : '测试未通过'}</span>}
                   <button className="btn btn-sm" onClick={async () => { await api.updateMcp(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '禁用' : '启用'}</button>
                   <button className="btn btn-sm" onClick={async () => { await api.removeMcp(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>删除</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.testMcp(s.id); loadAll(); }}>测试</button>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {subTab === 'skill-servers' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h3 style={{ fontSize: 15 }}>🔧 Skill 服务器</h3>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkillServer(!showAddSkillServer)}>+ 自定义添加</button>
+          </div>
+          {showAddSkillServer && (
+            <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                <input placeholder="名称" value={customSkillServer.name} onChange={e => setCustomSkillServer({...customSkillServer, name: e.target.value})} />
+                <input placeholder="图标" value={customSkillServer.icon} onChange={e => setCustomSkillServer({...customSkillServer, icon: e.target.value})} />
+              </div>
+              <input placeholder="描述" value={customSkillServer.description} onChange={e => setCustomSkillServer({...customSkillServer, description: e.target.value})} style={{ marginBottom: 8 }} />
+              <select value={customSkillServer.transport} onChange={e => setCustomSkillServer({...customSkillServer, transport: e.target.value})} style={{ marginBottom: 8 }}>
+                <option value="stdio">stdio</option><option value="sse">SSE</option><option value="streamable-http">HTTP</option>
+              </select>
+              {customSkillServer.transport === 'stdio' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginBottom: 8 }}>
+                  <input placeholder="命令 (如 npx)" value={customSkillServer.command} onChange={e => setCustomSkillServer({...customSkillServer, command: e.target.value})} />
+                  <input placeholder="参数 (空格分隔)" value={customSkillServer.args} onChange={e => setCustomSkillServer({...customSkillServer, args: e.target.value})} />
+                </div>
+              ) : (
+                <input placeholder="URL" value={customSkillServer.url} onChange={e => setCustomSkillServer({...customSkillServer, url: e.target.value})} style={{ marginBottom: 8 }} />
+              )}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn btn-sm" onClick={() => setShowAddSkillServer(false)}>取消</button>
+                <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkillServer.name) { await api.addSkillServerCustom({ name: customSkillServer.name, description: customSkillServer.description, transport: customSkillServer.transport, command: customSkillServer.command || undefined, args: customSkillServer.args ? customSkillServer.args.split(' ').filter(Boolean) : undefined, url: customSkillServer.url || undefined, enabled: true, category: customSkillServer.category, icon: customSkillServer.icon }); setShowAddSkillServer(false); loadAll(); } }}>添加</button>
+              </div>
+            </div>
+          )}
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设 Skill 服务器</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
+            {skillServerPresets.map((p: any) => {
+              const added = skillServers.some((s: any) => s.name === p.name);
+              return (
+                <div key={p.id} className="card" style={{ cursor: added ? 'default' : 'pointer', opacity: added ? 0.5 : 1, padding: 10 }}
+                  onClick={async () => { if (!added) { await api.addSkillServerFromPreset(p.id); loadAll(); } }}>
+                  <div className="card-title">{p.icon} {p.name}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{p.description}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{p.category} · {p.npmPackage || p.transport}</div>
+                  {added && <span className="badge badge-success" style={{ marginTop: 4 }}>已添加</span>}
+                </div>
+              );
+            })}
+          </div>
+          {skillServers.length > 0 && (
+            <>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已配置</h4>
+              {skillServers.map((s: any) => (
+                <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>{s.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{s.description}</div>
+                      <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{s.transport}{s.command ? ' · ' + s.command : ''}{s.url ? ' · ' + s.url : ''}</div>
+                    </div>
+                    <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '启用' : '禁用'}</span>
+                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '测试通过' : '测试未通过'}</span>}
+                    <button className="btn btn-sm" onClick={async () => { await api.updateSkillServer(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '禁用' : '启用'}</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.removeSkillServer(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>删除</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.testSkillServer(s.id); loadAll(); }}>测试</button>
+                  </div>
                 </div>
               ))}
             </>
@@ -879,7 +956,7 @@ function ExtensionsPanel() {
       {subTab === 'skills' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>⚡ 技能库</h3>
+            <h3 style={{ fontSize: 15 }}>⚡ 专家库</h3>
             <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkill(!showAddSkill)}>+ 自定义创建</button>
           </div>
           {showAddSkill && (
@@ -907,7 +984,7 @@ function ExtensionsPanel() {
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设技能</h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设专家</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillPresets.map((p: any) => {
               const added = skills.some((s: any) => s.name === p.name);
@@ -933,9 +1010,11 @@ function ExtensionsPanel() {
                       <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{s.description}</div>
                     </div>
                     <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '启用' : '禁用'}</span>
+                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '测试通过' : '测试未通过'}</span>}
                     <button className="btn btn-sm" onClick={() => setEditingSkill(s)}>编辑</button>
                     <button className="btn btn-sm" onClick={async () => { await api.updateSkill(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '禁用' : '启用'}</button>
                     <button className="btn btn-sm" onClick={async () => { await api.removeSkill(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>删除</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.testSkill(s.id); loadAll(); }}>测试</button>
                   </div>
                 </div>
               ))}

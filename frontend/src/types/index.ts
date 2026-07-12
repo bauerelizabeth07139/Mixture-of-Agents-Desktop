@@ -1,6 +1,6 @@
 export interface Provider { id: string; name: string; baseUrl: string; type: string; icon?: string; apiKeys: ApiKeyEntry[]; models: Model[]; isLocal: boolean; }
 export interface ApiKeyEntry { id: string; key: string; isActive: boolean; }
-export type ModelType = 'llm' | 'vlm' | 'tts' | 'image' | 'video' | 'stt';
+export type ModelType = 'llm' | 'vlm' | 'tts' | 'image' | 'video' | '3d' | 'stt' | 'multimodal';
 export interface Model { id: string; name: string; providerId: string; modelId: string; type: ModelType; capabilities: ModelCapabilityProfile; }
 export interface ModelCapabilityProfile { code: number; agent: number; chat: number; context: number; speed: number; multimodal: boolean; visionScore: number; audioScore: number; pricing: { inputPer1M: number; outputPer1M: number; }; }
 export interface ProviderPreset { id: string; name: string; baseUrl: string; type: string; icon: string; description: string; defaultModels: string[]; }
@@ -31,6 +31,22 @@ export interface SkillConfig {
 }
 
 export interface McpPreset {
+  id: string; name: string; description: string;
+  transport: string; command?: string; args?: string[];
+  env?: Record<string, string>; url?: string;
+  category: string; icon: string; npmPackage?: string;
+}
+
+export interface SkillServerConfig {
+  id: string; name: string; description: string;
+  transport: 'stdio' | 'sse' | 'streamable-http';
+  command?: string; args?: string[]; env?: Record<string, string>;
+  url?: string;
+  enabled: boolean; category: string; icon: string;
+  createdAt: string; updatedAt: string;
+}
+
+export interface SkillServerPreset {
   id: string; name: string; description: string;
   transport: string; command?: string; args?: string[];
   env?: Record<string, string>; url?: string;
