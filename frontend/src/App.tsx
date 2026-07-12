@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './services/api';
 import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServerConfig, SkillConfig, Project } from './types';
 import { TerminalPanel } from './components/Terminal';
@@ -728,7 +728,7 @@ const estimateLabel = (ms?: number | null) => {
                       <div style={{ width: 40, height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: ((r.capabilities?.visionScore || 0) * 10) + '%', height: '100%', background: '#b388ff', borderRadius: 3 }} />
                       </div>
-                      <span>{(r.capabilities?.visionScore || 0).toFixed(1)}</span>
+                      <span>{(r.capabilities?.visionScore || 0).toFixed(1)}/10</span>
                       {(r.capabilities?.visionScore || 0) > 0 && <span style={{ fontSize: 9 }}>🖼️</span>}
                     </div>
                   </td>
@@ -767,7 +767,7 @@ const estimateLabel = (ms?: number | null) => {
           </div>
           {r.results?.map((t: any, j: number) => (
             <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 12 }}>
-              <span className={`badge ${t.score >= 8 ? 'badge-success' : t.score >= 5.6 ? 'badge-warning' : 'badge-error'}`}>{(t.score * 2).toFixed(1)}/10</span>
+              <span className={`badge ${t.score >= 8 ? 'badge-success' : t.score >= 5.6 ? 'badge-warning' : 'badge-error'}`}>{t.score.toFixed(1)}/10</span>
               <span style={{ flex: 1 }}>{cn(t.testName)}{t.details ? ` · ${cnDetail(String(t.details))}` : ''}</span>
               <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{t.latencyMs}ms</span>
             </div>

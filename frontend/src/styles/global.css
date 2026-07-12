@@ -1,4 +1,4 @@
-/* Mixture of Agents ??Codex/Claude Code inspired theme */
+﻿/* Mixture of Agents ??Codex/Claude Code inspired theme */
 :root {
   --bg-primary: #0a0a0f;
   --bg-secondary: #12121a;
@@ -532,7 +532,7 @@ label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: 
 .capability-label { font-size: 10px; width: 50px; color: var(--text-muted); text-transform: uppercase; }
 .capability-track { flex: 1; height: 4px; background: var(--bg-primary); border-radius: 2px; overflow: hidden; }
 .capability-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-.capability-value { font-size: 10px; width: 20px; text-align: right; font-family: var(--font-mono); color: var(--text-secondary); }
+.capability-value { font-size: 10px; width: 55px; text-align: right; font-family: var(--font-mono); color: var(--text-secondary); }
 
 /* Status dots */
 .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
