@@ -1,4 +1,4 @@
-export type ModelCapability = 'code' | 'agent' | 'chat' | 'multimodal' | 'reasoning' | 'fast';
+﻿export type ModelCapability = 'code' | 'agent' | 'chat' | 'multimodal' | 'reasoning' | 'fast';
 
 export interface ModelCapabilityProfile {
   code: number; agent: number; chat: number; context: number; speed: number; multimodal: boolean;
@@ -7,7 +7,7 @@ export interface ModelCapabilityProfile {
   pricing: { inputPer1M: number; outputPer1M: number; userEditable: boolean; };
 }
 
-export type ModelType = 'llm' | 'vlm' | 'tts' | 'image' | 'video' | '3d' | 'stt' | 'multimodal';
+export type ModelType = 'llm' | 'tts' | 'image' | 'video' | '3d' | 'stt';
 
 export interface Model {
   id: string; name: string; providerId: string; modelId: string; type: ModelType;

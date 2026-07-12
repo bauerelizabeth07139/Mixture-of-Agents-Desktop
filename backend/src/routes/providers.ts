@@ -8,23 +8,20 @@ import { Provider, Model, ModelType } from '../types';
 
 function classifyModelType(modelId: string, raw?: any): ModelType {
   const id = modelId.toLowerCase();
+  // Video generation models
   if (/\b(video|cogvideo|sora|kling|pika|runway|minimax-video|hailuo|wan-video)\b/.test(id)) return 'video';
   if (raw?.model_type === 'video' || raw?.task === 'video-generation') return 'video';
+  // Image generation models
   if (/\b(dall-?e|stable-?diffusion|sd[123x]|sdxl|flux|midjourney|imagen|wanx|wan\b|cogview|cogview-?4|playground|kandinsky|firefly|ideogram|recraft)\b/.test(id)) return 'image';
   if (/\b(txt2img|img2img|text-to-image|image-generation)\b/.test(id)) return 'image';
   if (raw?.model_type === 'image' || raw?.task === 'text-to-image' || raw?.task === 'image-generation') return 'image';
+  // TTS models
   if (/\b(tts|text.to.speech|speech.synthesis|voice.synth|bark|coqui|xtts|fish.audio|cosyvoice|chat-tts|f5-tts)\b/.test(id)) return 'tts';
   if (raw?.model_type === 'tts' || raw?.task === 'text-to-speech' || raw?.task === 'tts') return 'tts';
+  // STT/ASR models
   if (/\b(whisper|asr|stt|speech.to.text|transcri|paraformer|sense.voice|funasr)\b/.test(id)) return 'stt';
   if (raw?.model_type === 'stt' || raw?.task === 'speech-recognition' || raw?.task === 'asr') return 'stt';
-  if (/\b(gpt-4o(?!-mini)|gpt-4-turbo|gpt-4-vision|claude-3|claude-sonnet-4|claude-opus|gemini-pro-vision|gemini-1\.5|gemini-2|qwen-vl|qwen2-vl|qwen2\.5-vl|internvl|minicpm-v|llava|cogvlm|glm-4v|deepseek-vl|mimo-v2-omni|omni)\b/.test(id)) return 'vlm';
-  if (/\b(vision|vl|vlm|multimodal|omni)\b/.test(id)) return 'vlm';
-    // Check raw API response for multimodal indicators
-  if (raw?.model_type === 'vlm' || raw?.model_type === 'multimodal') return 'vlm';
-  if (raw?.modality && /vision|image|multi/i.test(String(raw.modality))) return 'vlm';
-  if (raw?.capabilities && (raw.capabilities.vision || raw.capabilities.image_input)) return 'vlm';
-  if (Array.isArray(raw?.supported_modalities) && raw.supported_modalities.some((m: string) => /image|vision/i.test(m))) return 'vlm';
-  if (raw?.description && /\b(vision|image.?understand|multimodal|image.?input)\b/i.test(raw.description) && !/text.only|language.only/i.test(raw.description)) return 'vlm';
+  // All other text models are LLM (vision/audio detected via testing)
   return 'llm';
 }
 

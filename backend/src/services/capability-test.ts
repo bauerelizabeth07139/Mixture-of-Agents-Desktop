@@ -1,6 +1,6 @@
 ﻿import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
 import { LLMClient } from './llm-client';
-import { updateModelPricing } from './price-fetcher';
+
 
 export interface TestCase {
   id: string; name: string; category: 'code' | 'reasoning' | 'instruction' | 'chat';
@@ -362,10 +362,18 @@ export class CapabilityTestEngine {
       pricing: model.capabilities.pricing,
     };
 
-    try {
-      const price = await updateModelPricing(model.modelId, provider.baseUrl, apiKey.key);
-      capabilities.pricing = { inputPer1M: price.inputPer1M, outputPer1M: price.outputPer1M, userEditable: true };
-    } catch {}
+// Pricing removed per user request
+
+    // Auto-detect vision capability if not already tested
+    let visionScore = visionScaled;
+    if (visionScore === 0) {
+      try {
+        const visionResult = await this.testMultimodal(provider, apiKey, model, 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg');
+        visionScore = visionResult.score;
+        capabilities.visionScore = visionScore;
+        if (visionScore > 0) capabilities.multimodal = true;
+      } catch {}
+    }
 
     const overallScore = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 2 * 100) / 100 : 0;
     return { modelId: model.id, modelName: model.modelId, providerName: provider.name,

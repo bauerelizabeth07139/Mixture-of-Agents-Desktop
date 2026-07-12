@@ -242,7 +242,7 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
   visible: boolean; onClose: () => void;
 }) {
   if (!visible) return null;
-  const allModelsRaw = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon })));
+  const allModelsRaw = providers.flatMap(p => p.models.filter(m => m.type === 'llm').map(m => ({ ...m, pName: p.name, pIcon: p.icon })));
   const allModels = [...new Map(allModelsRaw.sort((a,b) => (b.capabilities?.code||0) - (a.capabilities?.code||0)).map(m => [m.modelId, m])).values()];
   const totalKeys = providers.reduce((s, p) => s + p.apiKeys.length, 0);
   return (
@@ -419,8 +419,8 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                 {p.models.map(m => (
                   <div key={m.id} style={{ padding: '3px 0', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>{m.name}</span>
-                    <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : m.type === 'multimodal' ? 'badge-primary' : 'badge-success'}`}>{m.type}</span>
-                    {m.capabilities.multimodal && <span className="badge badge-warning">👁️ 多模态</span>}
+                    <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : 'badge-success'}`}>{m.type}</span>
+                    {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning">👁️ 视觉</span>}
                     {m.capabilities.multimodal && (m.capabilities as any).visionScore != null && (
                       <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>视觉 {(m.capabilities as any).visionScore}/10</span>
                     )}
@@ -459,7 +459,7 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
           <CapabilityBar label="速度" value={model.capabilities.speed} color="#ff6b9d" />
           <CapabilityBar label="视觉" value={(model.capabilities as any).visionScore || 0} color="#b388ff" />
           <div style={{ marginTop: 12, fontSize: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            {model.capabilities.multimodal && <span className="badge badge-warning">👁️ 多模态</span>}
+            {(model.capabilities as any).visionScore > 0 && <span className="badge badge-warning">👁️ 视觉能力</span>}
             {(model.type === 'tts' || (model.capabilities as any).audioScore > 0) && <span className="badge badge-accent">🔊 语音</span>}
             {(model.capabilities as any).visionScore > 0 && (
               <span style={{ fontSize: 11, color: '#b388ff' }}>👁️ 视觉能力: {(model.capabilities as any).visionScore}/10</span>
@@ -475,10 +475,10 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span>{m.providerIcon}</span>
               <span style={{ fontWeight: 600, fontSize: 13, flex: 1 }}>{m.name}</span>
-              <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'vlm' ? 'badge-primary' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : m.type === 'multimodal' ? 'badge-primary' : 'badge-success'}`}>{m.type}</span>
+              <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : 'badge-success'}`}>{m.type}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, fontSize: 10, flexWrap: 'wrap' }}>
-              {m.capabilities.multimodal && <span className="badge badge-warning" style={{ fontSize: 9 }}>👁️ 多模态</span>}
+              {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning" style={{ fontSize: 9 }}>👁️ 视觉</span>}
               {(m.type === 'tts' || (m.capabilities as any).audioScore > 0) && <span className="badge badge-accent" style={{ fontSize: 9 }}>🔊 语音</span>}
               <span style={{ color: 'var(--text-muted)' }}>代码 {m.capabilities.code}</span>
               <span style={{ color: 'var(--text-muted)' }}>推理 {m.capabilities.agent}</span>
@@ -556,7 +556,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
   const cnDetail = (d: string) => DETAIL_CN[d] || d;
 
 
-  const allModelsRaw = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
+  const allModelsRaw = providers.flatMap(p => p.models.filter(m => m.type === 'llm').map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
   const allModels = [...new Map(allModelsRaw.sort((a,b) => (b.capabilities?.code||0) - (a.capabilities?.code||0)).map(m => [m.modelId, m])).values()];
   const [scope, setScope] = useState<'single' | 'provider' | 'all'>('single');
   const [selectedModel, setSelectedModel] = useState('');
@@ -759,7 +759,7 @@ const estimateLabel = (ms?: number | null) => {
           <div className="card-title">
             {r.modelName}
             <span className="badge badge-info" style={{ marginLeft: 8 }}>{r.providerName}</span>
-            {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-warning" style={{ marginLeft: 4 }}>👁️ 多模态</span>}
+            {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-warning" style={{ marginLeft: 4 }}>👁️ 视觉</span>}
             <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{r.overallScore?.toFixed(1)}/10</span>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>

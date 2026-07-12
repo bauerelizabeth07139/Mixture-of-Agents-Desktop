@@ -221,7 +221,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         for (const prov of pool.getAllProviders()) {
           const key = pool.getNextApiKey(prov.id);
           if (!key) continue;
-          const llm = prov.models.find(m => m.type === 'llm' || m.type === 'vlm');
+          const llm = prov.models.find(m => m.type === 'llm' || m.capabilities.visionScore > 0);
           if (llm) { provider = prov; model = llm; apiKey = key; break; }
         }
       }
@@ -241,7 +241,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const imageAttachments = (attachments || []).filter((a:any) => a.type === 'image');
 
       let userContent: any = message;
-      if (imageAttachments.length > 0 && (model.type === 'vlm' || model.capabilities?.multimodal)) {
+      if (imageAttachments.length > 0 && (model.capabilities.visionScore > 0 || model.capabilities?.multimodal)) {
         const contentArr: any[] = [{ type: 'text', text: message || 'Describe this image.' }];
         for (const img of imageAttachments) {
           if (img.data && img.data.startsWith('data:')) {

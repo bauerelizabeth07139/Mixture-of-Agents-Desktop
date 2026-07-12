@@ -122,7 +122,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     if (!prov) return res.status(404).json({ error: 'Provider not found' });
 
     const useQuick = req.body.quick !== false;
-    const llmModels = prov.models.filter(m => m.type === 'llm' || m.type === 'vlm');
+    const llmModels = prov.models.filter(m => m.type === 'llm' || m.capabilities.visionScore > 0);
     if (!llmModels.length) return res.status(400).json({ error: 'No LLM/VLM models found' });
 
     wsBroadcast('test_started', { providerName: prov.name, scope: 'provider', modelCount: llmModels.length });
@@ -198,7 +198,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
     const tasks: { prov: typeof providers[0]; model: typeof providers[0]['models'][0] }[] = [];
     for (const prov of providers) {
       for (const model of prov.models) {
-        if (model.type === 'llm' || model.type === 'vlm') {
+        if (model.type === 'llm' || model.capabilities.visionScore > 0) {
           tasks.push({ prov, model });
         }
       }
