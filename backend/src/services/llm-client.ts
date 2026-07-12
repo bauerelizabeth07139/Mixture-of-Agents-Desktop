@@ -6,7 +6,7 @@ import axios, { AxiosInstance } from 'axios';
 import { Provider, ApiKeyEntry, Model, ModelCapabilityProfile } from '../types';
 
 export interface ChatRequest {
-  messages: Array<{ role: string; content: string }>;
+  messages: Array<{ role: string; content: string | any[] }>;
   model: string;
   temperature?: number;
   maxTokens?: number;

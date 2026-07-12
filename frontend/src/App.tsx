@@ -625,6 +625,7 @@ const estimateLabel = (ms?: number | null) => {
       if (sortBy === 'chat') return r.capabilities?.chat || r.metrics?.chatAvg || 0;
       if (sortBy === 'speed') return r.capabilities?.speed || 0;
       if (sortBy === 'vision') return (r.capabilities?.visionScore) || 0;
+      if (sortBy === 'audio') return (r.capabilities?.audioScore) || 0;
       return r.overallScore || 0;
     };
     return sortDir === 'asc' ? getVal(a) - getVal(b) : getVal(b) - getVal(a);
@@ -692,7 +693,7 @@ const estimateLabel = (ms?: number | null) => {
                 <SortHeader col="code">代码</SortHeader>
                 <SortHeader col="agent">推理</SortHeader>
                 <SortHeader col="chat">对话</SortHeader>
-                <SortHeader col="vision">视觉</SortHeader>
+                <SortHeader col="vision">视觉</SortHeader><SortHeader col="audio">音频</SortHeader>
                 <SortHeader col="speed">速度</SortHeader>
                 <SortHeader col="overallScore">总分</SortHeader>
                 <th style={{ padding: '6px 8px', fontSize: 11, textAlign: 'left', borderBottom: '1px solid var(--border)' }}>备注</th>
@@ -733,7 +734,7 @@ const estimateLabel = (ms?: number | null) => {
                         <div style={{ width: ((r.capabilities?.visionScore || 0) * 10) + '%', height: '100%', background: '#b388ff', borderRadius: 3 }} />
                       </div>
                       <span>{(r.capabilities?.visionScore || 0).toFixed(1)}</span>
-                      {(r.capabilities?.visionScore || 0) > 0 && <span style={{ fontSize: 9 }}>👁️</span>}
+                      {(r.capabilities?.visionScore || 0) > 0 && <span style={{ fontSize: 9 }}>🖼️</span>}
                     </div>
                   </td>
                   <td style={{ padding: '8px' }}>
@@ -786,7 +787,7 @@ const estimateLabel = (ms?: number | null) => {
               <CapabilityBar label="代码" value={r.capabilities.code} color="var(--accent)" />
               <CapabilityBar label="推理" value={r.capabilities.agent} color="var(--info)" />
               <CapabilityBar label="对话" value={r.capabilities.chat} color="var(--success)" />
-              <CapabilityBar label="视觉" value={r.capabilities.visionScore || 0} color="#b388ff" />
+              <CapabilityBar label="视觉" value={r.capabilities.visionScore || 0} color="#b388ff" /><CapabilityBar label="音频" value={r.capabilities.audioScore || 0} color="#ff9800" />
               <CapabilityBar label="速度" value={r.capabilities.speed || 0} color="#ff6b9d" />
             </div>
           )}
