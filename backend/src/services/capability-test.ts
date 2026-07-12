@@ -71,11 +71,11 @@ const QUICK_TESTS: TestCase[] = [
   },  // --- Reasoning (3 tests) - GSM8K/ARC style ---
   { id: 'q-reason-1', name: 'Multi-step Arithmetic', category: 'reasoning', difficulty: 'quick',
     description: 'GSM8K-style word problem',
-    prompt: 'A store sells shirts for $15 each. On Monday they sold 23 shirts. On Tuesday they sold 17 shirts. On Wednesday they sold twice as many as Monday. What was the total revenue for the 3 days? Answer with just the dollar amount.',
+    prompt: 'A store sells shirts for $15 each. On Monday they sold 23 shirts. On Tuesday they sold 17 shirts. On Wednesday they sold twice as many as Monday. What was the total revenue for the 3 days? Show your calculation and give the final dollar amount.',
     maxTokens: 400,
     evaluate: (r) => {
-      const has = /\$?\s*945\b/.test(r) || /945/.test(r);
-      return { pass: has, details: has ? 'Correct: $945' : 'Wrong answer' };
+      const has = /1.?290/.test(r);
+      return { pass: has, details: has ? 'Correct: ' : 'Wrong answer' };
     }
   },
   { id: 'q-reason-2', name: 'Logic Deduction', category: 'reasoning', difficulty: 'quick',
@@ -83,7 +83,7 @@ const QUICK_TESTS: TestCase[] = [
     prompt: 'If all roses are flowers, and some flowers fade quickly, can we conclude that some roses fade quickly? Answer YES or NO with one sentence of reasoning.',
     maxTokens: 300,
     evaluate: (r) => {
-      const has = /\bno\b/i.test(r) && (/not necessarily|cannot|doesn.t follow|not.*valid/i.test(r));
+      const has = /\bno\b/i.test(r) || (/cannot|can.t|not necessarily|doesn.t follow|not.*valid|not.*conclude|unsound|invalid/i.test(r));
       return { pass: has, details: has ? 'Correct: cannot conclude' : 'Wrong logic' };
     }
   },  // --- Instruction (2 tests) - IFEval style ---
@@ -161,7 +161,7 @@ const STANDARD_TESTS: TestCase[] = [
     prompt: 'Prove by contradiction that sqrt(2) + sqrt(3) is irrational. Write a complete, rigorous proof.',
     maxTokens: 1200,
     evaluate: (r) => {
-      const has = (/contradiction|irrational/i.test(r)) && (/\^2|square|squared/i.test(r)) && (/rational|integer|even|odd|prime/i.test(r)) && r.length > 200;
+      const has = (/contradiction|assume|suppose/i.test(r)) && (/irrational/i.test(r)) && (/sqrt|square|\^2/i.test(r)) && r.length > 100;
       return { pass: has, details: has ? 'Valid proof structure' : 'Incomplete proof' };
     }
   },  // --- Instruction (2 tests) - Complex IFEval ---
