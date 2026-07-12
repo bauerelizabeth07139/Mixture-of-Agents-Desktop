@@ -144,7 +144,7 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
           {msg.thinkingMode && <span className="message-model" style={{ background: 'var(--info-bg)', color: 'var(--info)', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>🧠 {msg.thinkingMode}</span>}
           {msg.visionModel && (
             <span className="message-model" style={{ background: 'var(--warning)', color: '#000', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>
-              👁️ 视觉: {msg.visionModel}
+              🖼️ 视觉: {msg.visionModel}
             </span>
           )}
           <span className="message-time">{msg.time}</span>
@@ -420,11 +420,8 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                   <div key={m.id} style={{ padding: '3px 0', fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span>{m.name}</span>
                     <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : 'badge-success'}`}>{m.type}</span>
-                    {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning">👁️ 视觉</span>}
-                    {m.capabilities.multimodal && (m.capabilities as any).visionScore != null && (
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>视觉 {(m.capabilities as any).visionScore}/10</span>
-                    )}
-                    {(m.type === 'tts' || (m.capabilities as any).audioScore > 0) && <span className="badge badge-accent">🔊 语音</span>}
+                    {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning" style={{fontSize:9}}>🖼️ 视觉 {(m.capabilities as any).visionScore}/10</span>}
+                    {(m.capabilities as any).audioScore > 0 && <span className="badge badge-accent" style={{fontSize:9}}>🔊 音频 {(m.capabilities as any).audioScore}/10</span>}
                   </div>
                 ))}
               </div>
@@ -458,12 +455,10 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
           <CapabilityBar label="上下文" value={model.capabilities.context} color="var(--warning)" />
           <CapabilityBar label="速度" value={model.capabilities.speed} color="#ff6b9d" />
           <CapabilityBar label="视觉" value={(model.capabilities as any).visionScore || 0} color="#b388ff" />
+          <CapabilityBar label="音频" value={(model.capabilities as any).audioScore || 0} color="#ff9800" />
           <div style={{ marginTop: 12, fontSize: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            {(model.capabilities as any).visionScore > 0 && <span className="badge badge-warning">👁️ 视觉能力</span>}
-            {(model.type === 'tts' || (model.capabilities as any).audioScore > 0) && <span className="badge badge-accent">🔊 语音</span>}
-            {(model.capabilities as any).visionScore > 0 && (
-              <span style={{ fontSize: 11, color: '#b388ff' }}>👁️ 视觉能力: {(model.capabilities as any).visionScore}/10</span>
-            )}
+            {(model.capabilities as any).visionScore > 0 && <span className="badge badge-warning">🖼️ 视觉 {(model.capabilities as any).visionScore}/10</span>}
+            {(model.capabilities as any).audioScore > 0 && <span className="badge badge-accent">🔊 音频</span>}
             {getModelNote(model.name) && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>📝 {getModelNote(model.name)}</span>}
           </div>
         </div>
@@ -478,8 +473,8 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
               <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : 'badge-success'}`}>{m.type}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, fontSize: 10, flexWrap: 'wrap' }}>
-              {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning" style={{ fontSize: 9 }}>👁️ 视觉</span>}
-              {(m.type === 'tts' || (m.capabilities as any).audioScore > 0) && <span className="badge badge-accent" style={{ fontSize: 9 }}>🔊 语音</span>}
+              {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning" style={{ fontSize: 9 }}>🖼️ 视觉</span>}
+              {(m.capabilities as any).audioScore > 0 && <span className="badge badge-accent" style={{ fontSize: 9 }}>🔊 音频</span>}
               <span style={{ color: 'var(--text-muted)' }}>代码 {m.capabilities.code}</span>
               <span style={{ color: 'var(--text-muted)' }}>推理 {m.capabilities.agent}</span>
               <span style={{ color: 'var(--text-muted)' }}>对话 {m.capabilities.chat}</span>
