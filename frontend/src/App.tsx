@@ -46,8 +46,8 @@ function CapabilityBar({ label, value, color }: { label: string; value: number; 
   return (
     <div className="capability-bar">
       <span className="capability-label">{label}</span>
-      <div className="capability-track"><div className="capability-fill" style={{ width: value * 20 + '%', background: color }} /></div>
-      <span className="capability-value">{(value * 2).toFixed(1)}</span>
+      <div className="capability-track"><div className="capability-fill" style={{ width: value * 10 + '%', background: color }} /></div>
+      <span className="capability-value">{value.toFixed(1)}</span>
     </div>
   );
 }
@@ -742,7 +742,7 @@ const estimateLabel = (ms?: number | null) => {
                       <span>{(r.capabilities?.speed || 0).toFixed(1)}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '8px', fontWeight: 700, fontSize: 14, color: (r.overallScore || 0) >= 4 ? 'var(--success)' : (r.overallScore || 0) >= 2.8 ? 'var(--warning)' : 'var(--error)' }}>
+                  <td style={{ padding: '8px', fontWeight: 700, fontSize: 14, color: (r.overallScore || 0) >= 8 ? 'var(--success)' : (r.overallScore || 0) >= 5.6 ? 'var(--warning)' : 'var(--error)' }}>
                     {(r.overallScore || 0).toFixed(1)}
                   </td>
                 <td style={{ padding: '8px', fontSize: 11, color: 'var(--text-muted)', maxWidth: 200 }}>{getModelNote(r.modelName) || '-'}</td>
@@ -758,7 +758,7 @@ const estimateLabel = (ms?: number | null) => {
             {r.modelName}
             <span className="badge badge-info" style={{ marginLeft: 8 }}>{r.providerName}</span>
             {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-warning" style={{ marginLeft: 4 }}>👁️ 多模态</span>}
-            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{(r.overallScore * 2)?.toFixed(1)}/10</span>
+            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{r.overallScore?.toFixed(1)}/10</span>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
             {r.metrics?.passRate != null && <span>通过率 {r.metrics.passRate}%</span>}
