@@ -570,6 +570,12 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
 
   const providerModels = selectedProvider ? providers.find(p => p.id === selectedProvider)?.models.filter(m => m.type === 'llm' || m.type === 'vlm') || [] : [];
 
+const estimateLabel = (ms?: number | null) => {
+    if (!ms) return '';
+    const sec = Math.round(ms / 1000);
+    return sec >= 60 ? Math.round(sec / 60) + ' 分钟' : sec + ' 秒';
+  };
+  const exceedsAny = (reportsArr: any[]) => reportsArr.some((rr: any) => rr.exceedsEstimated);
   const runTest = async () => {
     setTesting(true); setReports([]); setLastResult('');
     try {
@@ -579,20 +585,24 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
         setProgress({ current: 1, total: 1, label: model.modelId });
         const r = testMode === 'quick' ? await api.runQuickTest(model.provId, model.id) : await api.runFullTest(model.provId, model.id);
         setReports(r.reports || []);
+        if (r.estimatedMs) setProgress(p => ({ ...p, label: '预计 ' + estimateLabel(r.estimatedMs) }));
+        if (exceedsAny(r.reports || [])) alert('⚠️ 测试时间可能超出预计，请耐心等待');
         setLastResult('单模型测试完成');
         setProgress({ current: 1, total: 1, label: '完成' });
       } else if (scope === 'provider') {
         if (!selectedProvider) { alert('请选择一个提供商'); setTesting(false); return; }
-        setProgress({ current: 0, total: providerModels.length || 1, label: '正在测试提供商模型...' });
+        setProgress({ current: 0, total: providerModels.length || 1, label: '正在测试提供商模型..' });
         const r = await api.runProviderTest(selectedProvider, testMode === 'quick');
         setReports(r.reports || []);
-        setLastResult('提供商测试完成: ' + (r.providerName || '') + ', 报告: ' + (r.reports?.length || 0));
+        if (r.estimatedMs) setProgress(p => ({ ...p, label: '预计 ' + estimateLabel(r.estimatedMs) }));
+        setLastResult('提供商测试完成 ' + (r.providerName || '') + ', 报告: ' + (r.reports?.length || 0));
         setProgress({ current: providerModels.length || 1, total: providerModels.length || 1, label: '完成' });
       } else {
         const totalCount = allModels.length || 1;
         setProgress({ current: 0, total: totalCount, label: '正在测试全部模型...' });
         const r = await api.runAllTest(testMode === 'quick');
         setReports(r.reports || []);
+        if (r.estimatedMs) setProgress(p => ({ ...p, label: '预计 ' + estimateLabel(r.estimatedMs) }));
         setLastResult('全部模型测试完成, 报告: ' + (r.reports?.length || 0));
         setProgress({ current: totalCount, total: totalCount, label: '完成' });
       }
@@ -629,10 +639,10 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
       <h3 style={{ marginBottom: 16, fontSize: 15 }}>🧪 模型能力测试</h3>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <button onClick={() => setTestMode('quick')} style={{ flex: 1, padding: '12px 16px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: testMode === 'quick' ? 'var(--accent)' : 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 600 }}>
-          ⚡ 快速测试 <span style={{ fontSize: 10, opacity: 0.7 }}>~2 分钟</span>
+          ⚡ 快速测试 <span style={{ fontSize: 10, opacity: 0.7 }}>~3 分钟</span>
         </button>
         <button onClick={() => setTestMode('full')} style={{ flex: 1, padding: '12px 16px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: testMode === 'full' ? 'var(--accent)' : 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 600 }}>
-          📊 标准测试 <span style={{ fontSize: 10, opacity: 0.7 }}>~10 分钟</span>
+          📊 标准测试 <span style={{ fontSize: 10, opacity: 0.7 }}>~12 分钟</span>
         </button>
       </div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
@@ -732,7 +742,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
                       <span>{(r.capabilities?.speed || 0).toFixed(1)}</span>
                     </div>
                   </td>
-                  <td style={{ padding: '8px', fontWeight: 700, fontSize: 14, color: (r.overallScore || 0) >= 7 ? 'var(--success)' : (r.overallScore || 0) >= 4 ? 'var(--warning)' : 'var(--error)' }}>
+                  <td style={{ padding: '8px', fontWeight: 700, fontSize: 14, color: (r.overallScore || 0) >= 4 ? 'var(--success)' : (r.overallScore || 0) >= 2.8 ? 'var(--warning)' : 'var(--error)' }}>
                     {(r.overallScore || 0).toFixed(1)}
                   </td>
                 <td style={{ padding: '8px', fontSize: 11, color: 'var(--text-muted)', maxWidth: 200 }}>{getModelNote(r.modelName) || '-'}</td>
@@ -748,7 +758,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
             {r.modelName}
             <span className="badge badge-info" style={{ marginLeft: 8 }}>{r.providerName}</span>
             {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-warning" style={{ marginLeft: 4 }}>👁️ 多模态</span>}
-            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{r.overallScore?.toFixed(1)}/10</span>
+            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{r.overallScore?.toFixed(1)}/5</span>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
             {r.metrics?.passRate != null && <span>通过率 {r.metrics.passRate}%</span>}
@@ -759,7 +769,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
           </div>
           {r.results?.map((t: any, j: number) => (
             <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 12 }}>
-              <span className={`badge ${t.score >= 7 ? 'badge-success' : t.score >= 4 ? 'badge-warning' : 'badge-error'}`}>{t.score}/10</span>
+              <span className={`badge ${t.score >= 4 ? 'badge-success' : t.score >= 2.8 ? 'badge-warning' : 'badge-error'}`}>{t.score}/5</span>
               <span style={{ flex: 1 }}>{cn(t.testName)}{t.details ? ` · ${cnDetail(String(t.details))}` : ''}</span>
               <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{t.latencyMs}ms</span>
             </div>

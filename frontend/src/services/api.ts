@@ -10,12 +10,12 @@ export const api = {
   fetchModels: (pid: string) => fetch(B+'/providers/'+pid+'/fetch-models',{method:'POST',headers:h}).then(r=>r.json()),
   testModel: (pid: string, mid: string) => fetch(B+'/providers/'+pid+'/models/'+mid+'/test',{method:'POST'}).then(r=>r.json()),
   // Testing - single model
-  runFullTest: (pid: string, mid: string) => fetch(B+'/testing/'+pid+'/models/'+mid+'/test-full',{method:'POST',headers:h}).then(r=>r.json()),
-  runQuickTest: (pid: string, mid: string) => fetch(B+'/testing/'+pid+'/models/'+mid+'/test-quick',{method:'POST',headers:h}).then(r=>r.json()),
+  runFullTest: (pid: string, mid: string) => fetch(B+'/testing/'+pid+'/models/'+mid+'/test-full',{method:'POST',headers:h}).then(async r=>{const j=await r.json(); return {...j, estimatedMs:j.estimatedMs ?? null, exceedsEstimated:j.exceedsEstimated ?? false};}),
+  runQuickTest: (pid: string, mid: string) => fetch(B+'/testing/'+pid+'/models/'+mid+'/test-quick',{method:'POST',headers:h}).then(async r=>{const j=await r.json(); return {...j, estimatedMs:j.estimatedMs ?? null, exceedsEstimated:j.exceedsEstimated ?? false};}),
   // Testing - provider scope (all models under one URL)
-  runProviderTest: (pid: string, quick?: boolean) => fetch(B+'/testing/'+pid+'/test-all',{method:'POST',headers:h,body:JSON.stringify({quick:quick!==false})}).then(r=>r.json()),
+  runProviderTest: (pid: string, quick?: boolean) => fetch(B+'/testing/'+pid+'/test-all',{method:'POST',headers:h,body:JSON.stringify({quick:quick!==false})}).then(async r=>{const j=await r.json(); return {...j, estimatedMs:j.estimatedMs ?? null};}),
   // Testing - all models
-  runAllTest: (quick?: boolean) => fetch(B+'/testing/test-all-models',{method:'POST',headers:h,body:JSON.stringify({quick:quick!==false})}).then(r=>r.json()),
+  runAllTest: (quick?: boolean) => fetch(B+'/testing/test-all-models',{method:'POST',headers:h,body:JSON.stringify({quick:quick!==false})}).then(async r=>{const j=await r.json(); return {...j, estimatedMs:j.estimatedMs ?? null};}),
   // Multimodal
   runMultimodalTest: (pid: string, mid: string, imageUrl?: string) => fetch(B+'/testing/'+pid+'/models/'+mid+'/test-multimodal',{method:'POST',headers:h,body:JSON.stringify({imageUrl})}).then(r=>r.json()),
   // Coding

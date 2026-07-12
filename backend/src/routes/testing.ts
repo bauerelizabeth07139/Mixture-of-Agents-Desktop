@@ -1,6 +1,7 @@
 ﻿import { Router } from 'express';
 import { ApiPoolManager } from '../providers/api-pool';
 import { CapabilityTestEngine } from '../services/capability-test';
+import type { ApiKeyEntry } from '../types';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -63,7 +64,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
       model.capabilities = report.capabilities;
       saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
-      res.json({ scope: 'single', testSuite: 'quick', reports: [report] });
+      res.json({ scope: 'single', testSuite: 'quick', reports: [report], estimatedMs: estimateMs(true, 8), exceedsEstimated: report.totalTimeMs > estimateMs(true, 8) });
     } catch (err: any) {
       handleTestError(pool, prov.id, key.id, err);
       res.status(500).json({ error: 'Test failed: ' + err.message });
@@ -89,7 +90,7 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
       model.capabilities = report.capabilities;
       saveCapabilities(pool);
       wsBroadcast('test_completed', { modelId: model.modelId, report });
-      res.json({ scope: 'single', testSuite: 'standard', reports: [report] });
+      res.json({ scope: 'single', testSuite: 'standard', reports: [report], estimatedMs: estimateMs(false, 8), exceedsEstimated: report.totalTimeMs > estimateMs(false, 8) });
     } catch (err: any) {
       handleTestError(pool, prov.id, key.id, err);
       res.status(500).json({ error: 'Test failed: ' + err.message });
@@ -273,6 +274,17 @@ export function createTestingRoutes(pool: ApiPoolManager, wsBroadcast: Function)
 }
 
 // ������ Helper: evict key on auth/quota failure ����������������������������
+
+function distributeKey<T>(items: T[], pool: ApiPoolManager, providerId: string): Array<{ item: T; key: ApiKeyEntry | null }> {
+  const keys = (pool.getProvider(providerId)?.apiKeys || []).filter((k) => k.isActive);
+  if (!keys.length) return items.map((item) => ({ item, key: null }));
+  return items.map((item, idx) => ({ item, key: keys[idx % keys.length] }));
+}
+
+function estimateMs(useQuick: boolean, modelCount: number): number {
+  const base = useQuick ? 180000 : 720000;
+  return Math.min(base * modelCount, useQuick ? 540000 : 1800000);
+}
 
 function handleTestError(pool: ApiPoolManager, providerId: string, keyId: string, error: any): void {
   const status = error?.status || error?.statusCode || error?.response?.status;

@@ -1,9 +1,8 @@
 ﻿node_modules/
 dist/
 release/*
-!release/win-unpacked/
-!release/win-unpacked/Mixture of Agents.exe
 *.asar
 dist-exe/
 frontend/node.exe
 backend/public/
+release/

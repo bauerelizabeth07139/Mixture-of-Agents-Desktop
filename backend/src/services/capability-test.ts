@@ -269,21 +269,48 @@ const STANDARD_TESTS: TestCase[] = [
 // ============================================================
 
 export class CapabilityTestEngine {
+  private static async runWithConcurrency(tasks: Array<() => Promise<any>>, limit: number): Promise<any[]> {
+    const results = new Array(tasks.length);
+    let idx = 0;
+    const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
+      while (idx < tasks.length) {
+        const current = idx++;
+        try {
+          results[current] = await tasks[current]();
+        } catch (err) {
+          results[current] = err;
+        }
+      }
+    });
+    await Promise.all(workers);
+    return results;
+  }
+
+  private static estimateSuiteMs(suite: 'quick' | 'standard', testCount: number): number {
+    const limit = suite === 'quick' ? 180000 : 720000;
+    return Math.min(limit * testCount, suite === 'quick' ? 540000 : 1800000);
+  }
 
   static async runTest(
-    provider: Provider, apiKey: ApiKeyEntry, model: Model,
-    tests: TestCase[], suite: 'quick' | 'standard',
+    provider: Provider,
+    apiKey: ApiKeyEntry,
+    model: Model,
+    tests: TestCase[],
+    suite: 'quick' | 'standard',
     onProgress?: (current: number, total: number, testName: string) => void,
+    opts?: { perKeyConcurrency?: number; maxTotalConcurrency?: number },
   ): Promise<ModelTestReport> {
     const timeLimit = suite === 'quick' ? QUICK_TIMEOUT_MS : STANDARD_TIMEOUT_MS;
     const thinkingEffort = suite === 'quick' ? 'none' : 'high';
     const results: TestResult[] = [];
     const totalStart = Date.now();
 
-    for (let i = 0; i < tests.length; i++) {
-      const test = tests[i];
-      onProgress?.(i + 1, tests.length, test.name);
+    const perKey = opts?.perKeyConcurrency ?? (suite === 'quick' ? 20 : 10);
+    const maxTotal = opts?.maxTotalConcurrency ?? 80;
+    const concurrency = Math.min(perKey, maxTotal, Math.max(1, tests.length));
+    let completed = 0;
 
+    const tasks = tests.map((test, i) => async () => {
       try {
         const start = Date.now();
         const resp = await LLMClient.chatCompletion(provider, apiKey, {
@@ -300,24 +327,42 @@ export class CapabilityTestEngine {
         const evalResult = test.evaluate(resp.content);
         const score = timeScore(latencyMs, timeLimit, evalResult.pass);
 
-        results.push({
-          testId: test.id, testName: test.name, category: test.category,
+        return {
+          testId: test.id,
+          testName: test.name,
+          category: test.category,
           score: Math.round(score * 1000) / 1000,
           details: evalResult.details,
-          latencyMs, tokensUsed: resp.usage.totalTokens,
-        });
+          latencyMs,
+          tokensUsed: resp.usage.totalTokens,
+        } as TestResult;
       } catch (error: any) {
-        results.push({
-          testId: test.id, testName: test.name, category: test.category,
-          score: 0, details: 'Error: ' + (error.message || '').slice(0, 120),
-          latencyMs: 0, tokensUsed: 0,
-        });
+        return {
+          testId: test.id,
+          testName: test.name,
+          category: test.category,
+          score: 0,
+          details: 'Error: ' + (error.message || '').slice(0, 120),
+          latencyMs: 0,
+          tokensUsed: 0,
+        } as TestResult;
       }
+    });
+
+    const executed = await this.runWithConcurrency(tasks, concurrency);
+    for (const item of executed) {
+      if (item && typeof item === 'object' && 'testId' in item) {
+        results.push(item as TestResult);
+      }
+    }
+
+    for (const result of results) {
+      completed++;
+      onProgress?.(completed, tests.length, result.testName);
     }
 
     const totalTimeMs = Date.now() - totalStart;
 
-    // Compute category averages
     const avg = (cat: string) => {
       const r = results.filter(x => x.category === cat);
       return r.length ? Math.round(r.reduce((s, x) => s + x.score, 0) / r.length * 100) / 100 : 0;
@@ -336,29 +381,34 @@ export class CapabilityTestEngine {
       pricing: model.capabilities.pricing,
     };
 
-    // Fetch latest pricing
     try {
       const price = await updateModelPricing(model.modelId, provider.baseUrl, apiKey.key);
       capabilities.pricing = { inputPer1M: price.inputPer1M, outputPer1M: price.outputPer1M, userEditable: true };
     } catch {}
 
-    const overallScore = Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 1000) / 1000;
+    const overallScore = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 1000) / 1000 : 0;
 
     return {
-      modelId: model.id, modelName: model.modelId, providerName: provider.name,
-      timestamp: new Date().toISOString(), results, overallScore, capabilities,
-      testSuite: suite, totalTimeMs,
+      modelId: model.id,
+      modelName: model.modelId,
+      providerName: provider.name,
+      timestamp: new Date().toISOString(),
+      results,
+      overallScore,
+      capabilities,
+      testSuite: suite,
+      totalTimeMs,
     };
   }
 
   static async runQuickTest(provider: Provider, apiKey: ApiKeyEntry, model: Model,
     onProgress?: (current: number, total: number, testName: string) => void): Promise<ModelTestReport> {
-    return this.runTest(provider, apiKey, model, QUICK_TESTS, 'quick', onProgress);
+    return this.runTest(provider, apiKey, model, QUICK_TESTS, 'quick', onProgress, { perKeyConcurrency: 20, maxTotalConcurrency: 80 });
   }
 
   static async runFullTest(provider: Provider, apiKey: ApiKeyEntry, model: Model,
     onProgress?: (current: number, total: number, testName: string) => void): Promise<ModelTestReport> {
-    return this.runTest(provider, apiKey, model, STANDARD_TESTS, 'standard', onProgress);
+    return this.runTest(provider, apiKey, model, STANDARD_TESTS, 'standard', onProgress, { perKeyConcurrency: 10, maxTotalConcurrency: 80 });
   }
 
   static async testMultimodal(provider: Provider, apiKey: ApiKeyEntry, model: Model, imageUrl: string): Promise<{ score: number; details: string; latencyMs: number }> {

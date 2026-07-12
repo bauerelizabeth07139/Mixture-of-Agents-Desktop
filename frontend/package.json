@@ -75,7 +75,8 @@
       ],
       "sign": null,
       "signingHashAlgorithms": [],
-      "verifyUpdateCodeSignature": false
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
@@ -87,5 +88,7 @@
     "asarUnpack": [
       "backend/**/*"
     ]
-  }
+  },
+  "description": "Multi-model collaborative AI agent system",
+  "author": "Mixture of Agents"
 }
