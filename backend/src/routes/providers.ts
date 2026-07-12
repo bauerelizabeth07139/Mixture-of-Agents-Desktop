@@ -2,6 +2,7 @@
 import { ApiPoolManager } from '../providers/api-pool';
 import { PROVIDER_PRESETS } from '../providers/presets';
 import { ModelCapabilityScorer } from '../models/capability-scorer';
+import { CapabilityTestEngine } from '../services/capability-test';
 import { LLMClient } from '../services/llm-client';
 import { v4 as uuid } from 'uuid';
 import { Provider, Model, ModelType } from '../types';
@@ -130,6 +131,19 @@ export function createProviderRoutes(pool: ApiPoolManager) {
         }
       }
       res.json({ models: prov.models, source: 'api', count: prov.models.length });
+      // Background: probe new models for vision/audio capabilities
+      const newModels = prov.models.filter(m => m.capabilities.visionScore === 0 && m.capabilities.audioScore === 0);
+      if (newModels.length > 0 && key) {
+        (async () => {
+          for (const m of newModels.slice(0, 5)) {
+            try {
+              const probe = await CapabilityTestEngine.probeCapabilities(prov, key, m);
+              if (probe.visionScore > 0) { m.capabilities.visionScore = probe.visionScore; m.capabilities.multimodal = true; }
+              if (probe.audioScore > 0) { m.capabilities.audioScore = probe.audioScore; }
+            } catch {}
+          }
+        })();
+      }
     } catch (err: any) {
       const status = err.response?.status;
       const errMsg = err.response?.data?.error?.message || err.message;

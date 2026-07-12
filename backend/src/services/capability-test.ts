@@ -15,10 +15,11 @@ const QUICK_TIMEOUT_MS = 180000;
 const STANDARD_TIMEOUT_MS = 720000;
 
 function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean, correctness: number = 1): number {
-  if (!passed) return 0;
+  if (!passed && correctness === 0) return 0;
   const half = timeLimitMs * 0.5;
   let base: number;
   if (latencyMs <= half) { base = 5; } else { base = 2 + 3 * (1 - (latencyMs - half) / half); }
+  if (!passed) base = Math.min(base, 2.5);
   return Math.round(base * correctness * 1000) / 1000;
 }
 
@@ -413,6 +414,30 @@ export class CapabilityTestEngine {
     } catch (error: any) {
       return { score: 0, details: 'Error: ' + error.message.slice(0, 100), latencyMs: Date.now() - start };
     }
+  }
+
+  // Probe model for vision and audio capabilities
+  static async probeCapabilities(provider: Provider, apiKey: ApiKeyEntry, model: Model): Promise<{ visionScore: number; audioScore: number }> {
+    let visionScore = 0;
+    let audioScore = 0;
+    // Vision test: send image URL
+    try {
+      const resp = await LLMClient.chatCompletion(provider, apiKey, {
+        messages: [{ role: 'user', content: [
+          { type: 'text', text: 'What animal is in this image? Describe it in one word.' },
+          { type: 'image_url', image_url: { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg' } },
+        ] as any }],
+        model: model.modelId, maxTokens: 100, temperature: 0,
+      });
+      const r = resp.content.toLowerCase();
+      if (/cat|kitten|feline|animal/.test(r) && r.length > 3) visionScore = 7;
+      else if (r.length > 10) visionScore = 4;
+      else if (r.length > 0) visionScore = 2;
+    } catch {}
+    // Audio detection: check model name for audio keywords
+    const id = model.modelId.toLowerCase();
+    if (/\b(audio|asr|stt|whisper|speech|voice|hear|listen)\b/.test(id)) audioScore = 8;
+    return { visionScore, audioScore };
   }
 
   static getTestCases(): TestCase[] { return [...QUICK_TESTS, ...STANDARD_TESTS]; }

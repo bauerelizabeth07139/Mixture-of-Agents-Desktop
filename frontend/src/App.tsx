@@ -759,7 +759,7 @@ const estimateLabel = (ms?: number | null) => {
           <div className="card-title">
             {r.modelName}
             <span className="badge badge-info" style={{ marginLeft: 8 }}>{r.providerName}</span>
-            {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-warning" style={{ marginLeft: 4 }}>👁️ 视觉</span>}
+            {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-warning" style={{ marginLeft: 4 }}>🖼️ 视觉</span>}
             <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{r.overallScore?.toFixed(1)}/10</span>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
