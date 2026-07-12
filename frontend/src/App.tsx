@@ -47,7 +47,7 @@ function CapabilityBar({ label, value, color }: { label: string; value: number; 
     <div className="capability-bar">
       <span className="capability-label">{label}</span>
       <div className="capability-track"><div className="capability-fill" style={{ width: value * 10 + '%', background: color }} /></div>
-      <span className="capability-value">{value.toFixed(1)}</span>
+      <span className="capability-value">{value.toFixed(1)}/10</span>
     </div>
   );
 }
@@ -708,7 +708,7 @@ const estimateLabel = (ms?: number | null) => {
                       <div style={{ width: 40, height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: ((r.capabilities?.code || r.metrics?.codeAvg || 0) * 10) + '%', height: '100%', background: 'var(--accent)', borderRadius: 3 }} />
                       </div>
-                      <span>{(r.capabilities?.code || r.metrics?.codeAvg || 0).toFixed(1)}</span>
+                      <span>{(r.capabilities?.code || r.metrics?.codeAvg || 0).toFixed(1)}/10</span>
                     </div>
                   </td>
                   <td style={{ padding: '8px' }}>
@@ -716,7 +716,7 @@ const estimateLabel = (ms?: number | null) => {
                       <div style={{ width: 40, height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: ((r.capabilities?.agent || r.metrics?.reasonAvg || 0) * 10) + '%', height: '100%', background: 'var(--info)', borderRadius: 3 }} />
                       </div>
-                      <span>{(r.capabilities?.agent || r.metrics?.reasonAvg || 0).toFixed(1)}</span>
+                      <span>{(r.capabilities?.agent || r.metrics?.reasonAvg || 0).toFixed(1)}/10</span>
                     </div>
                   </td>
                   <td style={{ padding: '8px' }}>
@@ -724,7 +724,7 @@ const estimateLabel = (ms?: number | null) => {
                       <div style={{ width: 40, height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: ((r.capabilities?.chat || r.metrics?.chatAvg || 0) * 10) + '%', height: '100%', background: 'var(--success)', borderRadius: 3 }} />
                       </div>
-                      <span>{(r.capabilities?.chat || r.metrics?.chatAvg || 0).toFixed(1)}</span>
+                      <span>{(r.capabilities?.chat || r.metrics?.chatAvg || 0).toFixed(1)}/10</span>
                     </div>
                   </td>
                   <td style={{ padding: '8px' }}>
@@ -741,7 +741,7 @@ const estimateLabel = (ms?: number | null) => {
                       <div style={{ width: 40, height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
                         <div style={{ width: ((r.capabilities?.speed || 0) * 10) + '%', height: '100%', background: '#ff6b9d', borderRadius: 3 }} />
                       </div>
-                      <span>{(r.capabilities?.speed || 0).toFixed(1)}</span>
+                      <span>{(r.capabilities?.speed || 0).toFixed(1)}/10</span>
                     </div>
                   </td>
                   <td style={{ padding: '8px', fontWeight: 700, fontSize: 14, color: (r.overallScore || 0) >= 8 ? 'var(--success)' : (r.overallScore || 0) >= 5.6 ? 'var(--warning)' : 'var(--error)' }}>
