@@ -243,7 +243,7 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
 }) {
   if (!visible) return null;
   const allModelsRaw = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon })));
-  const allModels = [...new Map(allModelsRaw.map(m => [m.modelId, m])).values()];
+  const allModels = [...new Map(allModelsRaw.sort((a,b) => (b.capabilities?.code||0) - (a.capabilities?.code||0)).map(m => [m.modelId, m])).values()];
   const totalKeys = providers.reduce((s, p) => s + p.apiKeys.length, 0);
   return (
     <div className="settings-drawer">
@@ -438,7 +438,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
 // ─── Model Capabilities Panel ───
 function ModelPanel({ providers }: { providers: Provider[] }) {
   const allModelsRaw = providers.flatMap(p => p.models.map(m => ({ ...m, providerName: p.name, providerIcon: p.icon })));
-    const allModels = [...new Map(allModelsRaw.map(m => [m.modelId, m])).values()];
+    const allModels = [...new Map(allModelsRaw.sort((a,b) => (b.capabilities?.code||0) - (a.capabilities?.code||0)).map(m => [m.modelId, m])).values()];
   const [selected, setSelected] = useState('');
   const model = allModels.find(m => m.id === selected);
   return (
@@ -459,8 +459,6 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
           <CapabilityBar label="速度" value={model.capabilities.speed} color="#ff6b9d" />
           <CapabilityBar label="视觉" value={(model.capabilities as any).visionScore || 0} color="#b388ff" />
           <div style={{ marginTop: 12, fontSize: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span>📥 输入: ${model.capabilities.pricing.inputPer1M}/1M</span>
-            <span>📤 输出: ${model.capabilities.pricing.outputPer1M}/1M</span>
             {model.capabilities.multimodal && <span className="badge badge-warning">👁️ 多模态</span>}
             {(model.type === 'tts' || (model.capabilities as any).audioScore > 0) && <span className="badge badge-accent">🔊 语音</span>}
             {(model.capabilities as any).visionScore > 0 && (
@@ -559,7 +557,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
 
 
   const allModelsRaw = providers.flatMap(p => p.models.filter(m => (m.type === 'llm' || m.type === 'vlm')).map(m => ({ ...m, pName: p.name, pIcon: p.icon, provId: p.id })));
-  const allModels = [...new Map(allModelsRaw.map(m => [m.modelId, m])).values()];
+  const allModels = [...new Map(allModelsRaw.sort((a,b) => (b.capabilities?.code||0) - (a.capabilities?.code||0)).map(m => [m.modelId, m])).values()];
   const [scope, setScope] = useState<'single' | 'provider' | 'all'>('single');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('');
