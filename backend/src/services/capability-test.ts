@@ -313,15 +313,22 @@ export class CapabilityTestEngine {
     };
     const avgLatency = results.filter(r => r.latencyMs > 0).reduce((s, r) => s + r.latencyMs, 0) / (results.filter(r => r.latencyMs > 0).length || 1);
 
+    // speed: map avgLatency to 0-5 scale (same as test scores)
+    const speedScore = avgLatency < 500 ? 5 : avgLatency < 1000 ? 4.5 : avgLatency < 2000 ? 4 : avgLatency < 4000 ? 3 : avgLatency < 8000 ? 2 : avgLatency < 15000 ? 1 : 0.5;
+    // visionScore: map from 0-10 to 0-5
+    const visionScaled = Math.min(5, (model.capabilities.visionScore || 0) / 2);
+    // context: keep original 0-10 scale, cap at 5 for bar display
+    const contextScaled = Math.min(5, model.capabilities.context || 0);
+
     const capabilities: ModelCapabilityProfile = {
       code: avg('code'),
       agent: avg('reasoning'),
       chat: (avg('chat') + avg('instruction')) / 2,
-      context: model.capabilities.context,
-      speed: avgLatency < 1000 ? 10 : avgLatency < 2000 ? 8 : avgLatency < 4000 ? 6 : avgLatency < 8000 ? 4 : 2,
+      context: contextScaled,
+      speed: speedScore,
       multimodal: model.capabilities.multimodal,
-      visionScore: model.capabilities.visionScore || 0,
-      audioScore: model.capabilities.audioScore || 0,
+      visionScore: visionScaled,
+      audioScore: Math.min(5, (model.capabilities.audioScore || 0) / 2),
       pricing: model.capabilities.pricing,
     };
 
