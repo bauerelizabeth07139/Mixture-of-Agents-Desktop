@@ -18,6 +18,7 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   content: string;
+  reasoningContent?: string;
   model: string;
   usage: { promptTokens: number; completionTokens: number; totalTokens: number };
   finishReason: string;
@@ -75,6 +76,7 @@ export class LLMClient {
 
       return {
         content: data.choices?.[0]?.message?.content || '',
+        reasoningContent: data.choices?.[0]?.message?.reasoning_content || '',
         model: data.model,
         usage: {
           promptTokens: data.usage?.prompt_tokens || 0,

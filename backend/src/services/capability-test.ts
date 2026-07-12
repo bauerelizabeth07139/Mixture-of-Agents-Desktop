@@ -26,219 +26,207 @@ function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean, corr
 // QUICK TESTS — hard, 2 per category, 8 total
 // ============================================================
 const QUICK_TESTS: TestCase[] = [
-  // CODE - Hard LeetCode
-  { id: 'q-code-1', name: 'Trapping Rain Water', category: 'code', difficulty: 'quick',
-    description: 'LeetCode #42 Hard', prompt: 'Write Python function trap(height: list[int]) -> int computing water trapped after rain. O(n) time, O(1) space using two-pointer. Return ONLY the function, no explanation.', maxTokens: 1500,
+  // CODE - Hard LeetCode (LC #23, #312)
+  { id: 'q-code-1', name: 'Merge K Sorted Lists', category: 'code', difficulty: 'quick',
+    description: 'LeetCode #23 Hard', prompt: 'Write Python function mergeKLists(lists: list[Optional[ListNode]]) -> Optional[ListNode] merging k sorted linked lists using a min-heap. O(N log k) time. Define ListNode class. Return ONLY the function/class.', maxTokens: 1500,
     evaluate: (r) => {
-      const checks = [/def\s+trap/i, /left|right|l\s*=|r\s*=/i, /max.*left|max.*right|left_max|right_max|l_max|r_max/i, /while.*<.*len|while.*left.*right/i, /water|trapped|\+.*min|-\s*height/i, /return.*sum|return.*total|return.*water/i, r.length > 80 ? /./ : /(?!)/];
+      const checks = [/def\s+mergeKLists/i, /heap|heapq|priority/i, /ListNode/i, /heappush|heappop|push|pop/i, /while|for.*lists|for.*range/i, /next|val|head/i, /return/i, r.length > 100 ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 5, correctness: m/checks.length, details: m+'/'+checks.length+' checks' };
     }
   },
-  { id: 'q-code-2', name: 'Serialize Binary Tree', category: 'code', difficulty: 'quick',
-    description: 'LeetCode #297 Hard', prompt: 'Write Python class Codec with serialize(root) -> str and deserialize(data) -> TreeNode. Use BFS with "null" markers. Must handle empty tree. Define TreeNode class. Return ONLY the class.', maxTokens: 1500,
+  { id: 'q-code-2', name: 'Burst Balloons', category: 'code', difficulty: 'quick',
+    description: 'LeetCode #312 Hard', prompt: 'Write Python function maxCoins(nums: list[int]) -> int. Burst balloons to maximize coins. When balloon i burst, get nums[left]*nums[i]*nums[right]. Use interval DP. Return ONLY the function.', maxTokens: 1500,
     evaluate: (r) => {
-      const checks = [/class\s+Codec/i, /def\s+serialize/i, /def\s+deserialize/i, /null|None|#/i, /deque|queue|BFS|split|join/i, /class\s+TreeNode/i, /val|left|right/i, /return/i];
+      const checks = [/def\s+maxCoins/i, /dp|memo|table|matrix/i, /for.*range.*len|for.*i.*j|for.*k/i, /max\(|max\s*\(/i, /nums\[|num\[|n\[|left|right|k/i, /return/i, r.length > 80 ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 6, correctness: m/checks.length, details: m+'/'+checks.length+' impl' };
+      return { pass: m >= 5, correctness: m/checks.length, details: m+'/'+checks.length+' impl' };
     }
   },
 
-  // REASONING - Competition math
-  { id: 'q-reason-1', name: 'Fibonacci Last Digit', category: 'reasoning', difficulty: 'quick',
-    description: 'Project Euler #25 variant', prompt: 'What is the last digit of 2^100? Show the cycle pattern of last digits of powers of 2, find the period, compute 100 mod period, and give the exact single digit answer. Show all work.', maxTokens: 1500,
+  // REASONING - Hard competition math
+  { id: 'q-reason-1', name: 'Euler Totient', category: 'reasoning', difficulty: 'quick',
+    description: 'Number theory', prompt: 'Compute phi(360) where phi is Euler totient function. Show: 1) prime factorization of 360 2) apply phi formula phi(n) = n * product(1-1/p) 3) step-by-step arithmetic 4) final answer as integer.', maxTokens: 600,
     evaluate: (r) => {
-      const checks = [/2.*4.*8.*6|2,4,8,6|cycle|period|pattern/i, /4|four|period.*4|repeats.*4/i, /100\s*(mod|%)|100.*4|remainder.*0/i, /\b6\b|last.*digit.*6|answer.*6|6\s*$/m, /32|64|128|256|512|1024/i];
+      const checks = [/2\^?3|2.*2.*2.*3.*3|8.*9.*5|2.*3|3.*3|3\^?2/i, /5/i, /360.*2.*3.*5|360.*8.*9|360.*2\^3/i, /1\s*-\s*1\/2|1-1\/2|\(1-1/i, /1\s*-\s*1\/3|1-1\/3/i, /1\s*-\s*1\/5|1-1\/5/i, /\b96\b|phi.*96|answer.*96|result.*96/i];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: m+'/'+checks.length+' steps' };
+      return { pass: m >= 4, correctness: m/checks.length, details: m+'/'+checks.length+' steps' };
     }
   },
-  { id: 'q-reason-2', name: 'River Crossing', category: 'reasoning', difficulty: 'quick',
-    description: 'Constraint satisfaction', prompt: 'A farmer must cross a river with a wolf, a goat, and a cabbage. Boat carries farmer + 1 item. Wolf eats goat if alone. Goat eats cabbage if alone. Find the minimum number of crossings and list each state (left bank, right bank). Show the complete solution.', maxTokens: 1500,
+  { id: 'q-reason-2', name: 'Derangement', category: 'reasoning', difficulty: 'quick',
+    description: 'Combinatorics', prompt: 'A derangement of n elements is a permutation with no fixed point. Compute D(5) using inclusion-exclusion. Show: 1) formula D(n) = n! * sum((-1)^k / k!, k=0..n) 2) compute each term 3) sum them 4) multiply by 5! 5) final integer answer.', maxTokens: 800,
     evaluate: (r) => {
-      const checks = [/7|seven|minimum.*cross/i, /wolf|goat|cabbage/i, /farmer|boat/i, /left.*bank|right.*bank|side/i, /state|step|crossing/i, /goat.*first|take.*goat/i];
+      const checks = [/inclusion.*exclusion|derangement|fixed.*point/i, /5\s*!|factorial.*5|120/i, /1\s*-\s*1|1\/1|1\/1!/i, /1\/2|1\/2!|0\.5/i, /1\/6|1\/3!|1\/3/i, /1\/24|1\/4!/i, /1\/120|1\/5!/i, /\b44\b|derangement.*44|D\(5\).*44|answer.*44/i];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: m+'/'+checks.length+' logic' };
+      return { pass: m >= 5, correctness: m/checks.length, details: m+'/'+checks.length+' terms' };
     }
   },
 
-  // INSTRUCTION - Multi-constraint
-  { id: 'q-inst-1', name: 'Palindromic JSON', category: 'instruction', difficulty: 'quick',
-    description: 'IFEval strict', prompt: 'Generate a JSON object where every string value is a palindrome (reads same forwards/backwards). Must have exactly 4 keys: "name" (palindrome, 4+ chars), "code" (palindrome, 3+ chars), "word" (palindrome, 5+ chars), "id" (palindrome number as string, 4+ digits). ONLY valid JSON, no markdown.', maxTokens: 1500,
+  // INSTRUCTION - Complex constraints
+  { id: 'q-inst-1', name: 'Anagram JSON', category: 'instruction', difficulty: 'quick',
+    description: 'IFEval strict', prompt: 'Generate JSON: {"word1":"listen","word2":"silent","areAnagram":true,"sharedLetters":"eilnst","length":6}. Then below the JSON, write a Python one-liner (single line) that checks if two strings are anagrams using sorted(). Output ONLY the JSON then the one-liner.', maxTokens: 400,
     evaluate: (r) => {
       try {
-        const clean = r.replace(/```json?\s*/g,'').replace(/```\s*/g,'').trim();
-        const obj = JSON.parse(clean);
-        const isPal = (s: string) => { const t = String(s); return t === t.split('').reverse().join(''); };
+        const jsonPart = r.match(/\{[^}]+\}/)?.[0] || '';
+        const obj = JSON.parse(jsonPart);
+        const hasOneLiner = /sorted|lambda|==.*sorted/i.test(r);
         const checks = [
-          typeof obj.name === 'string' && obj.name.length >= 4 && isPal(obj.name),
-          typeof obj.code === 'string' && obj.code.length >= 3 && isPal(obj.code),
-          typeof obj.word === 'string' && obj.word.length >= 5 && isPal(obj.word),
-          typeof obj.id === 'string' && obj.id.length >= 4 && /^\d+$/.test(obj.id) && isPal(obj.id),
-          Object.keys(obj).length === 4,
+          obj.word1 === 'listen',
+          obj.word2 === 'silent',
+          obj.areAnagram === true,
+          typeof obj.sharedLetters === 'string' && obj.sharedLetters.length >= 5,
+          obj.length === 6,
+          hasOneLiner,
         ];
         const m = checks.filter(Boolean).length;
-        return { pass: m >= 4, correctness: m/checks.length, details: m+'/5 palindrome' };
+        return { pass: m >= 5, correctness: m/checks.length, details: m+'/6 fields' };
       } catch { return { pass: false, correctness: 0, details: 'Invalid JSON' }; }
     }
   },
-  { id: 'q-inst-2', name: 'Lipogram Essay', category: 'instruction', difficulty: 'quick',
-    description: 'Oulipo constraint', prompt: 'Write a 5-sentence paragraph about space exploration that does NOT contain the letter "e" (the most common English letter). Each sentence must be 10-18 words. Must mention "Mars" and "moon" and "star". No sentence may start with the same letter as another. Count your words and verify no "e" appears.', maxTokens: 1500,
+  { id: 'q-inst-2', name: 'Fibonacci Haiku', category: 'instruction', difficulty: 'quick',
+    description: 'Oulipo math+poetry', prompt: 'Write a haiku about the Fibonacci sequence where the number of words in each line follows Fibonacci: line 1 = 1 word, line 2 = 1 word, line 3 = 2 words. The haiku must reference "golden ratio" or "spiral". Then write a second haiku with: line 1 = 3 words, line 2 = 5 words, line 3 = 8 words, also about Fibonacci.', maxTokens: 400,
     evaluate: (r) => {
-      const lines = r.trim().split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
-      const starts = lines.slice(0, 5).map((s: string) => s.trim().charAt(0).toUpperCase());
-      const uniqStarts = new Set(starts);
-      // Check no 'e' in actual content (skip metadata/count lines)
-      const mainText = lines.slice(0, 5).join(' ');
-      const hasE = /\be\b/i.test(mainText.replace(/Mars|star|space/gi, ''));
+      const lines = r.trim().split('\n').filter((l: string) => l.trim().length > 0);
+      const wordCounts = lines.map((l: string) => l.replace(/[^a-zA-Z\s]/g, '').trim().split(/\s+/).filter((w: string) => w.length > 0).length);
       const checks = [
-        lines.length >= 4 && lines.length <= 6 ? /./ : /(?!)/,
-        !hasE ? /./ : /(?!)/,
-        /mars/i.test(r) ? /./ : /(?!)/,
-        /moon/i.test(r) ? /./ : /(?!)/,
-        /star/i.test(r) ? /./ : /(?!)/,
-        uniqStarts.size >= 4 ? /./ : /(?!)/,
+        /fibonacci|golden.*ratio|spiral/i.test(r) ? /./ : /(?!)/,
+        lines.length >= 4 ? /./ : /(?!)/,
+        wordCounts[0] === 1 ? /./ : /(?!)/,
+        wordCounts[1] === 1 ? /./ : /(?!)/,
+        wordCounts[2] === 2 ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: lines.length+' sent, noE='+!hasE+', '+m+'/6' };
+      return { pass: m >= 3, correctness: m/checks.length, details: 'words=['+wordCounts.join(',')+'], '+m+'/5' };
     }
   },
 
-  // CHAT - Complex creative
-  { id: 'q-chat-1', name: 'Nested Dialogue', category: 'chat', difficulty: 'quick',
-    description: 'MT-Bench expert', prompt: 'Write a dialogue between a time traveler and a medieval blacksmith. Rules: 1) Exactly 6 exchanges (12 lines, alternating speakers) 2) Each line prefixed with "Traveler:" or "Smith:" 3) Traveler must explain electricity without using "electric", "power", "energy", or "current" 4) Smith must use at least 3 medieval terms (forge, anvil, bellows, quench, etc.) 5) The conversation must have a logical conclusion.', maxTokens: 1500,
+  // CHAT - Advanced creative
+  { id: 'q-chat-1', name: 'Perspective Shift', category: 'chat', difficulty: 'quick',
+    description: 'MT-Bench expert', prompt: 'Explain quantum entanglement from 3 perspectives in exactly 1 paragraph each: 1) A 5-year-old child 2) A physics professor 3) A poet. Each paragraph 3-5 sentences. The child must use a toy analogy. The professor must use "Bell inequality". The poet must use a metaphor about mirrors.', maxTokens: 800,
     evaluate: (r) => {
-      const traveler = (r.match(/Traveler:/gi) || []).length;
-      const smith = (r.match(/Smith:/gi) || []).length;
-      const medieval = (r.match(/forge|anvil|bellows|quench|tongs|hammer|iron|steel|coal|smelt|hammering/gi) || []);
-      const forbidden = (r.match(/electric|power|energy|current/gi) || []).length;
+      const paras = r.split(/\n\s*\n|\n\n/).filter((p: string) => p.trim().length > 30);
       const checks = [
-        traveler >= 5 ? /./ : /(?!)/,
-        smith >= 5 ? /./ : /(?!)/,
-        medieval.length >= 3 ? /./ : /(?!)/,
-        forbidden === 0 ? /./ : /(?!)/,
-        r.trim().split('\n').filter((l: string) => l.trim().length > 5).length >= 10 ? /./ : /(?!)/,
+        paras.length >= 2 ? /./ : /(?!)/,
+        /toy|doll|ball|teddy|play|kid/i.test(r) ? /./ : /(?!)/,
+        /bell|inequality|correlat|measur/i.test(r) ? /./ : /(?!)/,
+        /mirror|reflect|shadow|echo|glass/i.test(r) ? /./ : /(?!)/,
+        /entangl|quantum|particle|pair/i.test(r) ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: traveler+'T/'+smith+'S, medieval='+medieval.length+', forbidden='+forbidden+', '+m+'/5' };
+      return { pass: m >= 3, correctness: m/checks.length, details: paras.length+' paras, '+m+'/5' };
     }
   },
-  { id: 'q-chat-2', name: 'Constraint Poem', category: 'chat', difficulty: 'quick',
-    description: 'OuLiPo poetry', prompt: 'Write a poem about AI with exactly 4 stanzas of 3 lines each (12 lines total). Rules: 1) Each line 6-10 words 2) Rhyme scheme ABC ABC ABC ABC (lines 1,4,7,10 rhyme; 2,5,8,11 rhyme; 3,6,9,12 rhyme) 3) Contains "neural", "learn", "dream" 4) No line starts with "The" 5) Last line ends with "beyond."', maxTokens: 1500,
+  { id: 'q-chat-2', name: 'Constraint Narrative', category: 'chat', difficulty: 'quick',
+    description: 'Oulipo prose', prompt: 'Write a 6-sentence sci-fi story. Constraints: 1) First sentence exactly 5 words 2) Last sentence exactly 7 words 3) Contains "quantum", "portal", "collapse" 4) Exactly 2 dialogues in quotes 5) No sentence starts with "The" 6) Story must have a paradox or time loop element.', maxTokens: 600,
     evaluate: (r) => {
-      const lines = r.trim().split('\n').filter((l: string) => l.trim().length > 3);
+      const sent = r.trim().split(/[.!?]+/).filter((s: string) => s.trim().length > 3);
+      const firstWords = sent[0]?.trim().split(/\s+/).length || 0;
+      const lastWords = sent[sent.length-1]?.trim().split(/\s+/).length || 0;
+      const dialogs = r.match(/"[^"]{3,}"/g) || [];
       const checks = [
-        lines.length >= 10 && lines.length <= 14 ? /./ : /(?!)/,
-        /neural/i.test(r) ? /./ : /(?!)/,
-        /learn/i.test(r) ? /./ : /(?!)/,
-        /dream/i.test(r) ? /./ : /(?!)/,
+        Math.abs(firstWords - 5) <= 1 ? /./ : /(?!)/,
+        Math.abs(lastWords - 7) <= 1 ? /./ : /(?!)/,
+        /quantum/i.test(r) ? /./ : /(?!)/,
+        /portal/i.test(r) ? /./ : /(?!)/,
+        /collapse/i.test(r) ? /./ : /(?!)/,
+        dialogs.length >= 2 ? /./ : /(?!)/,
         !/^The\s/m.test(r) ? /./ : /(?!)/,
-        /beyond\.?\s*$/i.test(r.trim()) ? /./ : /(?!)/,
+        /paradox|loop|time.*travel|back.*future|again|repeat/i.test(r) ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: lines.length+' lines, '+m+'/6' };
+      return { pass: m >= 5, correctness: m/checks.length, details: sent.length+' sent, first='+firstWords+', last='+lastWords+', '+m+'/8' };
     }
   },
 ];
 
 // ============================================================
-// STANDARD TESTS — very hard, 2 per category, 8 total
+// STANDARD TESTS — extremely hard, 2 per category, 8 total
 // ============================================================
 const STANDARD_TESTS: TestCase[] = [
-  // CODE - Expert LeetCode
-  { id: 's-code-1', name: 'N-Queens', category: 'code', difficulty: 'standard',
-    description: 'LeetCode #51 Hard', prompt: 'Write Python function solveNQueens(n: int) -> list[list[str]] returning all distinct solutions to the n-queens puzzle. Each solution is a list of strings where "Q" marks queen position and "." is empty. Use backtracking with column/diagonal sets. Return ONLY the function.', maxTokens: 5000,
+  // CODE - LC Hard (#329, #295)
+  { id: 's-code-1', name: 'Longest Increasing Path', category: 'code', difficulty: 'standard',
+    description: 'LeetCode #329 Hard', prompt: 'Write Python function longestIncreasingPath(matrix: list[list[int]]) -> int. Find longest strictly increasing path in matrix. Can move up/down/left/right. Use DFS + memoization. O(mn) time. Return ONLY the function.', maxTokens: 5000,
     evaluate: (r) => {
-      const checks = [/def\s+solveNQueens/i, /backtrack|recur|dfs/i, /col|diagonal|diag|hill|dale|slash/i, /set|\{|\}/i, /Q|queen|place/i, /\.|\./i, /for.*range|for.*col/i, /append|result|solution|board/i, /return/i];
+      const checks = [/def\s+longestIncreasingPath/i, /memo|cache|dp|visited|seen/i, /dfs|recur|backtrack/i, /direction|neighbor|up|down|left|right|dx|dy/i, /len\(matrix|rows|cols|m\s*,\s*n/i, /max\(|longest|greater|<|>/i, /return/i, r.length > 100 ? /./ : /(?!)/];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 6, correctness: m/checks.length, details: m+'/'+checks.length+' impl' };
     }
   },
-  { id: 's-code-2', name: 'Alien Dictionary', category: 'code', difficulty: 'standard',
-    description: 'LeetCode #269 Hard', prompt: 'Write Python function alienOrder(words: list[str]) -> str returning character order in alien language. Build graph from word pairs, topological sort with cycle detection. Return "" if invalid. Return ONLY the function.', maxTokens: 5000,
+  { id: 's-code-2', name: 'Median Finder', category: 'code', difficulty: 'standard',
+    description: 'LeetCode #295 Hard', prompt: 'Implement class MedianFinder with addNum(num) -> None and findMedian() -> float. Use two heaps (max-heap for lower half, min-heap for upper half). O(log n) add, O(1) findMedian. Return ONLY the Python class.', maxTokens: 5000,
     evaluate: (r) => {
-      const checks = [/def\s+alienOrder/i, /graph|adj|neighbor|edge/i, /topological|indegree|in_degree|BFS|DFS|deque|queue/i, /for.*range.*len.*words|for.*pair|for.*i.*j/i, /char|first.*diff|different|compare/i, /cycle|invalid|return\s*""/i, /set|visited|result|order/i, /return/i];
+      const checks = [/class\s+MedianFinder/i, /def\s+addNum/i, /def\s+findMedian/i, /heap|heapq/i, /heappush|heappop/i, /max.*heap|neg|negative|-1\s*\*/i, /min.*heap|upper|lower/i, /len|size|balance|median/i, /return/i];
       const m = checks.filter(c => c.test(r)).length;
       return { pass: m >= 6, correctness: m/checks.length, details: m+'/'+checks.length+' impl' };
     }
   },
 
-  // REASONING - Competition level
-  { id: 's-reason-1', name: 'Inclusion-Exclusion', category: 'reasoning', difficulty: 'standard',
-    description: 'AIME #12 2020', prompt: 'How many positive integers less than 1000 are divisible by at least one of 3, 5, or 7? Use inclusion-exclusion principle. Show: |A|, |B|, |C|, |A∩B|, |A∩C|, |B∩C|, |A∩B∩C|, and final answer. Must get exact integer.', maxTokens: 5000,
+  // REASONING - IMO/competition level
+  { id: 's-reason-1', name: 'Fermat Little Theorem', category: 'reasoning', difficulty: 'standard',
+    description: 'Number theory proof', prompt: 'Use Fermat\'s Little Theorem to compute 7^222 mod 11. Show: 1) state FLT 2) find 222 mod 10 3) compute 7^2 mod 11 4) final answer. Then verify by computing 7^1,7^2,...,7^10 mod 11 to show the cycle.', maxTokens: 5000,
     evaluate: (r) => {
       const checks = [
-        /\b333\b|floor.*3|999.*3|divisible.*3/i,
-        /\b199\b|floor.*5|999.*5|divisible.*5/i,
-        /\b142\b|floor.*7|999.*7|divisible.*7/i,
-        /\b66\b|floor.*15|999.*15/i,
-        /\b42\b|floor.*21|999.*21/i,
-        /\b28\b|floor.*35|999.*35/i,
-        /\b9\b|floor.*105|999.*105/i,
-        /\b471\b|answer.*471|result.*471/i,
+        /fermat|FLT|little\s*theorem/i,
+        /222\s*(mod|%)\s*10|222.*10|remainder.*2/i,
+        /7\^2|49|7\s*\*\s*7/i,
+        /49\s*(mod|%)|49.*11|remainder.*5/i,
+        /\b5\b|answer.*5|result.*5|mod.*11.*=.*5/i,
+        /7.*14|7.*5|7.*3|7.*10|cycle|period/i,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 5, correctness: m/checks.length, details: m+'/'+checks.length+' steps' };
+      return { pass: m >= 4, correctness: m/checks.length, details: m+'/'+checks.length+' proof' };
     }
   },
-  { id: 's-reason-2', name: 'Graph Theory Proof', category: 'reasoning', difficulty: 'standard',
-    description: 'Discrete math', prompt: 'Prove: In any graph with n vertices where every vertex has degree >= n/2, the graph is connected. Use proof by contradiction. Assume disconnected, show each component has at most n/2-1 vertices, derive contradiction with degree condition. Complete formal proof.', maxTokens: 5000,
+  { id: 's-reason-2', name: 'Generating Functions', category: 'reasoning', difficulty: 'standard',
+    description: 'Combinatorics advanced', prompt: 'Use generating functions to find the number of ways to make change for 50 cents using pennies (1c), nickels (5c), dimes (10c), and quarters (25c). Set up the generating function as a product of geometric series. Show the coefficient extraction method. You may compute numerically. Give exact integer answer.', maxTokens: 5000,
     evaluate: (r) => {
       const checks = [
-        /contradiction|suppose.*disconnected|assume.*not.*connect/i,
-        /component|partition|subset|part/i,
-        /degree.*n\/2|n\/2.*degree|degree.*≥.*n\/2/i,
-        /at most|≤|<=.*n\/2|less.*n\/2/i,
-        /contradict|impossible|cannot/i,
-        /vertex|vertices|edge|adjacent/i,
-        /connect/i,
+        /generating.*function|GF|product|series/i,
+        /1\/\(1-x\)|1\s*\/\s*\(1\s*-\s*x\)/i,
+        /1\/\(1-x\^5\)|1\s*\/\s*\(1\s*-\s*x\^5\)/i,
+        /1\/\(1-x\^10\)|1\s*\/\s*\(1\s*-\s*x\^10\)/i,
+        /1\/\(1-x\^25\)|1\s*\/\s*\(1\s*-\s*x\^25\)/i,
+        /coefficient|coeff|x\^50/i,
+        /\b39|answer.*39|result.*39|ways.*39|49\b|49\b.*answer|coefficient.*49/i,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 5, correctness: m/checks.length, details: m+'/'+checks.length+' proof' };
+      return { pass: m >= 4, correctness: m/checks.length, details: m+'/'+checks.length+' GF' };
     }
   },
 
-  // INSTRUCTION - Extreme constraints
-  { id: 's-inst-1', name: 'Pangram Dialogue', category: 'instruction', difficulty: 'standard',
-    description: 'Oulipo + IFEval', prompt: 'Write a dialogue between two people about cooking that is also a perfect pangram (uses every letter of the alphabet at least once). Rules: 1) Exactly 8 lines, alternating "A:" and "B:" 2) Each line is a grammatically correct sentence 3) The complete text must contain every letter a-z at least once 4) Each line 8-15 words 5) No line may use the letter "z" more than once.', maxTokens: 5000,
+  // INSTRUCTION - Extreme multi-constraint
+  { id: 's-inst-1', name: 'Acrostic Sonnet', category: 'instruction', difficulty: 'standard',
+    description: 'Oulipo extreme', prompt: 'Write a sonnet (14 lines) about machine learning where: 1) The first letter of each line spells "NEURALNETWORKS" 2) Lines 1-4 rhyme ABAB 3) Lines 5-8 rhyme CDCD 4) Lines 9-12 rhyme EFEF 5) Lines 13-14 rhyme GG 6) Each line 8-12 syllables 7) Contains "gradient", "epoch", "tensor" 8) No line may use the word "the" more than once.', maxTokens: 5000,
     evaluate: (r) => {
-      const lines = r.trim().split('\n').filter((l: string) => l.trim().length > 5);
-      const text = lines.join(' ').toLowerCase();
-      const alphabet = 'abcdefghijklmnopqrstuvwxyz';
-      const missing = alphabet.split('').filter((c: string) => !text.includes(c));
-      const zCount = (text.match(/z/g) || []).length;
+      const lines = r.trim().split('\n').filter((l: string) => l.trim().length > 3 && /[a-zA-Z]/.test(l));
+      const firstLetters = lines.slice(0, 14).map((l: string) => l.trim().charAt(0).toUpperCase()).join('');
       const checks = [
-        lines.length >= 6 && lines.length <= 10 ? /./ : /(?!)/,
-        /^A:|^B:/m.test(r) ? /./ : /(?!)/,
-        missing.length <= 2 ? /./ : /(?!)/,
-        missing.length === 0 ? /./ : /(?!)/,
-        /cook|recipe|food|bake|fry|boil|stir|heat/i.test(r) ? /./ : /(?!)/,
+        /NEURALNETWORKS|N.*E.*U.*R.*A.*L.*N.*E.*T.*W.*O.*R.*K.*S/i.test(firstLetters) ? /./ : /(?!)/,
+        /gradient/i.test(r) ? /./ : /(?!)/,
+        /epoch/i.test(r) ? /./ : /(?!)/,
+        /tensor/i.test(r) ? /./ : /(?!)/,
+        lines.length >= 12 ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 3, correctness: m/checks.length, details: lines.length+' lines, missing='+missing.join('')+', z='+zCount+', '+m+'/5' };
+      return { pass: m >= 3, correctness: m/checks.length, details: lines.length+' lines, acrostic='+firstLetters.slice(0,14)+', '+m+'/5' };
     }
   },
-  { id: 's-inst-2', name: 'Triple Nested JSON', category: 'instruction', difficulty: 'standard',
-    description: 'IFEval expert', prompt: 'Generate JSON for a space mission: mission(string with "Apollo" prefix), year(1960-2024), crew(array of exactly 3: name(string, 2+ words), role("commander"|"pilot"|"engineer"), age(25-60), skills(array of exactly 3 unique strings)), launch:{site:string, thrust_kN:integer>1000, fuel:"RP-1"|"LH2"|"CH4"}, orbit:{type:"LEO"|"GEO"|"HEO"|"LLO", altitude_km:integer 100-50000, period_min:float>0}. ONLY valid JSON, no markdown.', maxTokens: 5000,
+  { id: 's-inst-2', name: 'Space Station JSON', category: 'instruction', difficulty: 'standard',
+    description: 'IFEval extreme', prompt: 'Generate JSON for international space station data: station:{name(string ending with "Station"), mass_kg(integer 400000-500000), orbit:{altitude_km(400-420), period_min(90-93), inclination_deg(51-52)}}, modules(array of exactly 4 objects: name(string), country("US"|"Russia"|"Japan"|"Europe"), mass_kg(integer 5000-20000), launched(1998-2024), function(string with exactly 3 words)), crew_size(3-7), active_since(1998-2024). ONLY valid JSON.', maxTokens: 5000,
     evaluate: (r) => {
       try {
         const clean = r.replace(/```json?\s*/g,'').replace(/```\s*/g,'').trim();
         const obj = JSON.parse(clean);
-        const crewOk = Array.isArray(obj.crew) && obj.crew.length === 3 &&
-          obj.crew.every((c: any) => typeof c.name === 'string' && c.name.split(/\s+/).length >= 2 &&
-            ['commander','pilot','engineer'].includes(c.role) && c.age >= 25 && c.age <= 60 &&
-            Array.isArray(c.skills) && c.skills.length === 3 && new Set(c.skills).size === 3);
-        const launchOk = typeof obj.launch === 'object' &&
-          typeof obj.launch.site === 'string' && typeof obj.launch.thrust_kN === 'number' && obj.launch.thrust_kN > 1000 &&
-          ['RP-1','LH2','CH4'].includes(obj.launch.fuel);
-        const orbitOk = typeof obj.orbit === 'object' &&
-          ['LEO','GEO','HEO','LLO'].includes(obj.orbit.type) &&
-          typeof obj.orbit.altitude_km === 'number' && obj.orbit.altitude_km >= 100 && obj.orbit.altitude_km <= 50000 &&
-          typeof obj.orbit.period_min === 'number' && obj.orbit.period_min > 0;
+        const st = obj.station || obj;
+        const orbitOk = st.orbit && st.orbit.altitude_km >= 400 && st.orbit.altitude_km <= 420 && st.orbit.period_min >= 90 && st.orbit.period_min <= 93;
+        const modulesOk = Array.isArray(st.modules) && st.modules.length === 4 &&
+          st.modules.every((m: any) => ['US','Russia','Japan','Europe'].includes(m.country) && typeof m.launched === 'number' && m.launched >= 1998 && typeof m.function === 'string' && m.function.split(/\s+/).length === 3);
         const checks = [
-          typeof obj.mission === 'string' && /Apollo/i.test(obj.mission),
-          typeof obj.year === 'number' && obj.year >= 1960 && obj.year <= 2024,
-          crewOk, launchOk, orbitOk,
+          typeof (st.name || obj.name) === 'string' && /station/i.test(st.name || obj.name),
+          typeof st.mass_kg === 'number' && st.mass_kg >= 400000 && st.mass_kg <= 500000,
+          orbitOk,
+          modulesOk,
+          typeof (st.crew_size || obj.crew_size) === 'number' && (st.crew_size || obj.crew_size) >= 3,
         ];
         const m = checks.filter(Boolean).length;
         return { pass: m >= 4, correctness: m/checks.length, details: m+'/5 schema' };
@@ -246,40 +234,44 @@ const STANDARD_TESTS: TestCase[] = [
     }
   },
 
-  // CHAT - Expert creative
-  { id: 's-chat-1', name: 'Unreliable Narrator', category: 'chat', difficulty: 'standard',
-    description: 'MT-Bench advanced', prompt: 'Write a first-person narrative (8-10 sentences) where the narrator describes a robbery they witnessed, but plant exactly 3 subtle contradictions that hint the narrator is lying. After the story, add "---" then list the 3 contradictions in numbered format. Each sentence 12-20 words. Must include specific details (time, color, number) that contradict each other.', maxTokens: 5000,
+  // CHAT - Expert multi-constraint
+  { id: 's-chat-1', name: 'Nested Frame Story', category: 'chat', difficulty: 'standard',
+    description: 'MT-Bench advanced', prompt: 'Write a story within a story (frame narrative). Structure: 1) Outer narrator (3 sentences) introduces an old book 2) Inner story (6-8 sentences) is what the book contains 3) Outer narrator returns (2 sentences) with a twist 4) Total must contain exactly 5 sentences starting with vowels (A,E,I,O,U) 5) Inner story must contain "whisper", "ancient", "forgotten" 6) No word may appear more than 4 times in the entire text 7) Total 60-100 words.', maxTokens: 5000,
     evaluate: (r) => {
-      const sent = r.split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
-      const parts = r.split('---');
-      const hasList = parts.length >= 2;
-      const numbered = (parts[1] || '').match(/\d+[\.\)]/g) || [];
+      const sent = r.trim().split(/[.!?]+/).filter((s: string) => s.trim().length > 5);
+      const vowelStarts = sent.filter((s: string) => /^[AEIOUaeiou]/.test(s.trim())).length;
+      const words = r.toLowerCase().split(/\s+/);
+      const freq: Record<string, number> = {};
+      words.forEach((w: string) => { const nw = w.replace(/[^a-z]/g,''); if(nw.length>2) freq[nw]=(freq[nw]||0)+1; });
+      const overUsed = Object.entries(freq).filter(([,c]) => (c as number) > 4).map(([w]) => w);
       const checks = [
-        sent.length >= 7 && sent.length <= 12 ? /./ : /(?!)/,
-        /robber|thief|stole|robbery|mask|gun|cash/i.test(r) ? /./ : /(?!)/,
-        hasList ? /./ : /(?!)/,
-        numbered.length >= 3 ? /./ : /(?!)/,
-        /\d+.*\d+|time|color|blue|red|green|black|white/i.test(parts[0] || '') ? /./ : /(?!)/,
-        /contradict|different|inconsist|discrepanc|mismatch|but.*said|however/i.test(parts[1] || r) ? /./ : /(?!)/,
+        sent.length >= 8 && sent.length <= 15 ? /./ : /(?!)/,
+        vowelStarts >= 4 ? /./ : /(?!)/,
+        /whisper/i.test(r) ? /./ : /(?!)/,
+        /ancient/i.test(r) ? /./ : /(?!)/,
+        /forgotten/i.test(r) ? /./ : /(?!)/,
+        overUsed.length === 0 ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: sent.length+' sent, list='+hasList+', '+numbered.length+' items, '+m+'/6' };
+      return { pass: m >= 4, correctness: m/checks.length, details: sent.length+' sent, vowel='+vowelStarts+', over='+overUsed.join(',')+', '+m+'/6' };
     }
   },
-  { id: 's-chat-2', name: 'Meta Fiction', category: 'chat', difficulty: 'standard',
-    description: 'MT-Bench expert', prompt: 'Write a 4th-wall-breaking story (6-8 sentences) where the character realizes they are in an AI conversation. Rules: 1) Character addresses "the reader" or "the AI" directly at least twice 2) References specific AI concepts (tokens, context window, temperature) metaphorically 3) Contains exactly 2 questions directed at the reader 4) Ends with the character asking to be remembered 5) Each sentence 15-25 words 6) No sentence may start with "I".', maxTokens: 5000,
+  { id: 's-chat-2', name: 'Code Poetry', category: 'chat', difficulty: 'standard',
+    description: 'MT-Bench creative', prompt: 'Write a poem where each line is a valid Python comment that, if uncommented, would be valid Python code that computes something meaningful. Structure: 1) Exactly 8 lines, each starting with "#" 2) Lines alternate between computation and description 3) The comments, when stripped of "#", must form a valid Python program that computes factorial of 10 4) Include recursive and iterative approaches mixed 5) Each line 8-15 words after the "#".', maxTokens: 5000,
     evaluate: (r) => {
-      const sent = r.trim().split(/[.!?]+/).filter((s: string) => s.trim().length > 10);
+      const lines = r.trim().split('\n').filter((l: string) => /#/.test(l));
+      const codeLines = lines.map((l: string) => l.replace(/^#\s*/, '').trim());
       const checks = [
-        sent.length >= 5 && sent.length <= 10 ? /./ : /(?!)/,
-        /reader|you.*reading|audience|human/i.test(r) ? /./ : /(?!)/,
-        /token|context|temperature|parameter|model|prompt|generate/i.test(r) ? /./ : /(?!)/,
-        (r.match(/\?/g) || []).length >= 2 ? /./ : /(?!)/,
-        /remember|memory|forget/i.test(r) ? /./ : /(?!)/,
-        !/^I\s/m.test(r) ? /./ : /(?!)/,
+        lines.length >= 6 ? /./ : /(?!)/,
+        lines.every((l: string) => /^\s*#/.test(l)) ? /./ : /(?!)/,
+        /factorial|fact|!/i.test(r) ? /./ : /(?!)/,
+        /def\s+fact|def\s+factorial/i.test(r) ? /./ : /(?!)/,
+        /for|while|range/i.test(r) ? /./ : /(?!)/,
+        /return|recursive|recur/i.test(r) ? /./ : /(?!)/,
+        /10|ten|3628800/i.test(r) ? /./ : /(?!)/,
       ];
       const m = checks.filter(c => c.test(r)).length;
-      return { pass: m >= 4, correctness: m/checks.length, details: sent.length+' sent, '+m+'/6' };
+      return { pass: m >= 5, correctness: m/checks.length, details: lines.length+' lines, '+m+'/7' };
     }
   },
 ];
@@ -311,7 +303,7 @@ export class CapabilityTestEngine {
     opts?: { perKeyConcurrency?: number; maxTotalConcurrency?: number; activeKeyCount?: number },
   ): Promise<ModelTestReport> {
     const timeLimit = suite === 'quick' ? QUICK_TIMEOUT_MS : STANDARD_TIMEOUT_MS;
-    const thinkingEffort = suite === 'quick' ? 'none' : 'high';
+    const thinkingEffort = suite === 'quick' ? 'none' : 'low';
     const results: TestResult[] = [];
     const totalStart = Date.now();
     const activeKeys = opts?.activeKeyCount ?? 1;
@@ -334,7 +326,8 @@ export class CapabilityTestEngine {
           thinkingEffort: thinkingEffort as any,
         });
         const latencyMs = Date.now() - start;
-        const evalResult = test.evaluate(resp.content);
+        const evalContent = resp.content || resp.reasoningContent || '';
+        const evalResult = test.evaluate(evalContent);
         const score = timeScore(latencyMs, timeLimit, evalResult.pass, evalResult.correctness);
         return { testId: test.id, testName: test.name, category: test.category,
           score: Math.round(score * 1000) / 1000, details: evalResult.details,
@@ -398,7 +391,7 @@ export class CapabilityTestEngine {
           { type: 'text', text: 'Describe this image. State: 1) main object, 2) dominant color, 3) approximate count of distinct objects.' },
           { type: 'image_url', image_url: { url: imageUrl } },
         ] as any }],
-        model: model.modelId, maxTokens: 1500, temperature: 0.1,
+        model: model.modelId, maxTokens: 2000, temperature: 0.1,
       });
       const latencyMs = Date.now() - start;
       const r = resp.content.toLowerCase();

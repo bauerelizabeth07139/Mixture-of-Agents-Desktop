@@ -745,7 +745,7 @@ const estimateLabel = (ms?: number | null) => {
                     </div>
                   </td>
                   <td style={{ padding: '8px', fontWeight: 700, fontSize: 14, color: (r.overallScore || 0) >= 8 ? 'var(--success)' : (r.overallScore || 0) >= 5.6 ? 'var(--warning)' : 'var(--error)' }}>
-                    {(r.overallScore || 0).toFixed(1)}
+                    {(r.overallScore || 0).toFixed(1)}/10
                   </td>
                 <td style={{ padding: '8px', fontSize: 11, color: 'var(--text-muted)', maxWidth: 200 }}>{getModelNote(r.modelName) || '-'}</td>
                 </tr>
