@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
 
 interface FileEntry { name: string; size?: number; }
@@ -15,7 +15,7 @@ export function EditorPanel() {
 
   const loadDir = async (dirPath?: string) => {
     try {
-      const res = await fetch('/api/coding/list-files', {
+      const res = await fetch("/api/coding/list-files", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workdir: dirPath || undefined }),
@@ -30,7 +30,7 @@ export function EditorPanel() {
   const loadFile = async (filePath: string) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/coding/read-file', {
+      const res = await fetch("/api/coding/read-file", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filePath, workdir: currentPath }),
@@ -49,7 +49,7 @@ export function EditorPanel() {
   const saveFile = async () => {
     if (!currentFile) return;
     try {
-      await fetch('/api/coding/write-file', {
+      await fetch("/api/coding/write-file", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filePath: currentFile, content, workdir: currentPath }),
@@ -69,7 +69,7 @@ export function EditorPanel() {
     else if (ext === 'html') cmd = `start ${currentFile}`;
     else return;
     try {
-      const res = await fetch('/api/coding/shell', {
+      const res = await fetch("/api/coding/shell", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: cmd, workdir: currentPath, timeout: 30000 }),
@@ -175,7 +175,7 @@ function guessLanguage(filename: string): string {
     h: 'c', hpp: 'cpp', cs: 'csharp', php: 'php', swift: 'swift', kt: 'kotlin',
     html: 'html', htm: 'html', css: 'css', scss: 'scss', less: 'less',
     json: 'json', xml: 'xml', yaml: 'yaml', yml: 'yaml', toml: 'toml',
-    md: 'markdown', sql: 'sql', sh: 'shell', bash: 'shell', ps1: 'powershell',
+    md: 'markdown', sql: 'sql', sh: 'shell"," bash: 'shell"," ps1: 'powershell",
     bat: 'bat', cmd: 'bat', dockerfile: 'dockerfile',
   };
   return map[ext] || 'plaintext';

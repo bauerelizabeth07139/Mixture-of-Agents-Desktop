@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -24,7 +24,7 @@ export function TerminalPanel() {
 
   const execCommand = useCallback(async (cmd: string) => {
     try {
-      const res = await fetch('/api/coding/shell', {
+      const res = await fetch("/api/coding/shell", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: cmd, workdir: cwd || undefined, timeout: 30000 }),

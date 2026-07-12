@@ -1178,7 +1178,7 @@ export default function App() {
 
     try {
       const chatHistory = messages.filter(m => m.role === 'user' || m.role === 'orchestrator').map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: typeof m.content === 'string' ? m.content : '' }));
-      const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, history: chatHistory }) });
+      const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, history: chatHistory }) });
       const data = await res.json();
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents, codeExecution: data.codeExecution, thinkingMode: data.thinkingMode }]);
 

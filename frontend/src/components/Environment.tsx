@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface ToolInfo { available: boolean; version: string | null; path: string | null; }
 interface EnvData {
@@ -15,7 +15,7 @@ export function EnvironmentPanel() {
   const loadEnv = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/coding/environment');
+      const res = await fetch("/api/coding/environment");
       const data = await res.json();
       setEnv(data);
     } catch {}
