@@ -1,4 +1,4 @@
-﻿import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
+import { Provider, Model, ModelCapabilityProfile, ApiKeyEntry } from '../types';
 import { LLMClient } from './llm-client';
 
 
@@ -18,8 +18,8 @@ function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean, corr
   if (!passed && correctness === 0) return 0;
   const half = timeLimitMs * 0.5;
   let base: number;
-  if (latencyMs <= half) { base = 5; } else { base = 2 + 3 * (1 - (latencyMs - half) / half); }
-  if (!passed) base = Math.min(base, 2.5);
+  if (latencyMs <= half) { base = 10; } else { base = 4 + 6 * (1 - (latencyMs - half) / half); }
+  if (!passed) base = Math.min(base, 5);
   return Math.round(base * correctness * 1000) / 1000;
 }
 
@@ -349,7 +349,7 @@ export class CapabilityTestEngine {
     const totalTimeMs = Date.now() - totalStart;
     const avg = (cat: string) => {
       const r = results.filter(x => x.category === cat);
-      return r.length ? Math.round(r.reduce((s, x) => s + x.score, 0) / r.length * 2 * 100) / 100 : 0;
+      return r.length ? Math.round(r.reduce((s, x) => s + x.score, 0) / r.length * 100) / 100 : 0;
     };
     const avgLatency = results.filter(r => r.latencyMs > 0).reduce((s, r) => s + r.latencyMs, 0) / (results.filter(r => r.latencyMs > 0).length || 1);
     const speedScore = avgLatency < 500 ? 10 : avgLatency < 1000 ? 9 : avgLatency < 2000 ? 8 : avgLatency < 4000 ? 6 : avgLatency < 8000 ? 4 : avgLatency < 15000 ? 2 : 1;
@@ -376,7 +376,7 @@ export class CapabilityTestEngine {
       } catch {}
     }
 
-    const overallScore = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 2 * 100) / 100 : 0;
+    const overallScore = results.length ? Math.round(results.reduce((s, r) => s + r.score, 0) / results.length * 100) / 100 : 0;
     return { modelId: model.id, modelName: model.modelId, providerName: provider.name,
       timestamp: new Date().toISOString(), results, overallScore, capabilities,
       testSuite: suite, totalTimeMs, };

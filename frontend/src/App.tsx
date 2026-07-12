@@ -421,7 +421,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                     <span>{m.name}</span>
                     <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : 'badge-success'}`}>{m.type}</span>
                     {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning" style={{fontSize:9}}>🖼️ 视觉 {(m.capabilities as any).visionScore}/10</span>}
-                    {(m.capabilities as any).audioScore > 0 && <span className="badge badge-accent" style={{fontSize:9}}>🔊 音频 {(m.capabilities as any).audioScore}/10</span>}
+                    {(m.type === 'tts' || m.type === 'stt') && <span className=adge badge-accent style={{fontSize:9}}>🗣️ 语音</span>}{(m.capabilities as any).audioScore > 0 && <span className=adge badge-accent style={{fontSize:9}}>🔊 音频 {(m.capabilities as any).audioScore}/10</span>}
                   </div>
                 ))}
               </div>
@@ -458,7 +458,7 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
           <CapabilityBar label="音频" value={(model.capabilities as any).audioScore || 0} color="#ff9800" />
           <div style={{ marginTop: 12, fontSize: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             {(model.capabilities as any).visionScore > 0 && <span className="badge badge-warning">🖼️ 视觉 {(model.capabilities as any).visionScore}/10</span>}
-            {(model.capabilities as any).audioScore > 0 && <span className="badge badge-accent">🔊 音频</span>}
+            {(model.type === 'tts' || model.type === 'stt') && <span className=adge badge-accent>🗣️ 语音模型</span>}{(model.capabilities as any).audioScore > 0 && <span className=adge badge-accent>🔊 音频 {(model.capabilities as any).audioScore}/10</span>}
             {getModelNote(model.name) && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>📝 {getModelNote(model.name)}</span>}
           </div>
         </div>
@@ -474,7 +474,7 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
             </div>
             <div style={{ display: 'flex', gap: 6, fontSize: 10, flexWrap: 'wrap' }}>
               {(m.capabilities as any).visionScore > 0 && <span className="badge badge-warning" style={{ fontSize: 9 }}>🖼️ 视觉</span>}
-              {(m.capabilities as any).audioScore > 0 && <span className="badge badge-accent" style={{ fontSize: 9 }}>🔊 音频</span>}
+              {(m.type === 'tts' || m.type === 'stt') && <span className=adge badge-accent style={{ fontSize: 9 }}>🗣️ 语音</span>}{(m.capabilities as any).audioScore > 0 && <span className=adge badge-accent style={{ fontSize: 9 }}>🔊 音频</span>}
               <span style={{ color: 'var(--text-muted)' }}>代码 {m.capabilities.code}</span>
               <span style={{ color: 'var(--text-muted)' }}>推理 {m.capabilities.agent}</span>
               <span style={{ color: 'var(--text-muted)' }}>对话 {m.capabilities.chat}</span>
@@ -767,7 +767,7 @@ const estimateLabel = (ms?: number | null) => {
           </div>
           {r.results?.map((t: any, j: number) => (
             <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 12 }}>
-              <span className={`badge ${t.score >= 4 ? 'badge-success' : t.score >= 2.8 ? 'badge-warning' : 'badge-error'}`}>{(t.score * 2).toFixed(1)}/10</span>
+              <span className={`badge ${t.score >= 8 ? 'badge-success' : t.score >= 5.6 ? 'badge-warning' : 'badge-error'}`}>{(t.score * 2).toFixed(1)}/10</span>
               <span style={{ flex: 1 }}>{cn(t.testName)}{t.details ? ` · ${cnDetail(String(t.details))}` : ''}</span>
               <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{t.latencyMs}ms</span>
             </div>
