@@ -175,7 +175,7 @@ function guessLanguage(filename: string): string {
     h: 'c', hpp: 'cpp', cs: 'csharp', php: 'php', swift: 'swift', kt: 'kotlin',
     html: 'html', htm: 'html', css: 'css', scss: 'scss', less: 'less',
     json: 'json', xml: 'xml', yaml: 'yaml', yml: 'yaml', toml: 'toml',
-    md: 'markdown', sql: 'sql', sh: 'shell"," bash: 'shell"," ps1: 'powershell",
+    md: 'markdown', sql: 'sql', sh: 'shell', bash: 'shell', ps1: 'powershell',
     bat: 'bat', cmd: 'bat', dockerfile: 'dockerfile',
   };
   return map[ext] || 'plaintext';

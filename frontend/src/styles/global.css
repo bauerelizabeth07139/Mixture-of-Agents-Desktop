@@ -1,4 +1,4 @@
-﻿/* Mixture of Agents ??Codex/Claude Code inspired theme */
+/* Mixture of Agents ??Codex/Claude Code inspired theme */
 :root {
   --bg-primary: #0a0a0f;
   --bg-secondary: #12121a;
@@ -499,6 +499,8 @@ label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: 
 .badge-error { background: var(--error-bg); color: var(--error); }
 .badge-info { background: var(--info-bg); color: var(--info); }
 .badge-accent { background: var(--accent-glow); color: var(--accent-light); }
+.badge-purple { background: rgba(179,136,255,0.15); color: #b388ff; }
+.badge-orange { background: rgba(255,152,0,0.15); color: #ff9800; }
 .badge-primary { background: rgba(139,92,246,0.15); color: #a78bfa; }
 
 /* Slider */

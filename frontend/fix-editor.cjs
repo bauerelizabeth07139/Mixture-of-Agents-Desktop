@@ -1,0 +1,11 @@
+const fs = require('fs');
+const p = process.cwd() + '/src/components/Editor.tsx';
+let t = fs.readFileSync(p, 'utf8');
+const lines = t.split(/\r?\n/);
+const badLine = lines[177];
+console.log('before:', JSON.stringify(badLine));
+lines[177] = "    md: 'markdown', sql: 'sql', sh: 'shell', bash: 'shell', ps1: 'powershell',";
+console.log('after:', JSON.stringify(lines[177]));
+t = lines.join('\r\n');
+fs.writeFileSync(p, t, 'utf8');
+console.log('written');
