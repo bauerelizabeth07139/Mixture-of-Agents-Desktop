@@ -13,6 +13,7 @@ export interface ChatRequest {
   stream?: boolean;
   tools?: any[];
   thinkingEffort?: 'none' | 'low' | 'medium' | 'high';
+  timeout?: number;
 }
 
 export interface ChatResponse {
@@ -67,7 +68,7 @@ export class LLMClient {
         stream: false,
         ...(request.tools ? { tools: request.tools } : {}),
         ...(request.thinkingEffort && request.thinkingEffort !== 'none' ? { reasoning_effort: request.thinkingEffort } : {}),
-      }, { headers, timeout: 120000 });
+      }, { headers, timeout: request.timeout || 120000 });
 
       const data = response.data;
       const latencyMs = Date.now() - startTime;
