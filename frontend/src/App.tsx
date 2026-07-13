@@ -4,7 +4,6 @@ import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServer
 import { TerminalPanel } from './components/Terminal';
 import { EditorPanel } from './components/Editor';
 import { EnvironmentPanel } from './components/Environment';
-import { FileManager } from './components/FileManager';
 
 // --- Model Notes ---
 const MODEL_NOTES: Record<string, string> = {
@@ -824,13 +823,16 @@ function ExtensionsPanel() {
       {subTab === 'mcp' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>扩展</h3>
-            <button className="btn btn-primary btn-sm" onClick={() => {}}>刷新</button>
+            <h3 style={{ fontSize: 15 }}>MCP服务器</h3>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowAddMcp(!showAddMcp)}>+ 添加自定义</button>
+              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>刷新</button>
+            </div>
           </div>
           {showAddMcp && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input placeholder="请输入" value={customMcp.name} onChange={e => setCustomMcp({...customMcp, name: e.target.value})} />
+                <input placeholder="服务器名称" value={customMcp.name} onChange={e => setCustomMcp({...customMcp, name: e.target.value})} />
                 <input placeholder="图标" value={customMcp.icon} onChange={e => setCustomMcp({...customMcp, icon: e.target.value})} />
               </div>
               <input placeholder="描述" value={customMcp.description} onChange={e => setCustomMcp({...customMcp, description: e.target.value})} style={{ marginBottom: 8 }} />
@@ -839,8 +841,8 @@ function ExtensionsPanel() {
               </select>
               {customMcp.transport === 'stdio' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginBottom: 8 }}>
-                  <input placeholder="请输入" value={customMcp.command} onChange={e => setCustomMcp({...customMcp, command: e.target.value})} />
-                  <input placeholder="请输入" value={customMcp.args} onChange={e => setCustomMcp({...customMcp, args: e.target.value})} />
+                  <input placeholder="命令" value={customMcp.command} onChange={e => setCustomMcp({...customMcp, command: e.target.value})} />
+                  <input placeholder="参数 (空格分隔)" value={customMcp.args} onChange={e => setCustomMcp({...customMcp, args: e.target.value})} />
                 </div>
               ) : (
                 <input placeholder="URL" value={customMcp.url} onChange={e => setCustomMcp({...customMcp, url: e.target.value})} style={{ marginBottom: 8 }} />
@@ -851,7 +853,7 @@ function ExtensionsPanel() {
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}></h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设MCP服务器</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {mcpPresets.map((p: any) => {
               const added = mcpServers.some((s: any) => s.name === p.name);
@@ -892,12 +894,15 @@ function ExtensionsPanel() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: 15 }}>技能服务器</h3>
-            <button className="btn btn-primary btn-sm" onClick={() => {}}>刷新</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkillServer(!showAddSkillServer)}>+ 添加自定义</button>
+              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>刷新</button>
+            </div>
           </div>
           {showAddSkillServer && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input placeholder="请输入" value={customSkillServer.name} onChange={e => setCustomSkillServer({...customSkillServer, name: e.target.value})} />
+                <input placeholder="服务器名称" value={customSkillServer.name} onChange={e => setCustomSkillServer({...customSkillServer, name: e.target.value})} />
                 <input placeholder="图标" value={customSkillServer.icon} onChange={e => setCustomSkillServer({...customSkillServer, icon: e.target.value})} />
               </div>
               <input placeholder="描述" value={customSkillServer.description} onChange={e => setCustomSkillServer({...customSkillServer, description: e.target.value})} style={{ marginBottom: 8 }} />
@@ -906,8 +911,8 @@ function ExtensionsPanel() {
               </select>
               {customSkillServer.transport === 'stdio' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginBottom: 8 }}>
-                  <input placeholder="请输入" value={customSkillServer.command} onChange={e => setCustomSkillServer({...customSkillServer, command: e.target.value})} />
-                  <input placeholder="请输入" value={customSkillServer.args} onChange={e => setCustomSkillServer({...customSkillServer, args: e.target.value})} />
+                  <input placeholder="命令" value={customSkillServer.command} onChange={e => setCustomSkillServer({...customSkillServer, command: e.target.value})} />
+                  <input placeholder="参数 (空格分隔)" value={customSkillServer.args} onChange={e => setCustomSkillServer({...customSkillServer, args: e.target.value})} />
                 </div>
               ) : (
                 <input placeholder="URL" value={customSkillServer.url} onChange={e => setCustomSkillServer({...customSkillServer, url: e.target.value})} style={{ marginBottom: 8 }} />
@@ -918,7 +923,7 @@ function ExtensionsPanel() {
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}></h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设技能服务器</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillServerPresets.map((p: any) => {
               const added = skillServers.some((s: any) => s.name === p.name);
@@ -935,7 +940,7 @@ function ExtensionsPanel() {
           </div>
           {skillServers.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}></h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的技能服务器</h4>
               {skillServers.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -962,7 +967,10 @@ function ExtensionsPanel() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontSize: 15 }}>技能库</h3>
-            <button className="btn btn-primary btn-sm" onClick={() => {}}>刷新</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkill(!showAddSkill)}>+ 添加自定义</button>
+              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>刷新</button>
+            </div>
           </div>
           {showAddSkill && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
@@ -971,7 +979,7 @@ function ExtensionsPanel() {
                 <input placeholder="图标" value={customSkill.icon} onChange={e => setCustomSkill({...customSkill, icon: e.target.value})} />
               </div>
               <input placeholder="描述" value={customSkill.description} onChange={e => setCustomSkill({...customSkill, description: e.target.value})} style={{ marginBottom: 8 }} />
-              <textarea placeholder="请输入" value={customSkill.content} onChange={e => setCustomSkill({...customSkill, content: e.target.value})} style={{ minHeight: 100, marginBottom: 8 }} />
+              <textarea placeholder="技能内容 (Markdown)" value={customSkill.content} onChange={e => setCustomSkill({...customSkill, content: e.target.value})} style={{ minHeight: 100, marginBottom: 8 }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button className="btn btn-sm" onClick={() => setShowAddSkill(false)}>取消</button>
                   <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkill.name && customSkill.content) { await api.addSkillCustom({ name: customSkill.name, description: customSkill.description, content: customSkill.content, source: 'file', enabled: true, category: customSkill.category, icon: customSkill.icon }); setShowAddSkill(false); loadAll(); } }}>添加</button>
@@ -989,7 +997,7 @@ function ExtensionsPanel() {
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}></h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设技能</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillPresets.map((p: any) => {
               const added = skills.some((s: any) => s.name === p.name);
@@ -1005,7 +1013,7 @@ function ExtensionsPanel() {
           </div>
           {skills.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}></h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的技能</h4>
               {skills.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1016,7 +1024,6 @@ function ExtensionsPanel() {
                     </div>
                       <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '启用' : '禁用'}</span>
                     {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '测试通过' : '测试未通过'}</span>}
-                    <button className="btn btn-sm" onClick={() => {}}>测试</button>
                     <button className="btn btn-sm" onClick={async () => { await api.updateSkill(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '禁用' : '启用'}</button>
                     <button className="btn btn-sm" onClick={async () => { await api.removeSkill(s.id); loadAll(); }} style={{ color: "var(--error)" }}>删除</button>
                     <button className="btn btn-sm" onClick={async () => { await api.testSkill(s.id); loadAll(); }}>测试</button>
@@ -1034,7 +1041,7 @@ function ExtensionsPanel() {
 // ...
 
 export default function App() {
-  const [tab, setTab] = useState<'chat'|'providers'|'models'|'testing'|'extensions'|'terminal'|'editor'|'files'|'environment'>('chat');
+  const [tab, setTab] = useState<'chat'|'providers'|'models'|'testing'|'extensions'|'terminal'|'editor'|'environment'>('chat');
   const [providers, setProviders] = useState<Provider[]>([]);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [inputVal, setInputVal] = useState('');
@@ -1064,7 +1071,7 @@ export default function App() {
 
   const tabNames: Record<string, string> = {
     chat: '聊天', providers: '提供商', models: '模型', testing: '测试',
-    extensions: '扩展', files: '文件', terminal: '终端', editor: '编辑器', environment: '环境',
+    extensions: '扩展', terminal: '终端', editor: '编辑器', environment: '环境',
   };
 
   const loadProviders = useCallback(async () => {
@@ -1235,9 +1242,9 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
       <div className="sidebar">
             <div className="sidebar-logo"><span style={{ fontSize:22 }}>⚛️</span><span style={{ fontWeight:700, fontSize:14 }}>Mixture of Agents</span></div>
         <div className="sidebar-nav">
-          {(['chat','providers','models','testing','extensions','files','terminal','editor','environment'] as const).map(k => (
+          {(['chat','providers','models','testing','extensions','terminal','editor','environment'] as const).map(k => (
             <div key={k} className={`sidebar-item ${tab===k?'active':''}`} onClick={() => setTab(k)}>
-              <span>{k==='chat'?'💬':k==='providers'?'🔌':k==='models'?'🤖':k==='testing'?'📊':k==='extensions'?'🧩':k==='files'?'📁':k==='terminal'?'💻':k==='editor'?'📝':'⚙️'}</span>
+              <span>{k==='chat'?'💬':k==='providers'?'🔌':k==='models'?'🤖':k==='testing'?'📊':k==='extensions'?'🧩':k==='terminal'?'💻':k==='editor'?'📝':'⚙️'}</span>
               <span>{tabNames[k]}</span>
             </div>
           ))}
@@ -1312,7 +1319,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               {attachments.length > 0 && <AttachmentPreview attachments={attachments} onRemove={(i) => setAttachments(prev => prev.filter((_, idx) => idx !== i))} />}
               <div className="prompt-wrapper">
                 <textarea ref={inputRef} className="prompt-input" value={inputVal} onChange={e => setInputVal(e.target.value)}
-                  onKeyDown={handleKeyDown} placeholder="请输入"
+                  onKeyDown={handleKeyDown} placeholder="输入消息..."
                   rows={4} style={{ height: Math.min(200, Math.max(88, inputVal.split('\n').length * 22)) }} />
                 <div className="prompt-actions">
                   <button className="prompt-btn" onClick={() => setInputVal("")} style={{ fontSize:16, fontWeight:700 }}>✕</button>
@@ -1337,9 +1344,8 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
           {tab === 'models' && <ModelPanel providers={providers} />}
           {tab === 'testing' && <TestingPanel providers={providers} onRefresh={loadProviders} />}
           {tab === 'extensions' && <ExtensionsPanel />}
-          {tab === 'files' && <div style={{height:'calc(100vh - 60px)'}}><FileManager /></div>}
-          {tab === 'terminal' && <div style={{height:'calc(100vh - 60px)'}}><TerminalPanel /></div>}
-          {tab === 'editor' && <div style={{height:'calc(100vh - 60px)'}}><EditorPanel /></div>}
+                    {tab === 'terminal' && <div style={{height:'calc(100vh - 60px)'}}><TerminalPanel /></div>}
+          {tab === 'editor' && <div style={{height:'calc(100vh - 60px)'}}><EditorPanel onCommandExecute={(cmd) => { setInputVal(cmd); setTimeout(() => handleSend(cmd), 100); }} /></div>}
           {tab === 'environment' && <EnvironmentPanel />}
         </div>
       )}

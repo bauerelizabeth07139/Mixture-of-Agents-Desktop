@@ -1,0 +1,27 @@
+node:events:497
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:1898:16)
+    at listenInCluster (node:net:1946:12)
+    at Server.listen (node:net:2044:7)
+    at Object.<anonymous> (C:\Users\vipuser\Documents\Codex\2026-07-10\ghp-ximpubtls1rxrj8gyywz03sikbglkw259kdn\work\Mixture-of-Agents-Desktop\backend\dist\index.js:54:8)
+    at Module._compile (node:internal/modules/cjs/loader:1358:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1416:10)
+    at Module.load (node:internal/modules/cjs/loader:1208:32)
+    at Module._load (node:internal/modules/cjs/loader:1024:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:174:12)
+    at node:internal/main/run_main_module:28:49
+Emitted 'error' event on WebSocketServer instance at:
+    at Server.emit (node:events:519:28)
+    at emitErrorNT (node:net:1925:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v20.15.1

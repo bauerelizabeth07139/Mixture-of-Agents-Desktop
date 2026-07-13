@@ -55,7 +55,7 @@ function mergeContinuationLines(code: string): string {
   let i = 0;
   while (i < rawLines.length) {
     let line = rawLines[i];
-    while (line.endsWith('\\') && !line.endsWith('\\\\') && i + 1 < rawLines.length) {
+    while (line.endsWith('\\') && ! line.endsWith('\\\\') && i + 1 < rawLines.length) {
       line = line.slice(0, -1) + rawLines[i + 1].trim();
       i++;
     }
@@ -111,7 +111,7 @@ export class CodingEngine {
       }
     }
     task.status = task.results.every(r => r.success) ? 'completed' : 'failed';
-    task.output = task.results.map(r => (r.success ? '?' : '?') + ' ' + r.action + ': ' + r.output.slice(0, 200)).join('\n');
+    task.output = task.results.map(r => (r.success ? '\u2705' : '\u274C') + ' ' + r.action + ': ' + r.output.slice(0, 200)).join('\n');
     return task;
   }
 
@@ -132,37 +132,37 @@ export class CodingEngine {
     return { ...process.env, FORCE_COLOR: '0', NODE_NO_WARNINGS: '1', PATH: extra + (process.env.PATH || '') };
   }
 
-  /** Convert bash command to PowerShell-compatible command */
-  private convertBashToPS(cmd: string): string {
+  /** Convert bash command to cmd.exe-compatible command */
+  private convertBashToCmd(cmd: string): string {
     if (process.platform !== 'win32') return cmd;
     
-    // Already a PowerShell command - leave it
-    if (/^(powershell|cmd\.exe|Get-|Set-|New-|Remove-|Copy-|Move-|Write-|Import-|Export-)/i.test(cmd)) return cmd;
+    // Already a Windows-native command - leave it
+    if (/^(cmd\.exe|cmd\/c|Get-|Set-|New-|Remove-|Copy-|Move-|Write-|Import-|Export-)/i.test(cmd)) return cmd;
     
     // npm/node/python etc work fine on Windows, keep as-is
     if (/^(node |python |npm |npx |pip |git |cargo |rustc |java |javac |go |docker |tsc |yarn |pnpm )/i.test(cmd)) return cmd;
     
-    // Convert bash builtins
+    // Convert bash builtins to cmd.exe-compatible equivalents
     let c = cmd;
-    c = c.replace(/^mkdir\s+-p\s+/i, 'New-Item -ItemType Directory -Force -Path ');
-    c = c.replace(/^mkdir\s+/i, 'New-Item -ItemType Directory -Path ');
-    c = c.replace(/^rm\s+-rf\s+/i, 'Remove-Item -Recurse -Force -LiteralPath ');
-    c = c.replace(/^rm\s+-f\s+/i, 'Remove-Item -Force -LiteralPath ');
-    c = c.replace(/^rm\s+/i, 'Remove-Item -LiteralPath ');
-    c = c.replace(/^cat\s+/i, 'Get-Content ');
-    c = c.replace(/^ls\s*$/i, 'Get-ChildItem');
-    c = c.replace(/^ls\s+/i, 'Get-ChildItem ');
-    c = c.replace(/^touch\s+/i, 'New-Item -ItemType File -Force -Path ');
-    c = c.replace(/^cp\s+/i, 'Copy-Item ');
-    c = c.replace(/^mv\s+/i, 'Move-Item ');
-    c = c.replace(/^chmod\s+\+x\s+/i, '# chmod not needed on Windows: ');
-    c = c.replace(/^echo\s+"([^"]+)"\s*>\s*(.+)/i, 'Set-Content -Path $2 -Value "$1"');
-    c = c.replace(/^echo\s+'([^']+)'\s*>\s*(.+)/i, "Set-Content -Path $2 -Value '$1'");
-    c = c.replace(/^echo\s+/i, 'Write-Host ');
+    c = c.replace(/^mkdir\s+-p\s+(.+)/i, 'if not exist "$1" mkdir "$1"');
+    c = c.replace(/^mkdir\s+(.+)/i, 'mkdir "$1"');
+    c = c.replace(/^rm\s+-rf\s+(.+)/i, 'if exist "$1" rmdir /s /q "$1"');
+    c = c.replace(/^rm\s+-f\s+(.+)/i, 'if exist "$1" del /f /q "$1"');
+    c = c.replace(/^rm\s+(.+)/i, 'del /f "$1"');
+    c = c.replace(/^cat\s+(.+)/i, 'type "$1"');
+    c = c.replace(/^ls\s*$/i, 'dir');
+    c = c.replace(/^ls\s+(.+)/i, 'dir "$1"');
+    c = c.replace(/^touch\s+(.+)/i, 'type nul > "$1"');
+    c = c.replace(/^cp\s+(.+)/i, 'copy "$1"');
+    c = c.replace(/^mv\s+(.+)/i, 'move "$1"');
+    c = c.replace(/^chmod\s+\+x\s+(.+)/i, 'REM chmod not needed on Windows: $1');
+    c = c.replace(/^echo\s+"([^"]+)"\s*>\s*(.+)/i, 'echo $1 > $2');
+    c = c.replace(/^echo\s+'([^']+)'\s*>\s*(.+)/i, 'echo $1 > $2');
+    c = c.replace(/^echo\s+(.+)/i, 'echo $1');
     
     // Handle bash/sh script execution
     if (/^(bash |sh )/.test(c)) {
-      c = 'powershell -Command "' + c.replace(/^(bash|sh)\s+/, '').replace(/"/g, '\\"') + '"';
+      c = 'cmd /c "' + c.replace(/^(bash|sh)\s+/, '') + '"';
     }
     return c;
   }
@@ -174,18 +174,17 @@ export class CodingEngine {
     // First, handle && chains
     if (cmd.includes(' && ')) {
       const parts = cmd.split(/\s*&&\s*/).map(c => c.trim()).filter(Boolean);
-      return parts.map(p => this.convertBashToPS(p));
+      return parts.map(p => this.convertBashToCmd(p));
     }
     
-    // Handle ; chains (but not inside strings/PowerShell)
-    if (cmd.includes('; ') && !cmd.includes('powershell') && !cmd.includes('Write-Host')) {
+    // Handle ; chains (but not inside strings/cmd)
+    if (cmd.includes('; ') && !cmd.includes('cmd /c') && !cmd.includes('echo ')) {
       const parts = cmd.split(/\s*;\s*/).map(c => c.trim()).filter(Boolean);
-      if (parts.length > 1) return parts.map(p => this.convertBashToPS(p));
+      if (parts.length > 1) return parts.map(p => this.convertBashToCmd(p));
     }
     
-    return [this.convertBashToPS(cmd)];
+    return [this.convertBashToCmd(cmd)];
   }
-
 
   private execWithRetry(cmd: string, opts: any, retries = 2): string {
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -193,8 +192,13 @@ export class CodingEngine {
         return String(execSync(cmd, opts));
       } catch (e: any) {
         const msg = (e.stderr || e.message || '');
-        if (attempt < retries && (msg.includes('EBUSY') || msg.includes('EPERM'))) {
-          try { execSync('Start-Sleep -Milliseconds ' + (1000 * (attempt + 1)), { shell: 'powershell' as const, windowsHide: true } as any); } catch {}
+        if (attempt < retries && (msg.includes('EBUSY') || msg.includes('EPERM') || msg.includes('EBADF'))) {
+          const delayMs = [1000, 3000, 5000][attempt] || 5000;
+          try { execSync('timeout /t ' + Math.ceil(delayMs / 1000) + ' /nobreak >nul', { shell: 'cmd.exe' as any, windowsHide: true } as any); } catch {}
+          // Try cleaning npm cache on EBUSY before retrying
+          if (msg.includes('EBUSY')) {
+            try { execSync('npm cache clean --force', { ...opts, timeout: 30000 }); } catch {}
+          }
           continue;
         }
         throw e;
@@ -243,7 +247,7 @@ export class CodingEngine {
               cwd: wd,
               timeout: Math.min(p.timeout || 60000, 120000),
               encoding: 'utf8',
-              shell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' as any,
+              shell: process.env.ComSpec || 'cmd.exe',
               env: this.getEnv(),
               windowsHide: true,
             });
@@ -252,13 +256,32 @@ export class CodingEngine {
           return { success: true, output: allOutput.slice(0, 4000) };
         } catch (e: any) {
           const errOut = ((e.stdout || '') + '\n' + (e.stderr || e.message || '')).slice(0, 4000);
-          // Auto-fallback for missing npm scripts
-          if (errOut.includes('Missing script')) {
+          // Auto-fallback for missing npm scripts or entry point detection
+          if (errOut.includes('Missing script') || errOut.includes('is not recognized') || errOut.includes('MODULE_NOT_FOUND') || errOut.includes('Cannot find module')) {
             try {
-              const fallbacks = ['npm start', 'node index.js', 'node server.js', 'node app.js', 'node src/index.js', 'node src/server.js'];
-              for (const fb of fallbacks) {
+              // First check package.json for available scripts
+              const pkgPath = path.join(wd, 'package.json');
+              let scriptFallbacks: string[] = [];
+              if (fs.existsSync(pkgPath)) {
                 try {
-                  const fbOut = this.execWithRetry(fb, { cwd: wd, timeout: 60000, encoding: 'utf8', shell: 'powershell' as const, env: this.getEnv(), windowsHide: true });
+                  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+                  if (pkg.scripts) {
+                    if (pkg.scripts.start) scriptFallbacks.push('npm start');
+                    if (pkg.scripts.dev) scriptFallbacks.push('npm run dev');
+                    if (pkg.scripts.serve) scriptFallbacks.push('npm run serve');
+                  }
+                } catch {}
+              }
+              // Then try common entry points
+              const entryFallbacks = [
+                'node index.js', 'node server.js', 'node app.js',
+                'node src/index.js', 'node src/server.js', 'node src/app.js', 'node src/main.js',
+                'python main.py', 'python app.py', 'python manage.py runserver',
+              ];
+              const allFallbacks = [...scriptFallbacks, ...entryFallbacks];
+              for (const fb of allFallbacks) {
+                try {
+                  const fbOut = this.execWithRetry(fb, { cwd: wd, timeout: 60000, encoding: 'utf8', shell: process.env.ComSpec || 'cmd.exe', env: this.getEnv(), windowsHide: true });
                   return { success: true, output: '[Fallback: ' + fb + ']\n' + (fbOut || '').slice(0, 4000) };
                 } catch {}
               }
@@ -272,20 +295,33 @@ export class CodingEngine {
         fs.mkdirSync(wd, { recursive: true });
         const m = p.manager || 'npm';
         const pkgs = Array.isArray(p.packages) ? p.packages.join(' ') : '';
-        try {
-          const cmd = m + ' install' + (pkgs ? ' ' + pkgs : '');
-          this.execWithRetry(cmd, {
-            cwd: wd,
-            timeout: 180000,
-            encoding: 'utf8',
-            shell: 'powershell' as const,
-            env: this.getEnv(),
-            windowsHide: true,
-          });
-          return { success: true, output: 'Installed: ' + (pkgs || '(all deps from package.json)') };
-        } catch (e: any) {
-          return { success: false, output: ((e.stdout || '') + '\n' + (e.stderr || e.message || '')).slice(0, 4000) };
+        const maxRetries = 3;
+        let lastErr: any = null;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const cmd = m + ' install' + (pkgs ? ' ' + pkgs : '');
+            this.execWithRetry(cmd, {
+              cwd: wd,
+              timeout: 180000,
+              encoding: 'utf8',
+              shell: process.env.ComSpec || 'cmd.exe',
+              env: this.getEnv(),
+              windowsHide: true,
+            }, 2);
+            return { success: true, output: 'Installed: ' + (pkgs || '(all deps from package.json)') + (attempt > 0 ? ' (after ' + attempt + ' retries)' : '') };
+          } catch (e: any) {
+            lastErr = e;
+            const msg = ((e.stdout || '') + '\n' + (e.stderr || e.message || ''));
+            if (attempt < maxRetries && (msg.includes('EBUSY') || msg.includes('EPERM') || msg.includes('EBADF'))) {
+              const delayMs = [1000, 3000, 5000][attempt] || 5000;
+              try { execSync('timeout /t ' + Math.ceil(delayMs / 1000) + ' /nobreak >nul', { shell: 'cmd.exe' as any, windowsHide: true } as any); } catch {}
+              try { execSync('npm cache clean --force', { cwd: wd, encoding: 'utf8', shell: process.env.ComSpec || 'cmd.exe', env: this.getEnv(), windowsHide: true, timeout: 30000 } as any); } catch {}
+              continue;
+            }
+            break;
+          }
         }
+        return { success: false, output: ((lastErr?.stdout || '') + '\n' + (lastErr?.stderr || lastErr?.message || '')).slice(0, 4000) };
       }
       case 'read_file': {
         const rf = path.resolve(this.basePath, p.path);
