@@ -131,7 +131,7 @@ export function createProviderRoutes(pool: ApiPoolManager) {
             const probe = await CapabilityTestEngine.probeCapabilities(prov, key, m);
             if (probe.visionScore > 0) { m.capabilities.visionScore = probe.visionScore; m.capabilities.multimodal = true; }
             if (probe.audioScore > 0) { m.capabilities.audioScore = probe.audioScore; }
-          } catch {}
+          } catch (e: any) { console.log(`[Probe] ${m.modelId} error:`, e.message); }
         }
       }
       res.json({ models: prov.models, source: 'api', count: prov.models.length });

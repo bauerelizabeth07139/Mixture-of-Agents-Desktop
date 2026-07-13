@@ -473,13 +473,13 @@ export class CapabilityTestEngine {
                 { type: 'text', text: 'please describe the content of the audio' },
               ] },
             ], max_completion_tokens: 256 },
-            { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
+            { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 30000 }
           );
         } else {
           resp = await axios.post(
             provider.baseUrl + '/chat/completions',
             { model: model.modelId, messages: [{ role: 'user', content: fmt }], max_tokens: 200, temperature: 0 },
-            { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
+            { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 30000 }
           );
         }
         const usage = resp.data.usage;
