@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { ApiPoolManager } from '../providers/api-pool';
 import { PROVIDER_PRESETS } from '../providers/presets';
 import { ModelCapabilityScorer } from '../models/capability-scorer';
@@ -124,7 +124,7 @@ export function createProviderRoutes(pool: ApiPoolManager) {
         }
       }
       // Probe new LLM models for vision/audio capabilities BEFORE responding
-      const llmModels = prov.models.filter(m => m.type === 'llm' && m.capabilities.visionScore === 0 && m.capabilities.audioScore === 0);
+      const llmModels = prov.models.filter(m => m.type === 'llm' && (m.capabilities.visionScore === 0 || m.capabilities.audioScore === 0));
       if (llmModels.length > 0 && key) {
         for (const m of llmModels.slice(0, 10)) {
           try {
