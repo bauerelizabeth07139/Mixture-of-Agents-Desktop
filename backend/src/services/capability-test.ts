@@ -418,58 +418,61 @@ export class CapabilityTestEngine {
 
   // Probe model for vision and audio capabilities by sending test media
   // Probe model for vision and audio capabilities by sending test media via API
+  // Probe model for vision and audio capabilities by sending test media via API
   static async probeCapabilities(provider: Provider, apiKey: ApiKeyEntry, model: Model): Promise<{ visionScore: number; audioScore: number }> {
     let visionScore = 0;
     let audioScore = 0;
+    const axios = (await import('axios')).default;
 
-    // Vision test: send image URL and check if model actually describes image content
+    // Vision test: send image URL, check if model describes actual image content
     try {
-      const resp = await LLMClient.chatCompletion(provider, apiKey, {
-        messages: [{ role: 'user', content: [
-          { type: 'text', text: 'What do you see in this image? Reply in one word.' },
-          { type: 'image_url', image_url: { url: 'https://httpbin.org/image/png' } },
-        ] as any }],
-        model: model.modelId, maxTokens: 100, temperature: 0,
-      });
-      const r = (resp.content || '').toLowerCase();
-      // Model must describe actual image content (pig), not generic text
-      if (/pig|animal|piggy|pink|snout|cartoon/.test(r) && r.length > 2) {
+      const resp = await axios.post(
+        provider.baseUrl + '/chat/completions',
+        {
+          model: model.modelId,
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: 'What do you see in this image? Reply one word.' },
+            { type: 'image_url', image_url: { url: 'https://httpbin.org/image/png' } },
+          ] }],
+          max_tokens: 100, temperature: 0,
+        },
+        { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 30000 }
+      );
+      const r = (resp.data.choices?.[0]?.message?.content || '').toLowerCase();
+      if (/pig|animal|piggy|pink|snout|cartoon|face/.test(r) && r.length > 2) {
         visionScore = 8;
-      } else if (r.length > 10 && !/cannot|don.t|unable|not.*support|no.*image|text.based|text.only|sorry.*can/i.test(r)) {
+      } else if (r.length > 10 && !/cannot|don.t|unable|not.*support|no.*image|text.based|sorry.*can/i.test(r)) {
         visionScore = 5;
       }
     } catch {}
 
-    // Audio test: send WAV audio and check if model actually describes audio content
-    // Key: models that hallucinate will say "I cant hear" or describe generic sounds
-    // Models with real audio will describe specific audio characteristics
+    // Audio test: send audio URL (MiMo format: input_audio.data = URL)
     try {
-      const sr = 16000, ns = sr;
-      const buf = Buffer.alloc(44 + ns * 2);
-      buf.write('RIFF', 0); buf.writeUInt32LE(36 + ns * 2, 4); buf.write('WAVE', 8);
-      buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
-      buf.writeUInt32LE(sr, 24); buf.writeUInt32LE(sr * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
-      buf.write('data', 36); buf.writeUInt32LE(ns * 2, 40);
-      for (let i = 0; i < ns; i++) buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / sr) * 16000), 44 + i * 2);
+      const resp = await axios.post(
+        provider.baseUrl + '/chat/completions',
+        {
+          model: model.modelId,
+          messages: [{ role: 'user', content: [
+            { type: 'input_audio', input_audio: { data: 'https://example-files.cnbj1.mi-fds.com/example-files/audio/audio_example.wav' } },
+            { type: 'text', text: 'Describe what you hear in this audio.' },
+          ] }],
+          max_tokens: 200, temperature: 0,
+        },
+        { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
+      );
+      const r = (resp.data.choices?.[0]?.message?.content || '').toLowerCase();
+      const usage = resp.data.usage;
+      const hasAudioTokens = usage?.prompt_tokens_details?.audio_tokens > 0;
 
-      const resp = await LLMClient.chatCompletion(provider, apiKey, {
-        messages: [{ role: 'user', content: [
-          { type: 'text', text: 'Describe what you hear in this audio clip in detail.' },
-          { type: 'input_audio', input_audio: { data: buf.toString('base64'), format: 'wav' } },
-        ] as any }],
-        model: model.modelId, maxTokens: 200, temperature: 0,
-      });
-      const r = (resp.content || '').toLowerCase();
-      const reasoning = (resp.reasoningContent || '').toLowerCase();
-      const combined = r + ' ' + reasoning;
-
-      // Reject if model admits it cannot hear audio
-      const admitsCantHear = /can.t (actually )?hear|not able to hear|unable to hear|text.based.*can.t|don.t have.*audio|no.*audio.*capab|can.t process audio|can.t listen/i.test(combined);
-      // Reject if model hallucinates generic sounds without real audio processing
-      const genericHallucination = /beep|buzz|tone|sine|text representation|rather.*see.*text|simulation/i.test(combined);
-
-      if (!admitsCantHear && !genericHallucination && r.length > 20 && /hear|sound|audio|music|voice|speech|noise|rhythm|melody|frequency/i.test(r)) {
-        audioScore = 6;
+      // If API reports audio_tokens, the model actually processed audio
+      if (hasAudioTokens) {
+        audioScore = 7;
+      } else {
+        // Fallback: check if response describes actual audio content (not hallucination)
+        const admitsCantHear = /can.t (actually )?hear|unable to hear|text.based.*can.t|don.t have.*audio/i.test(r);
+        if (!admitsCantHear && r.length > 20 && /hear|sound|audio|voice|speech|music|weather|morning/i.test(r)) {
+          audioScore = 6;
+        }
       }
     } catch {}
 
