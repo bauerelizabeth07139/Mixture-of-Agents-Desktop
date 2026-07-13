@@ -42,7 +42,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
 
   // ������ Enhanced Environment Detection ��������������������������������������������������������������
   r.get('/environment', (_req, res) => {
-    const env: any = {
+        const env: any = {
       cwd: workDir, homeDir: os.homedir(), platform: process.platform, arch: process.arch,
       nodeVersion: process.version, hostname: os.hostname(), username: os.userInfo().username,
       totalMemory: Math.round(os.totalmem() / 1073741824 * 10) / 10 + ' GB',
@@ -56,7 +56,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
     };
     try { env.desktopFiles = fs.readdirSync(path.join(os.homedir(), 'Desktop')).slice(0, 50); } catch { env.desktopFiles = []; }
     env.pathEntries = (process.env.PATH || '').split(path.delimiter).filter(Boolean);
-    res.json(env);
+        res.json(env);
   });
   // Async tool detection endpoint
   r.get('/detect-tools', async (_req, res) => {
