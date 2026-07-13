@@ -1,9 +1,9 @@
-import { v4 as uuid } from 'uuid';
+﻿import { v4 as uuid } from 'uuid';
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import { spawnSync } from 'child_process';
+import { spawnSync, execSync } from 'child_process';
 import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient, QuotaExhaustedError, LLMError } from '../services/llm-client';
 import { Provider, Model, ApiKeyEntry } from '../types';
@@ -18,19 +18,42 @@ const WORKSPACE_ROOT = path.join(os.homedir(), '.moa-workspace');
 const MAX_RETRIES = 3;
 const DEFAULT_CMD_TIMEOUT = 30_000;
 const INSTALL_CMD_TIMEOUT = 120_000;
+
 const SYSTEM_PROMPT = [
-  'You are an autonomous coding engine inside Mixture of Agents.',
-  'You write complete, runnable code. When generating a project, emit each file inside a fenced code block.',
-  'Tag each code block with the language and optionally a filename comment on the first line, e.g.',
-  '  ```tsx // src/App.tsx',
+  'You are an autonomous coding engine inside Mixture of Agents (MOA).',
+  'You write complete, runnable code and can independently create full projects.',
+  '',
+  '## File Generation',
+  'When generating a project, emit each file inside a fenced code block with language AND filename:',
+  '  `	ypescript // src/index.ts',
   '  ...code...',
-  '  ```',
-  'When you need to run shell commands, emit them in a ```bash or ```cmd block, one command per line.',
-  'Commands are executed on Windows via cmd.exe. Do NOT use bash operators like && or ;',
-  'Use separate commands instead (e.g. "mkdir myapp" then "cd myapp").',
-  'Always provide COMPLETE code with all imports. Prefer TypeScript/JavaScript.',
-  'After writing files, run commands to verify the code works.',
-  'If something fails, diagnose and provide ONLY fix commands, no explanations.',
+  '  `',
+  'Supported languages: typescript, javascript, python, c, cpp, go, rust, java, html, css, json, yaml, markdown, shell',
+  '',
+  '## Shell Commands',
+  'When you need to run shell commands, use a `powershell block:',
+  '  `powershell',
+  '  npm init -y',
+  '  npm install express',
+  '  npx tsc --init',
+  '  node dist/index.js',
+  '  `',
+  'CRITICAL: Each command runs in the SAME shell session. You can use "cd" to change directories.',
+  'CRITICAL: This is Windows. Use PowerShell syntax. Do NOT use && or ; to chain commands.',
+  'Write each command on its own line. They will be executed sequentially in the same session.',
+  '',
+  '## Workflow',
+  '1. Create all project files first (code blocks with filenames)',
+  '2. Then provide shell commands to install dependencies, compile, and run',
+  '3. If something fails, diagnose the error and provide ONLY fix commands/code',
+  '4. Always provide COMPLETE code with all imports',
+  '',
+  '## Error Recovery',
+  'When you see errors, fix them immediately. Common fixes:',
+  '- "MODULE_NOT_FOUND" → add npm install <package> command',
+  '- "tsc not found" → add npm install typescript --save-dev command',
+  '- Syntax errors → provide the corrected file',
+  '- Port in use → use a different port',
 ].join('\r\n');
 
 // ============================================================
@@ -43,10 +66,15 @@ function getAugmentedPath(): string {
     extraDirs.push(
       path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Python', 'Python38'),
       path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Python', 'Python311'),
+      path.join(os.homedir(), 'AppData', 'Local', 'Programs', 'Python', 'Python312'),
       'C:\\Program Files\\nodejs',
       'C:\\Program Files\\Git\\cmd',
       'C:\\Program Files\\Git\\usr\\bin',
       'C:\\tools\\nodejs',
+      'C:\\tools\\nodejs\\node-v20.15.1-win-x64',
+      'C:\\Program Files\\LLVM\\bin',
+      'C:\\mingw64\\bin',
+      'C:\\TDM-GCC-64\\bin',
     );
     const resPath = (process as any).resourcesPath;
     if (resPath) extraDirs.push(resPath);
@@ -91,27 +119,97 @@ function getProjectDir(threadId?: string, projectPath?: string): string {
   return dir;
 }
 
-function execCmd(cmd: string, cwd: string, timeoutMs: number = DEFAULT_CMD_TIMEOUT): { exitCode: number; stdout: string; stderr: string } {
-  const scriptFile = path.join(os.tmpdir(), 'moa-exec-' + uuid() + '.cmd');
-  fs.writeFileSync(scriptFile, '@echo off\r\n' + cmd, 'utf-8');
+// ============================================================
+// FIXED: Execute multiple commands in a SINGLE cmd.exe session
+// This ensures cd commands persist between lines
+// ============================================================
+
+function execCmdSession(commands: string[], cwd: string, timeoutMs: number = DEFAULT_CMD_TIMEOUT): CommandResult[] {
+  const results: CommandResult[] = [];
+  
+  // Build a single .cmd script with all commands
+  const lines: string[] = ['@echo off', '@setlocal'];
+  
+  // Add PATH augmentation
+  const augmentedPath = getAugmentedPath();
+  lines.push('set "PATH=' + augmentedPath.replace(/"/g, '') + '"');
+  lines.push('cd /d "' + cwd + '"');
+  
+  for (const cmd of commands) {
+    lines.push('echo [MOA] ' + cmd.replace(/"/g, ''));
+    lines.push(cmd);
+    lines.push('if errorlevel 1 (echo [MOA-EXIT]1) else (echo [MOA-EXIT]0)');
+  }
+  
+  const scriptFile = path.join(os.tmpdir(), 'moa-session-' + uuid() + '.cmd');
+  fs.writeFileSync(scriptFile, lines.join('\r\n'), 'utf-8');
+  
   try {
-    const env = { ...process.env, PATH: getAugmentedPath() };
     const result = spawnSync('cmd.exe', ['/c', scriptFile], {
       cwd,
       timeout: timeoutMs,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      env,
+      env: { ...process.env, PATH: augmentedPath },
       windowsHide: true,
     });
-    return {
-      exitCode: result.status ?? 1,
-      stdout: (result.stdout || '').toString(),
-      stderr: (result.stderr || '').toString(),
-    };
+    
+    const output = (result.stdout || '').toString();
+    const errorOutput = (result.stderr || '').toString();
+    
+    // Parse output to extract per-command results
+    const exitCode = result.status ?? 0;
+    
+    // Split by our markers
+    const sections = output.split(/\[MOA\]\s*/);
+    let cmdIdx = 0;
+    for (const section of sections) {
+      if (!section.trim()) continue;
+      const exitMatch = section.match(/([\s\S]*?)\[MOA-EXIT\](\d+)/);
+      if (exitMatch) {
+        const cmdOutput = exitMatch[1].trim();
+        const cmdExit = parseInt(exitMatch[2]);
+        results.push({
+          cmd: commands[cmdIdx] || 'unknown',
+          exitCode: cmdExit,
+          stdout: cmdOutput,
+          stderr: '',
+        });
+        cmdIdx++;
+      }
+    }
+    
+    // If parsing failed, return a single result
+    if (results.length === 0) {
+      for (const cmd of commands) {
+        results.push({
+          cmd,
+          exitCode,
+          stdout: output.slice(0, 8000),
+          stderr: errorOutput.slice(0, 4000),
+        });
+      }
+    }
+  } catch (err: any) {
+    for (const cmd of commands) {
+      results.push({
+        cmd,
+        exitCode: 1,
+        stdout: '',
+        stderr: err.message || 'Execution failed',
+      });
+    }
   } finally {
     try { fs.unlinkSync(scriptFile); } catch { /* ignore */ }
   }
+  
+  return results;
+}
+
+// Legacy single-command exec (for backward compat)
+function execCmd(cmd: string, cwd: string, timeoutMs: number = DEFAULT_CMD_TIMEOUT): { exitCode: number; stdout: string; stderr: string } {
+  const results = execCmdSession([cmd], cwd, timeoutMs);
+  return results[0] || { exitCode: 1, stdout: '', stderr: 'No result' };
 }
 
 function getCmdTimeout(cmd: string): number {
@@ -167,7 +265,8 @@ function inferFilename(language: string, content: string, idx: number): string {
 
 function extractCodeBlocks(response: string): ExtractedCodeBlock[] {
   const blocks: ExtractedCodeBlock[] = [];
-  const fenceRegex = /```(\w*)\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)```/g;
+  // Match code blocks with optional filename comment
+  const fenceRegex = /`(\w+)\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)`/g;
   let match: RegExpExecArray | null;
   let idx = 0;
   while ((match = fenceRegex.exec(response)) !== null) {
@@ -210,13 +309,6 @@ interface CommandResult {
   stderr: string;
 }
 
-interface CodeExecutionResult {
-  filesWritten: FileWritten[];
-  commandsRun: CommandResult[];
-  retries: number;
-  projectDir: string;
-}
-
 function writeCodeBlocks(blocks: ExtractedCodeBlock[], projectDir: string): FileWritten[] {
   const written: FileWritten[] = [];
   const codeBlocks = blocks.filter(b => !b.isCommand);
@@ -249,53 +341,102 @@ function collectCommands(blocks: ExtractedCodeBlock[], dollarCommands: string[])
   return cmds;
 }
 
+// ============================================================
+// FIXED: runCommandsSequentially now merges ALL commands into one session
+// This ensures cd works properly
+// ============================================================
+
 function runCommandsSequentially(
   commands: string[],
   projectDir: string,
-  currentDir: string,
+  cwd: string,
 ): { results: CommandResult[]; finalDir: string } {
-  const results: CommandResult[] = [];
-  let cwd = currentDir;
+  if (commands.length === 0) return { results: [], finalDir: cwd };
+
+  // Auto-detect and prepend dependency installation
+  const needsTypescript = commands.some(c => /\b(tsc|npx\s+tsc|ts-node)\b/i.test(c));
+  const needsNodemon = commands.some(c => /\bnodemon\b/i.test(c));
+  const needsNpmInstall = commands.some(c => /\bnpm\s+(install|i)\b/i.test(c));
+  
+  const prepends: string[] = [];
+  
+  // If any command needs tsc but there's no npm install for typescript, add it
+  if (needsTypescript && !commands.some(c => /typescript/.test(c))) {
+    prepends.push('npm install typescript --save-dev 2>nul');
+  }
+  if (needsNodemon && !commands.some(c => /nodemon/.test(c))) {
+    prepends.push('npm install nodemon --save-dev 2>nul');
+  }
+  
+  const allCommands = [...prepends, ...commands];
+  
+  // Calculate total timeout
+  let totalTimeout = 0;
+  for (const cmd of allCommands) {
+    totalTimeout += getCmdTimeout(cmd);
+  }
+  totalTimeout = Math.min(totalTimeout, 300_000); // Cap at 5 minutes
+  
+  // Run ALL commands in a single session
+  const results = execCmdSession(allCommands, cwd, totalTimeout);
+  
+  // Determine final directory from cd commands
+  let finalDir = cwd;
   for (const cmd of commands) {
-    const timeout = getCmdTimeout(cmd);
-    const exit = execCmd(cmd, cwd, timeout);
-    results.push({ cmd, exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
     const cdMatch = cmd.trim().match(/^cd\s+(.+)$/i);
-    if (cdMatch && exit.exitCode === 0) {
+    if (cdMatch) {
       const target = cdMatch[1].trim().replace(/^["']|["']$/g, '');
-      const resolved = path.resolve(cwd, target);
+      const resolved = path.resolve(finalDir, target);
       if (fs.existsSync(resolved)) {
-        cwd = resolved;
+        finalDir = resolved;
       }
     }
   }
-  return { results, finalDir: cwd };
+  
+  return { results, finalDir };
 }
 
 function autoInstallDeps(projectDir: string): CommandResult[] {
   const results: CommandResult[] = [];
+  
+  // Check for package.json and install
   if (fs.existsSync(path.join(projectDir, 'package.json'))) {
-    const exit = execCmd('npm install', projectDir, INSTALL_CMD_TIMEOUT);
-    results.push({ cmd: 'npm install', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
+    const nodeModulesPath = path.join(projectDir, 'node_modules');
+    if (!fs.existsSync(nodeModulesPath)) {
+      const exit = execCmd('npm install', projectDir, INSTALL_CMD_TIMEOUT);
+      results.push({ cmd: 'npm install (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
+    }
   }
+  
+  // Check for requirements.txt
   if (fs.existsSync(path.join(projectDir, 'requirements.txt'))) {
     const exit = execCmd('pip install -r requirements.txt', projectDir, INSTALL_CMD_TIMEOUT);
-    results.push({ cmd: 'pip install -r requirements.txt', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
+    results.push({ cmd: 'pip install -r requirements.txt (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
   }
+  
+  // Check for tsconfig.json and ensure typescript is installed
+  if (fs.existsSync(path.join(projectDir, 'tsconfig.json'))) {
+    const tsBinary = path.join(projectDir, 'node_modules', '.bin', 'tsc.cmd');
+    if (!fs.existsSync(tsBinary)) {
+      const exit = execCmd('npm install typescript --save-dev', projectDir, INSTALL_CMD_TIMEOUT);
+      results.push({ cmd: 'npm install typescript (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
+    }
+  }
+  
   return results;
 }
 
 function buildErrorContext(projectDir: string, failedResults: CommandResult[]): string {
-  let ctx = 'Project directory: ' + projectDir + '\r\n\r\n';
+  let ctx = '## Execution Errors\r\n\r\nProject directory: ' + projectDir + '\r\n\r\n';
   for (const r of failedResults) {
     if (r.exitCode !== 0) {
-      ctx += 'FAILED COMMAND: ' + r.cmd + '\r\n';
+      ctx += '### FAILED COMMAND: ' + r.cmd + '\r\n';
       ctx += 'EXIT CODE: ' + r.exitCode + '\r\n';
-      ctx += 'STDOUT:\r\n' + (r.stdout || '(empty)') + '\r\n';
-      ctx += 'STDERR:\r\n' + (r.stderr || '(empty)') + '\r\n\r\n';
+      ctx += 'STDOUT:\r\n`\r\n' + (r.stdout || '(empty)') + '\r\n`\r\n';
+      ctx += 'STDERR:\r\n`\r\n' + (r.stderr || '(empty)') + '\r\n`\r\n\r\n';
     }
   }
-  ctx += 'Previous commands failed. Provide ONLY fix commands, one per line, no explanations.';
+  ctx += 'Please diagnose and fix these errors. Provide corrected code blocks and/or fix commands.';
   return ctx;
 }
 
@@ -433,7 +574,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       const messages: Array<{ role: string; content: any }> = [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'system', content: 'Working directory: ' + projectDir + '\r\nPlatform: ' + process.platform },
+        { role: 'system', content: 'Working directory: ' + projectDir + '\r\nPlatform: ' + process.platform + '\r\nNode.js: ' + process.version },
       ];
 
       const compressedHistory = compressHistory(history || []);
@@ -472,7 +613,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const codeBlocks = extractCodeBlocks(llmContent);
       if (codeBlocks.length > 0) {
         const written = writeCodeBlocks(codeBlocks, projectDir);
-                filesWritten.push(...written);
+        filesWritten.push(...written);
 
         const dollarCmds = extractDollarCommands(llmContent);
         const commands = collectCommands(codeBlocks, dollarCmds);
@@ -535,7 +676,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         latencyMs: initialResp.latencyMs,
         usage: initialResp.usage,
         codeExecution: allCommandsRun.map((cmd) => ({
-          lang: (cmd.cmd.match(/\\.(\\w+)/) || [])[1] || cmd.cmd.split(' ')[0],
+          lang: (cmd.cmd.match(/\.(\w+)/) || [])[1] || cmd.cmd.split(' ')[0],
           filename: cmd.cmd.split(' ')[0],
           stdout: cmd.stdout,
           stderr: cmd.stderr,
