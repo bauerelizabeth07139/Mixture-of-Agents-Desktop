@@ -804,6 +804,13 @@ function ExtensionsPanel() {
   const [skillServerPresets, setSkillServerPresets] = useState<any[]>([]);
   const [showAddSkillServer, setShowAddSkillServer] = useState(false);
   const [customSkillServer, setCustomSkillServer] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: '通用', icon: '🔌' });
+  const [feedback, setFeedback] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [installing, setInstalling] = useState<string | null>(null);
+
+  const showFeedback = useCallback((type: 'success' | 'error', message: string) => {
+    setFeedback({ type, message });
+    setTimeout(() => setFeedback(null), 3000);
+  }, []);
 
   const loadAll = useCallback(async () => {
     const [mp, sp, ssp] = await Promise.all([api.fetchMcpPresets(), api.fetchSkillPresets(), api.fetchSkillServerPresets()]);
@@ -812,18 +819,43 @@ function ExtensionsPanel() {
   }, []);
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  const handleInstallPreset = useCallback(async (type: 'mcp' | 'skill-server' | 'skill', presetId: string, presetName: string) => {
+    setInstalling(presetId);
+    try {
+      if (type === 'mcp') await api.addMcpFromPreset(presetId);
+      else if (type === 'skill-server') await api.addSkillServerFromPreset(presetId);
+      else await api.addSkillFromPreset(presetId);
+      showFeedback('success', presetName + ' 安装成功！');
+      await loadAll();
+    } catch (err: any) {
+      showFeedback('error', '安装失败: ' + (err?.message || '未知错误'));
+    } finally {
+      setInstalling(null);
+    }
+  }, [loadAll, showFeedback]);
+
   return (
     <div className="tab-panel">
+      {feedback && (
+        <div style={{
+          position: 'fixed' as const, top: 20, right: 20, zIndex: 9999,
+          padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
+          background: feedback.type === 'success' ? 'var(--success, #22c55e)' : 'var(--error, #ef4444)',
+          color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+        }}>
+          {feedback.type === 'success' ? '✅' : '❌'} {feedback.message}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        <button className={`btn ${subTab === 'mcp' ? 'btn-primary' : ''}`} onClick={() => setSubTab('mcp')} style={{ borderRadius: '6px 6px 0 0' }}>MCP</button>
-        <button className={`btn ${subTab === 'skill-servers' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skill-servers')} style={{ borderRadius: '6px 6px 0 0' }}>技能服务器</button>
-        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>技能</button>
+        <button className={`btn ${subTab === 'mcp' ? 'btn-primary' : ''}`} onClick={() => setSubTab('mcp')} style={{ borderRadius: '6px 6px 0 0' }}>MCP 服务器</button>
+        <button className={`btn ${subTab === 'skill-servers' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skill-servers')} style={{ borderRadius: '6px 6px 0 0' }}>Skill 服务器</button>
+        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>专家库</button>
       </div>
 
       {subTab === 'mcp' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>MCP服务器</h3>
+            <h3 style={{ fontSize: 15 }}>MCP 服务器</h3>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-primary btn-sm" onClick={() => setShowAddMcp(!showAddMcp)}>+ 添加自定义</button>
               <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>刷新</button>
@@ -853,24 +885,32 @@ function ExtensionsPanel() {
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设MCP服务器</h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设 MCP 服务器</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {mcpPresets.map((p: any) => {
               const added = mcpServers.some((s: any) => s.name === p.name);
               return (
-                <div key={p.id} className="card" style={{ cursor: added ? 'default' : 'pointer', opacity: added ? 0.5 : 1, padding: 10 }}
-                  onClick={async () => { if (!added) { await api.addMcpFromPreset(p.id); loadAll(); } }}>
+                <div key={p.id} className="card" style={{ padding: 10 }}>
                   <div className="card-title">{p.icon} {p.name}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 4 }}>{p.description}</div>
-                  <span className="badge badge-info">{p.transport}</span>
-                  {added && <span className="badge badge-success" style={{ marginLeft: 4 }}>已添加</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                    <span className="badge badge-info">{p.transport}</span>
+                    {added ? (
+                      <span className="badge badge-success">已安装</span>
+                    ) : (
+                      <button className="btn btn-primary btn-sm" disabled={installing === p.id}
+                        onClick={() => handleInstallPreset('mcp', p.id, p.name)}>
+                        {installing === p.id ? '安装中...' : '安装'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
           {mcpServers.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的MCP服务器</h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的 MCP 服务器</h4>
               {mcpServers.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 18 }}>{s.icon}</span>
@@ -879,7 +919,7 @@ function ExtensionsPanel() {
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.transport === 'stdio' ? s.command + ' ' + (s.args || []).join(' ') : s.url}</div>
                   </div>
                   <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? '启用' : '禁用'}</span>
-                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '测试通过' : '测试未通过'}</span>}
+                  {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '测试通过' : '测试未通过'}</span>}
                   <button className="btn btn-sm" onClick={async () => { await api.updateMcp(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '禁用' : '启用'}</button>
                   <button className="btn btn-sm" onClick={async () => { await api.removeMcp(s.id); loadAll(); }} style={{ color: "var(--error)" }}>删除</button>
                   <button className="btn btn-sm" onClick={async () => { await api.testMcp(s.id); loadAll(); }}>测试</button>
@@ -893,7 +933,7 @@ function ExtensionsPanel() {
       {subTab === 'skill-servers' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>技能服务器</h3>
+            <h3 style={{ fontSize: 15 }}>Skill 服务器</h3>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkillServer(!showAddSkillServer)}>+ 添加自定义</button>
               <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>刷新</button>
@@ -923,24 +963,32 @@ function ExtensionsPanel() {
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设技能服务器</h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设 Skill 服务器</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillServerPresets.map((p: any) => {
               const added = skillServers.some((s: any) => s.name === p.name);
               return (
-                <div key={p.id} className="card" style={{ cursor: added ? 'default' : 'pointer', opacity: added ? 0.5 : 1, padding: 10 }}
-                  onClick={async () => { if (!added) { await api.addSkillServerFromPreset(p.id); loadAll(); } }}>
+                <div key={p.id} className="card" style={{ padding: 10 }}>
                   <div className="card-title">{p.icon} {p.name}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{p.description}</div>
                   <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{p.category} {p.npmPackage || p.transport}</div>
-                  {added && <span className="badge badge-success" style={{ marginTop: 4 }}>已添加</span>}
+                  <div style={{ marginTop: 6 }}>
+                    {added ? (
+                      <span className="badge badge-success">已安装</span>
+                    ) : (
+                      <button className="btn btn-primary btn-sm" disabled={installing === p.id}
+                        onClick={() => handleInstallPreset('skill-server', p.id, p.name)}>
+                        {installing === p.id ? '安装中...' : '安装'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
           {skillServers.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的技能服务器</h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的 Skill 服务器</h4>
               {skillServers.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -966,11 +1014,14 @@ function ExtensionsPanel() {
       {subTab === 'skills' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>技能库</h3>
+            <h3 style={{ fontSize: 15 }}>专家库</h3>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkill(!showAddSkill)}>+ 添加自定义</button>
               <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>刷新</button>
             </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, padding: '8px 12px', background: 'var(--surface)', borderRadius: 6, border: '1px solid var(--border)' }}>
+            💡 已启用的专家/技能会自动注入到聊天的系统提示中，无需手动操作。
           </div>
           {showAddSkill && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
@@ -997,23 +1048,31 @@ function ExtensionsPanel() {
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设技能</h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>预设专家</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillPresets.map((p: any) => {
               const added = skills.some((s: any) => s.name === p.name);
               return (
-                <div key={p.id} className="card" style={{ cursor: added ? 'default' : 'pointer', opacity: added ? 0.5 : 1, padding: 10 }}
-                  onClick={async () => { if (!added) { await api.addSkillFromPreset(p.id); loadAll(); } }}>
+                <div key={p.id} className="card" style={{ padding: 10 }}>
                   <div className="card-title">{p.icon} {p.name}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{p.description}</div>
-                  {added && <span className="badge badge-success" style={{ marginTop: 4 }}>已添加</span>}
+                  <div style={{ marginTop: 6 }}>
+                    {added ? (
+                      <span className="badge badge-success">已安装</span>
+                    ) : (
+                      <button className="btn btn-primary btn-sm" disabled={installing === p.id}
+                        onClick={() => handleInstallPreset('skill', p.id, p.name)}>
+                        {installing === p.id ? '安装中...' : '安装'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
           {skills.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的技能</h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>已安装的专家/技能</h4>
               {skills.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

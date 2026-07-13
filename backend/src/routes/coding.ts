@@ -128,7 +128,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
   r.post('/shell', async (req, res) => {
     const { command, workdir, timeout } = req.body;
     if (!command) return res.status(400).json({ error: 'Missing command' });
-    const cwd = workdir ? path.resolve(workDir, workdir) : workDir;
+    const cwd = workdir ? (path.isAbsolute(workdir) ? workdir : path.resolve(workDir, workdir)) : workDir;
     fs.mkdirSync(cwd, { recursive: true });
     const t = Math.min(Math.max(timeout || 30000, 1000), 120000);
     try {
@@ -141,7 +141,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
           ].join(path.delimiter) + path.delimiter
         : '/usr/local/bin:/usr/bin:';
       const output = execSync(command, {
-        cwd, encoding: 'utf8', timeout: t, shell: (process.env.ComSpec || 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe') as any,
+        cwd, encoding: 'utf8', timeout: t, shell: (process.env.ComSpec || 'cmd.exe') as any,
         env: { ...process.env, FORCE_COLOR: '0', PATH: extra + (process.env.PATH || '') }
       });
       res.json({ success: true, output: (output || '').slice(0, 16000), exitCode: 0 });
@@ -197,7 +197,7 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
 
   r.post('/list-files', (req, res) => {
     const { workdir } = req.body;
-    const cwd = workdir ? path.resolve(workDir, workdir) : workDir;
+    const cwd = workdir ? (path.isAbsolute(workdir) ? workdir : path.resolve(workDir, workdir)) : workDir;
     if (!fs.existsSync(cwd)) return res.json({ files: [], dirs: [] });
     try {
       const entries = fs.readdirSync(cwd, { withFileTypes: true });

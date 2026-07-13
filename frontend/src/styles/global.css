@@ -711,6 +711,18 @@ label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: 
   transition: all 0.15s;
 }
 .fm-tpl-btn:hover {
+
+
+/* ===== Editor - Changed Line Highlighting ===== */
+.changed-line-highlight {
+  background: rgba(240, 160, 48, 0.08) !important;
+}
+.changed-line-glyph {
+  background: #f0a030;
+  width: 4px !important;
+  border-radius: 2px;
+  margin-left: 2px;
+}
   background: var(--accent-bg, rgba(88,166,255,0.15));
   border-color: var(--accent, #58a6ff);
   color: var(--accent, #58a6ff);
