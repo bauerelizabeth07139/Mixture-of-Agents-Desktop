@@ -420,17 +420,20 @@ export class CapabilityTestEngine {
   static async probeCapabilities(provider: Provider, apiKey: ApiKeyEntry, model: Model): Promise<{ visionScore: number; audioScore: number }> {
     let visionScore = 0;
     let audioScore = 0;
-    // Vision test: send a test image URL
+    // Vision test: download image as base64 (some APIs reject URLs)
     try {
+      const axios = (await import('axios')).default;
+      const imgResp = await axios.get('https://httpbin.org/image/png', { responseType: 'arraybuffer', timeout: 10000 });
+      const imgB64 = Buffer.from(imgResp.data).toString('base64');
       const resp = await LLMClient.chatCompletion(provider, apiKey, {
         messages: [{ role: 'user', content: [
-          { type: 'text', text: 'What animal is in this image? Reply with just the animal name.' },
-          { type: 'image_url', image_url: { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg' } },
+          { type: 'text', text: 'What do you see in this image? Reply one word.' },
+          { type: 'image_url', image_url: { url: 'data:image/png;base64,' + imgB64 } },
         ] as any }],
         model: model.modelId, maxTokens: 100, temperature: 0,
       });
       const r = resp.content.toLowerCase();
-      if (/cat|kitten|feline/.test(r) && r.length > 2) visionScore = 8;
+      if (/pig|animal|image|piggy/.test(r) && r.length > 2) visionScore = 8;
       else if (r.length > 10 && !/cannot|don't|unable|not.*support|no.*image/i.test(r)) visionScore = 5;
       else if (r.length > 0 && !/error|cannot|unsupported/i.test(r)) visionScore = 3;
     } catch {}
