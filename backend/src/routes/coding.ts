@@ -49,17 +49,11 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
       freeMemory: Math.round(os.freemem() / 1073741824 * 10) / 10 + ' GB',
       cpus: os.cpus().length + ' cores',
       shell: process.env.ComSpec || 'cmd.exe',
-      tools: {} as Record<string, { available: boolean; version: string | null; path: string | null }>,
+      tools: {
+        node: { available: true, version: process.version, path: process.execPath },
+        npm: { available: !!process.env.npm_execpath || true, version: null, path: null },
+      },
     };
-    // Quick sync checks for essential tools only (node, python, git)
-    const { spawnSync: ss } = require('child_process');
-    const quick = [['node','node -v'],['npm','npm -v'],['python','python --version'],['git','git --version']];
-    for (const [name, cmd] of quick) {
-      try {
-        const r2 = ss('cmd.exe', ['/c', cmd], { encoding: 'utf8', timeout: 2000, windowsHide: true });
-        env.tools[name] = { available: r2.status === 0 && (r2.stdout||'').trim().length > 0, version: r2.status === 0 ? (r2.stdout||'').trim().split('\n')[0] : null, path: null };
-      } catch { env.tools[name] = { available: false, version: null, path: null }; }
-    }
     try { env.desktopFiles = fs.readdirSync(path.join(os.homedir(), 'Desktop')).slice(0, 50); } catch { env.desktopFiles = []; }
     env.pathEntries = (process.env.PATH || '').split(path.delimiter).filter(Boolean);
     res.json(env);
