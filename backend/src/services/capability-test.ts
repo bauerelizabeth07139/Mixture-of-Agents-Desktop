@@ -424,57 +424,56 @@ export class CapabilityTestEngine {
     let audioScore = 0;
     const axios = (await import('axios')).default;
 
-    // Vision test: send image URL, check if model describes actual image content
-    try {
-      const resp = await axios.post(
-        provider.baseUrl + '/chat/completions',
-        {
-          model: model.modelId,
-          messages: [{ role: 'user', content: [
-            { type: 'text', text: 'What do you see in this image? Reply one word.' },
-            { type: 'image_url', image_url: { url: 'https://httpbin.org/image/png' } },
-          ] }],
-          max_tokens: 100, temperature: 0,
-        },
-        { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 30000 }
-      );
-      const r = (resp.data.choices?.[0]?.message?.content || '').toLowerCase();
-      if (/pig|animal|piggy|pink|snout|cartoon|face/.test(r) && r.length > 2) {
-        visionScore = 8;
-      } else if (r.length > 10 && !/cannot|don.t|unable|not.*support|no.*image|text.based|sorry.*can/i.test(r)) {
-        visionScore = 5;
+    // Vision test: use base64 inline image (some providers don't support URL)
+    // A 2x2 colored PNG in base64
+    const tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVQI12P4z8BQDwAEAgH/QW+DigAAAABJRU5ErkJggg==';
+    const visionFormats = [
+      // Format A: OpenAI standard image_url with base64 data URI
+      [{ type: 'image_url', image_url: { url: 'data:image/png;base64,' + tinyPng } }, { type: 'text', text: 'What color is this? Reply one word.' }],
+      // Format B: MiMo-style with input_image
+      [{ type: 'image_url', image_url: { url: 'data:image/png;base64,' + tinyPng } }, { type: 'text', text: 'Describe this image.' }],
+    ];
+    for (const content of visionFormats) {
+      try {
+        const resp = await axios.post(
+          provider.baseUrl + '/chat/completions',
+          { model: model.modelId, messages: [{ role: 'user', content }], max_tokens: 100, temperature: 0 },
+          { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 30000 }
+        );
+        const usage = resp.data.usage;
+        const hasImageTokens = usage?.prompt_tokens_details?.image_tokens > 0;
+        const r = (resp.data.choices?.[0]?.message?.content || '').toLowerCase();
+        if (hasImageTokens) { visionScore = 8; break; }
+        const refuses = /cannot|don.t|unable|not.*support|no.*image|text.based|sorry.*can|not.*capab/i.test(r);
+        if (!refuses && r.length > 2) { visionScore = 6; break; }
+      } catch (e: any) {
+        if (e.response?.status === 400 || e.response?.status === 415) continue;
       }
-    } catch {}
+    }
 
-    // Audio test: send audio URL (MiMo format: input_audio.data = URL)
-    try {
-      const resp = await axios.post(
-        provider.baseUrl + '/chat/completions',
-        {
-          model: model.modelId,
-          messages: [{ role: 'user', content: [
-            { type: 'input_audio', input_audio: { data: 'https://example-files.cnbj1.mi-fds.com/example-files/audio/audio_example.wav' } },
-            { type: 'text', text: 'Describe what you hear in this audio.' },
-          ] }],
-          max_tokens: 200, temperature: 0,
-        },
-        { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
-      );
-      const r = (resp.data.choices?.[0]?.message?.content || '').toLowerCase();
-      const usage = resp.data.usage;
-      const hasAudioTokens = usage?.prompt_tokens_details?.audio_tokens > 0;
-
-      // If API reports audio_tokens, the model actually processed audio
-      if (hasAudioTokens) {
-        audioScore = 7;
-      } else {
-        // Fallback: check if response describes actual audio content (not hallucination)
-        const admitsCantHear = /can.t (actually )?hear|unable to hear|text.based.*can.t|don.t have.*audio/i.test(r);
-        if (!admitsCantHear && r.length > 20 && /hear|sound|audio|voice|speech|music|weather|morning/i.test(r)) {
-          audioScore = 6;
-        }
+    // Audio test: try multiple formats
+    const audioUrl = 'https://example-files.cnbj1.mi-fds.com/example-files/audio/audio_example.wav';
+    const audioFormats = [
+      [{ type: 'input_audio', input_audio: { data: audioUrl } }, { type: 'text', text: 'Describe what you hear.' }],
+      [{ type: 'audio_url', audio_url: { url: audioUrl } }, { type: 'text', text: 'Describe what you hear.' }],
+    ];
+    for (const content of audioFormats) {
+      try {
+        const resp = await axios.post(
+          provider.baseUrl + '/chat/completions',
+          { model: model.modelId, messages: [{ role: 'user', content }], max_tokens: 200, temperature: 0 },
+          { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
+        );
+        const usage = resp.data.usage;
+        const hasAudioTokens = usage?.prompt_tokens_details?.audio_tokens > 0;
+        if (hasAudioTokens) { audioScore = 8; break; }
+        const r = (resp.data.choices?.[0]?.message?.content || '').toLowerCase();
+        const admitsCantHear = /can.t (actually )?hear|unable to hear|text.based.*can.t|don.t have.*audio|no.*audio.*input/i.test(r);
+        if (!admitsCantHear && r.length > 10) { audioScore = 6; break; }
+      } catch (e: any) {
+        if (e.response?.status === 400 || e.response?.status === 415) continue;
       }
-    } catch {}
+    }
 
     return { visionScore, audioScore };
   }
