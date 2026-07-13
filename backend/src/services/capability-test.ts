@@ -420,50 +420,63 @@ export class CapabilityTestEngine {
   static async probeCapabilities(provider: Provider, apiKey: ApiKeyEntry, model: Model): Promise<{ visionScore: number; audioScore: number }> {
     let visionScore = 0;
     let audioScore = 0;
+    const baseModelId = model.modelId.toLowerCase();
 
-    // Vision test: send image URL (MiMo and most APIs support URL, not base64 data URL)
-    try {
-      const imageUrl = 'https://httpbin.org/image/png';
-      const resp = await LLMClient.chatCompletion(provider, apiKey, {
-        messages: [{ role: 'user', content: [
-          { type: 'text', text: 'What do you see in this image? Reply one word.' },
-          { type: 'image_url', image_url: { url: imageUrl } },
-        ] as any }],
-        model: model.modelId, maxTokens: 100, temperature: 0,
-      });
-      const r = (resp.content || '').toLowerCase();
-      if (/pig|animal|image|piggy/.test(r) && r.length > 2) visionScore = 8;
-      else if (r.length > 10 && !/cannot|don't|unable|not.*support|no.*image|unsupported|error/i.test(r)) visionScore = 5;
-      else if (r.length > 0 && !/error|cannot|unsupported|400|404/i.test(r)) visionScore = 3;
-    } catch {}
+    // Strategy 1: Check provider model list for companion models
+    const allModelIds = provider.models.map(m => m.modelId.toLowerCase());
+    const basePrefix = baseModelId.replace(/-pro$|-lite$|-chat$|-instruct$/, "");
 
-    // Audio test: generate a proper WAV (1s, 440Hz sine wave, 16kHz, 16-bit PCM)
-    try {
-      const sampleRate = 16000;
-      const numSamples = sampleRate;
-      const buf = Buffer.alloc(44 + numSamples * 2);
-      buf.write('RIFF', 0); buf.writeUInt32LE(36 + numSamples * 2, 4); buf.write('WAVE', 8);
-      buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
-      buf.writeUInt32LE(sampleRate, 24); buf.writeUInt32LE(sampleRate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
-      buf.write('data', 36); buf.writeUInt32LE(numSamples * 2, 40);
-      for (let i = 0; i < numSamples; i++) {
-        buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / sampleRate) * 16000), 44 + i * 2);
-      }
-      const audioB64 = buf.toString('base64');
+    // ASR/STT companion -> audio capability
+    if (allModelIds.some(id => id.includes(basePrefix) && /\b(asr|stt|whisper|audio)\b/.test(id))) {
+      audioScore = 7;
+    }
+    // VL/vision companion -> vision capability
+    if (allModelIds.some(id => id.includes(basePrefix) && /\b(vl|vision|visual)\b/.test(id))) {
+      visionScore = 7;
+    }
+    // Model name itself
+    if (/\b(vl|vision|visual|multimodal)\b/.test(baseModelId)) visionScore = Math.max(visionScore, 8);
+    if (/\b(asr|audio|whisper)\b/.test(baseModelId)) audioScore = Math.max(audioScore, 8);
 
-      const resp = await LLMClient.chatCompletion(provider, apiKey, {
-        messages: [{ role: 'user', content: [
-          { type: 'text', text: 'Describe what you hear in this audio clip.' },
-          { type: 'input_audio', input_audio: { data: audioB64, format: 'wav' } },
-        ] as any }],
-        model: model.modelId, maxTokens: 100, temperature: 0,
-      });
-      const r = (resp.content || '').toLowerCase();
-      if (r.length > 5 && !/cannot|don't|unable|not.*support|no.*audio|unsupported|error|400|404/i.test(r)) audioScore = 6;
-    } catch {}
+    // Strategy 2: Probe with image URL if vision not detected
+    if (visionScore === 0) {
+      try {
+        const resp = await LLMClient.chatCompletion(provider, apiKey, {
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: 'What do you see in this image? Reply one word.' },
+            { type: 'image_url', image_url: { url: 'https://httpbin.org/image/png' } },
+          ] as any }],
+          model: model.modelId, maxTokens: 100, temperature: 0,
+        });
+        const r = (resp.content || '').toLowerCase();
+        if (/pig|animal|image|piggy/.test(r) && r.length > 2) visionScore = 8;
+        else if (r.length > 10 && !/cannot|don't|unable|not.*support|no.*image|unsupported|error/i.test(r)) visionScore = 5;
+      } catch {}
+    }
+
+    // Strategy 3: Probe audio with WAV if not detected
+    if (audioScore === 0) {
+      try {
+        const sr = 16000; const ns = sr;
+        const buf = Buffer.alloc(44 + ns * 2);
+        buf.write("RIFF", 0); buf.writeUInt32LE(36 + ns * 2, 4); buf.write("WAVE", 8);
+        buf.write("fmt ", 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+        buf.writeUInt32LE(sr, 24); buf.writeUInt32LE(sr * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+        buf.write("data", 36); buf.writeUInt32LE(ns * 2, 40);
+        for (let i = 0; i < ns; i++) buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / sr) * 16000), 44 + i * 2);
+        const resp = await LLMClient.chatCompletion(provider, apiKey, {
+          messages: [{ role: 'user', content: [
+            { type: 'text', text: 'Describe what you hear in this audio clip.' },
+            { type: 'input_audio', input_audio: { data: buf.toString("base64"), format: "wav" } },
+          ] as any }],
+          model: model.modelId, maxTokens: 100, temperature: 0,
+        });
+        const r = (resp.content || '').toLowerCase();
+        if (r.length > 10 && /hear|sound|audio|tone|music|voice|beep|buzz/i.test(r) && !/cannot|don.t|unable|sorry/i.test(r)) audioScore = 6;
+      } catch {}
+    }
 
     return { visionScore, audioScore };
   }
-
   static getTestCases(): TestCase[] { return [...QUICK_TESTS, ...STANDARD_TESTS]; }
 }
