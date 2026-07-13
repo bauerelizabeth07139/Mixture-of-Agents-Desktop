@@ -426,7 +426,7 @@ export class CapabilityTestEngine {
 
     // Vision test: use base64 inline image (some providers don't support URL)
     // A 2x2 colored PNG in base64
-    const tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVQI12P4z8BQDwAEAgH/QW+DigAAAABJRU5ErkJggg==';
+    const tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==';
     const visionFormats = [
       // Format A: OpenAI standard image_url with base64 data URI
       [{ type: 'image_url', image_url: { url: 'data:image/png;base64,' + tinyPng } }, { type: 'text', text: 'What color is this? Reply one word.' }],
