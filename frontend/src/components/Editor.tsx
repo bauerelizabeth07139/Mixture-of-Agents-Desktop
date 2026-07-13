@@ -4,7 +4,7 @@ import { api } from '../services/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 interface FileEntry { name: string; path: string; isDir: boolean; size?: number; children?: FileEntry[]; }
-interface EditorPanelProps { onCommandExecute?: (cmd: string) => void; threadId?: string; }
+interface EditorPanelProps { onCommandExecute?: (cmd: string) => void; threadId?: string; projectPath?: string; onProjectPathChange?: (p: string) => void; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 const LANG: Record<string, string> = {
@@ -54,10 +54,10 @@ function computeChangedLines(original: string, current: string): number[] {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────
-export function EditorPanel({ onCommandExecute, threadId }: EditorPanelProps) {
+export function EditorPanel({ onCommandExecute, threadId, projectPath, onProjectPathChange }: EditorPanelProps) {
   // Workspace state (per-thread localStorage)
   const storageKey = threadId ? `moa-project-${threadId}` : 'moa-workspace';
-  const [workspace, setWorkspace] = useState(() => localStorage.getItem(storageKey) || localStorage.getItem('moa-workspace') || '');
+  const [workspace, setWorkspace] = useState(() => projectPath || localStorage.getItem(storageKey) || localStorage.getItem('moa-workspace') || '');
   const [tree, setTree] = useState<FileEntry[]>([]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [selectedFile, setSelectedFile] = useState('');
@@ -108,8 +108,12 @@ export function EditorPanel({ onCommandExecute, threadId }: EditorPanelProps) {
       localStorage.setItem('moa-workspace', workspace);
       api.setWorkspace(workspace).catch(() => {});
       setExpanded(prev => new Set([...prev, workspace]));
+      onProjectPathChange?.(workspace);
     }
-  }, [workspace, storageKey]);
+  }, [workspace, storageKey, onProjectPathChange]);
+
+    // Sync with external projectPath changes (from chat)
+  useEffect(() => { if (projectPath && projectPath !== workspace) setWorkspace(projectPath); }, [projectPath]);
 
   // ─── Load tree ───────────────────────────────────────────────────────
   const loadTree = useCallback(async () => {
