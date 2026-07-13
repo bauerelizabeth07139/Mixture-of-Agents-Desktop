@@ -417,64 +417,61 @@ export class CapabilityTestEngine {
   }
 
   // Probe model for vision and audio capabilities by sending test media
+  // Probe model for vision and audio capabilities by sending test media via API
   static async probeCapabilities(provider: Provider, apiKey: ApiKeyEntry, model: Model): Promise<{ visionScore: number; audioScore: number }> {
     let visionScore = 0;
     let audioScore = 0;
-    const baseModelId = model.modelId.toLowerCase();
 
-    // Strategy 1: Check provider model list for companion models
-    const allModelIds = provider.models.map(m => m.modelId.toLowerCase());
-    const basePrefix = baseModelId.replace(/-pro$|-lite$|-chat$|-instruct$/, "");
+    // Vision test: send image URL and check if model actually describes image content
+    try {
+      const resp = await LLMClient.chatCompletion(provider, apiKey, {
+        messages: [{ role: 'user', content: [
+          { type: 'text', text: 'What do you see in this image? Reply in one word.' },
+          { type: 'image_url', image_url: { url: 'https://httpbin.org/image/png' } },
+        ] as any }],
+        model: model.modelId, maxTokens: 100, temperature: 0,
+      });
+      const r = (resp.content || '').toLowerCase();
+      // Model must describe actual image content (pig), not generic text
+      if (/pig|animal|piggy|pink|snout|cartoon/.test(r) && r.length > 2) {
+        visionScore = 8;
+      } else if (r.length > 10 && !/cannot|don.t|unable|not.*support|no.*image|text.based|text.only|sorry.*can/i.test(r)) {
+        visionScore = 5;
+      }
+    } catch {}
 
-    // ASR/STT companion -> audio capability
-    if (allModelIds.some(id => id.includes(basePrefix) && /\b(asr|stt|whisper|audio)\b/.test(id))) {
-      audioScore = 7;
-    }
-    // VL/vision companion -> vision capability
-    if (allModelIds.some(id => id.includes(basePrefix) && /\b(vl|vision|visual)\b/.test(id))) {
-      visionScore = 7;
-    }
-    // Model name itself
-    if (/\b(vl|vision|visual|multimodal)\b/.test(baseModelId)) visionScore = Math.max(visionScore, 8);
-    if (/\b(asr|audio|whisper)\b/.test(baseModelId)) audioScore = Math.max(audioScore, 8);
+    // Audio test: send WAV audio and check if model actually describes audio content
+    // Key: models that hallucinate will say "I cant hear" or describe generic sounds
+    // Models with real audio will describe specific audio characteristics
+    try {
+      const sr = 16000, ns = sr;
+      const buf = Buffer.alloc(44 + ns * 2);
+      buf.write('RIFF', 0); buf.writeUInt32LE(36 + ns * 2, 4); buf.write('WAVE', 8);
+      buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
+      buf.writeUInt32LE(sr, 24); buf.writeUInt32LE(sr * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+      buf.write('data', 36); buf.writeUInt32LE(ns * 2, 40);
+      for (let i = 0; i < ns; i++) buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / sr) * 16000), 44 + i * 2);
 
-    // Strategy 2: Probe with image URL if vision not detected
-    if (visionScore === 0) {
-      try {
-        const resp = await LLMClient.chatCompletion(provider, apiKey, {
-          messages: [{ role: 'user', content: [
-            { type: 'text', text: 'What do you see in this image? Reply one word.' },
-            { type: 'image_url', image_url: { url: 'https://httpbin.org/image/png' } },
-          ] as any }],
-          model: model.modelId, maxTokens: 100, temperature: 0,
-        });
-        const r = (resp.content || '').toLowerCase();
-        if (/pig|animal|image|piggy/.test(r) && r.length > 2) visionScore = 8;
-        else if (r.length > 10 && !/cannot|don't|unable|not.*support|no.*image|unsupported|error/i.test(r)) visionScore = 5;
-      } catch {}
-    }
+      const resp = await LLMClient.chatCompletion(provider, apiKey, {
+        messages: [{ role: 'user', content: [
+          { type: 'text', text: 'Describe what you hear in this audio clip in detail.' },
+          { type: 'input_audio', input_audio: { data: buf.toString('base64'), format: 'wav' } },
+        ] as any }],
+        model: model.modelId, maxTokens: 200, temperature: 0,
+      });
+      const r = (resp.content || '').toLowerCase();
+      const reasoning = (resp.reasoningContent || '').toLowerCase();
+      const combined = r + ' ' + reasoning;
 
-    // Strategy 3: Probe audio with WAV if not detected
-    if (audioScore === 0) {
-      try {
-        const sr = 16000; const ns = sr;
-        const buf = Buffer.alloc(44 + ns * 2);
-        buf.write("RIFF", 0); buf.writeUInt32LE(36 + ns * 2, 4); buf.write("WAVE", 8);
-        buf.write("fmt ", 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
-        buf.writeUInt32LE(sr, 24); buf.writeUInt32LE(sr * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
-        buf.write("data", 36); buf.writeUInt32LE(ns * 2, 40);
-        for (let i = 0; i < ns; i++) buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / sr) * 16000), 44 + i * 2);
-        const resp = await LLMClient.chatCompletion(provider, apiKey, {
-          messages: [{ role: 'user', content: [
-            { type: 'text', text: 'Describe what you hear in this audio clip.' },
-            { type: 'input_audio', input_audio: { data: buf.toString("base64"), format: "wav" } },
-          ] as any }],
-          model: model.modelId, maxTokens: 100, temperature: 0,
-        });
-        const r = (resp.content || '').toLowerCase();
-        if (r.length > 10 && /hear|sound|audio|tone|music|voice|beep|buzz/i.test(r) && !/cannot|don.t|unable|sorry/i.test(r)) audioScore = 6;
-      } catch {}
-    }
+      // Reject if model admits it cannot hear audio
+      const admitsCantHear = /can.t (actually )?hear|not able to hear|unable to hear|text.based.*can.t|don.t have.*audio|no.*audio.*capab|can.t process audio|can.t listen/i.test(combined);
+      // Reject if model hallucinates generic sounds without real audio processing
+      const genericHallucination = /beep|buzz|tone|sine|text representation|rather.*see.*text|simulation/i.test(combined);
+
+      if (!admitsCantHear && !genericHallucination && r.length > 20 && /hear|sound|audio|music|voice|speech|noise|rhythm|melody|frequency/i.test(r)) {
+        audioScore = 6;
+      }
+    } catch {}
 
     return { visionScore, audioScore };
   }
