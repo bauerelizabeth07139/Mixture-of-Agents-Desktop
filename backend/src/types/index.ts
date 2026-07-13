@@ -11,7 +11,7 @@ export type ModelType = 'llm' | 'tts' | 'image' | 'video' | '3d' | 'stt';
 
 export interface Model {
   id: string; name: string; providerId: string; modelId: string; type: ModelType;
-  capabilities: ModelCapabilityProfile; isDefault?: boolean;
+  capabilities: ModelCapabilityProfile; isDefault?: boolean; tags?: string[];
   contextLength?: number; maxOutputLength?: number; description?: string;
 }
 

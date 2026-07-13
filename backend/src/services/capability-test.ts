@@ -24,7 +24,7 @@ function timeScore(latencyMs: number, timeLimitMs: number, passed: boolean, corr
 }
 
 // ============================================================
-// QUICK TESTS 鈥?hard, 2 per category, 8 total
+// QUICK TESTS �?hard, 2 per category, 8 total
 // ============================================================
 const QUICK_TESTS: TestCase[] = [
   // CODE - Hard LeetCode (LC #23, #312)
@@ -141,7 +141,7 @@ const QUICK_TESTS: TestCase[] = [
 ];
 
 // ============================================================
-// STANDARD TESTS 鈥?extremely hard, 2 per category, 8 total
+// STANDARD TESTS �?extremely hard, 2 per category, 8 total
 // ============================================================
 const STANDARD_TESTS: TestCase[] = [
   // CODE - LC Hard (#329, #295)
@@ -451,30 +451,55 @@ export class CapabilityTestEngine {
       }
     }
 
-    // Audio test: try multiple formats
+    // Audio test: try multiple formats - use both URL and base64 approaches
     const audioUrl = 'https://example-files.cnbj1.mi-fds.com/example-files/audio/audio_example.wav';
     const audioFormats = [
-      [{ type: 'input_audio', input_audio: { data: audioUrl } }, { type: 'text', text: 'Describe what you hear.' }],
-      [{ type: 'audio_url', audio_url: { url: audioUrl } }, { type: 'text', text: 'Describe what you hear.' }],
+      // Format A: OpenAI-style input_audio with URL (MiMo compatible)
+      [{ type: 'input_audio', input_audio: { data: audioUrl } }, { type: 'text', text: 'please describe the content of the audio' }],
+      // Format B: audio_url style
+      [{ type: 'audio_url', audio_url: { url: audioUrl } }, { type: 'text', text: 'Describe what you hear in this audio.' }],
+      // Format C: system+user message style (MiMo docs format)
+      'system-user-format',
     ];
-    for (const content of audioFormats) {
+    for (const fmt of audioFormats) {
       try {
-        const resp = await axios.post(
-          provider.baseUrl + '/chat/completions',
-          { model: model.modelId, messages: [{ role: 'user', content }], max_tokens: 200, temperature: 0 },
-          { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
-        );
+        let resp;
+        if (fmt === 'system-user-format') {
+          resp = await axios.post(
+            provider.baseUrl + '/chat/completions',
+            { model: model.modelId, messages: [
+              { role: 'user', content: [
+                { type: 'input_audio', input_audio: { data: audioUrl } },
+                { type: 'text', text: 'please describe the content of the audio' },
+              ] },
+            ], max_completion_tokens: 256 },
+            { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
+          );
+        } else {
+          resp = await axios.post(
+            provider.baseUrl + '/chat/completions',
+            { model: model.modelId, messages: [{ role: 'user', content: fmt }], max_tokens: 200, temperature: 0 },
+            { headers: { 'Authorization': 'Bearer ' + apiKey.key, 'Content-Type': 'application/json' }, timeout: 60000 }
+          );
+        }
         const usage = resp.data.usage;
         const hasAudioTokens = usage?.prompt_tokens_details?.audio_tokens > 0;
         if (hasAudioTokens) { audioScore = 8; break; }
         const r = (resp.data.choices?.[0]?.message?.content || '').toLowerCase();
-        const admitsCantHear = /can.t (actually )?hear|unable to hear|text.based.*can.t|don.t have.*audio|no.*audio.*input/i.test(r);
-        if (!admitsCantHear && r.length > 10) { audioScore = 6; break; }
+        const admitsCantHear = /can.t (actually )?hear|unable to hear|text.based.*can.t|don.t have.*audio|no.*audio.*input|not.*support.*audio|don.t.*listen/i.test(r);
+        // If the response describes audio content (music, speech, sound etc), it can process audio
+        const describesAudio = /music|speech|voice|sound|audio|sing|talk|speak|hear|listen|melody|rhythm|tone|song|noise|whisper|loud|quiet/i.test(r);
+        if (!admitsCantHear && (describesAudio || r.length > 20)) { audioScore = describesAudio ? 7 : 5; break; }
       } catch (e: any) {
-        if (e.response?.status === 400 || e.response?.status === 415) continue;
+        if (e.response?.status === 400 || e.response?.status === 415 || e.response?.status === 422) continue;
       }
     }
 
+    // Update tags based on audio capability
+    if (audioScore > 0) {
+      model.tags = model.tags || [];
+      if (!model.tags.includes('音频')) model.tags.push('音频');
+    }
     return { visionScore, audioScore };
   }
   static getTestCases(): TestCase[] { return [...QUICK_TESTS, ...STANDARD_TESTS]; }

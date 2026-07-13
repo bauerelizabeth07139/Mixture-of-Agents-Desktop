@@ -1066,6 +1066,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>('');
+  const [projectPath, setProjectPath] = useState<string>(() => localStorage.getItem('moa-chat-project') || '');
   const [editingThreadTitle, setEditingThreadTitle] = useState<string>('');
   const dragCounterRef = useRef(0);
 
@@ -1182,7 +1183,7 @@ export default function App() {
 
     try {
       const chatHistory = messages.filter(m => m.role === 'user' || m.role === 'orchestrator').map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: typeof m.content === 'string' ? m.content : '' }));
-      const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, history: chatHistory }) });
+      const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, threadId: activeThreadId, projectPath: projectPath || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, history: chatHistory }) });
       const data = await res.json();
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: data.role || 'orchestrator', content: data.content || data.message || JSON.stringify(data), time: new Date().toLocaleTimeString('zh-CN'), model: data.model, tools: data.tools, agents: data.agents, codeExecution: data.codeExecution, thinkingMode: data.thinkingMode }]);
 
@@ -1330,7 +1331,8 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{modelId ? providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || modelId : '未选择模型'}</span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{orchThinking==='auto'?'自动':orchThinking==='low'?'低':orchThinking==='medium'?'中':'高'} | {agentThinking==='auto'?'自动':agentThinking==='low'?'低':agentThinking==='medium'?'中':'高'}</span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{ratio<=0.2?'⚡ 速度':ratio>=0.8?'🧠 质量':'⚖️ 平衡'} {ratio}</span>
-                <span style={{ marginLeft:'auto' }}>{providers.length} 提供商, {providers.flatMap(p=>p.models).length} 模型</span>
+                <span className="prompt-meta-chip" onClick={() => { const p = prompt('项目目录:', projectPath); if (p !== null) { setProjectPath(p); localStorage.setItem('moa-chat-project', p); } }} style={{cursor:'pointer',fontSize:11}} title="设置项目目录">{projectPath ? '📁 ' + projectPath.split(/[\\/]/).pop() : '📁 项目目录'}</span>
+        <span style={{ marginLeft:'auto' }}>{providers.length} 提供商, {providers.flatMap(p=>p.models).length} 模型</span>
               </div>
             </div>
           </div>

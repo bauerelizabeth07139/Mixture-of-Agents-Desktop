@@ -54,6 +54,9 @@ export const api = {
   updateSkillServer: (id: string, updates: any) => fetch(B+'/extensions/skill-servers/'+id,{method:'PUT',headers:h,body:JSON.stringify(updates)}).then(r=>r.json()),
   removeSkillServer: (id: string) => fetch(B+'/extensions/skill-servers/'+id,{method:'DELETE'}).then(r=>r.json()),
   testSkillServer: (id: string) => fetch(B+'/extensions/skill-servers/'+id+'/test',{method:'POST',headers:h}).then(r=>r.json()),
+  // Project directories
+  getProjectDir: (threadId?: string) => fetch(B+'/chat/project-dir?threadId='+(threadId||'')).then(r=>r.json()),
+  listProjects: () => fetch(B+'/chat/projects').then(r=>r.json()),
   // File write
   writeFile: (filePath: string, content: string, workdir?: string) => fetch(B+'/coding/write-file',{method:'POST',headers:h,body:JSON.stringify({filePath,content,workdir})}).then(r=>r.json()),
   // Read absolute path
