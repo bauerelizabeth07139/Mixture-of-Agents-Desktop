@@ -93,16 +93,9 @@ export function createProviderRoutes(pool: ApiPoolManager) {
           const modelId = m.id || m.model || '';
           if (!modelId) continue;
           const mtype = classifyModelType(modelId, m);
-          let inputPrice = 1, outputPrice = 2;
-          if (m.pricing) {
-            inputPrice = parseFloat(m.pricing.prompt || m.pricing.input || '1') * 1000000;
-            outputPrice = parseFloat(m.pricing.completion || m.pricing.output || '2') * 1000000;
-          }
           const existingModel = prov.models.find(em => em.modelId === modelId);
           if (!existingModel) {
             const caps = ModelCapabilityScorer.getDefaultProfile(modelId);
-            caps.pricing.inputPer1M = inputPrice;
-            caps.pricing.outputPer1M = outputPrice;
             if (m.context_length) caps.context = Math.min(10, Math.log2(m.context_length / 1000));
             prov.models.push({
               id: uuid(),
@@ -130,20 +123,18 @@ export function createProviderRoutes(pool: ApiPoolManager) {
           }
         }
       }
-      res.json({ models: prov.models, source: 'api', count: prov.models.length });
-      // Background: probe new models for vision/audio capabilities
-      const newModels = prov.models.filter(m => m.capabilities.visionScore === 0 && m.capabilities.audioScore === 0);
-      if (newModels.length > 0 && key) {
-        (async () => {
-          for (const m of newModels.slice(0, 5)) {
-            try {
-              const probe = await CapabilityTestEngine.probeCapabilities(prov, key, m);
-              if (probe.visionScore > 0) { m.capabilities.visionScore = probe.visionScore; m.capabilities.multimodal = true; }
-              if (probe.audioScore > 0) { m.capabilities.audioScore = probe.audioScore; }
-            } catch {}
-          }
-        })();
+      // Probe new LLM models for vision/audio capabilities BEFORE responding
+      const llmModels = prov.models.filter(m => m.type === 'llm' && m.capabilities.visionScore === 0 && m.capabilities.audioScore === 0);
+      if (llmModels.length > 0 && key) {
+        for (const m of llmModels.slice(0, 10)) {
+          try {
+            const probe = await CapabilityTestEngine.probeCapabilities(prov, key, m);
+            if (probe.visionScore > 0) { m.capabilities.visionScore = probe.visionScore; m.capabilities.multimodal = true; }
+            if (probe.audioScore > 0) { m.capabilities.audioScore = probe.audioScore; }
+          } catch {}
+        }
       }
+      res.json({ models: prov.models, source: 'api', count: prov.models.length });
     } catch (err: any) {
       const status = err.response?.status;
       const errMsg = err.response?.data?.error?.message || err.message;
