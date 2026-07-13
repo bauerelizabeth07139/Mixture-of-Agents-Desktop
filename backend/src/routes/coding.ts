@@ -43,85 +43,40 @@ export function createCodingRoutes(pool: ApiPoolManager, wsBroadcast: Function, 
   // ������ Enhanced Environment Detection ��������������������������������������������������������������
   r.get('/environment', (_req, res) => {
     const env: any = {
-      cwd: workDir,
-      homeDir: os.homedir(),
-      platform: process.platform,
-      arch: process.arch,
-      nodeVersion: process.version,
-      hostname: os.hostname(),
-      username: os.userInfo().username,
-      totalMemory: Math.round(os.totalmem() / 1024 / 1024 / 1024 * 10) / 10 + ' GB',
-      freeMemory: Math.round(os.freemem() / 1024 / 1024 / 1024 * 10) / 10 + ' GB',
+      cwd: workDir, homeDir: os.homedir(), platform: process.platform, arch: process.arch,
+      nodeVersion: process.version, hostname: os.hostname(), username: os.userInfo().username,
+      totalMemory: Math.round(os.totalmem() / 1073741824 * 10) / 10 + ' GB',
+      freeMemory: Math.round(os.freemem() / 1073741824 * 10) / 10 + ' GB',
       cpus: os.cpus().length + ' cores',
-      shell: process.env.ComSpec || process.env.SHELL || 'unknown',
+      shell: process.env.ComSpec || 'cmd.exe',
       tools: {} as Record<string, { available: boolean; version: string | null; path: string | null }>,
     };
-
-    const pathAugment = process.platform === 'win32'
-      ? [
-          path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
-          path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python311'),
-          'C:\\Program Files\\nodejs',
-          'C:\\tools\\nodejs\\node-v20.15.1-win-x64',
-          'C:\\node20b\\node-v20.15.1-win-x64',
-          'C:\\Program Files\\Git\\cmd',
-          'C:\\tools\\nodejs\\node-v20.15.1-win-x64',
-          'C:\\node20b\\node-v20.15.1-win-x64',
-          // Packaged Electron: add resources dir for bundled node.exe
-          ...((process as any).resourcesPath ? [(process as any).resourcesPath] : []),
-        ].join(path.delimiter) + path.delimiter
-      : '/usr/local/bin:/usr/bin:';
-    const origPath = process.env.PATH || '';
-    process.env.PATH = pathAugment + origPath;
-    const check = (name: string, cmd: string, verCmd?: string) => {
+    // Quick sync checks for essential tools only (node, python, git)
+    const { spawnSync: ss } = require('child_process');
+    const quick = [['node','node -v'],['npm','npm -v'],['python','python --version'],['git','git --version']];
+    for (const [name, cmd] of quick) {
       try {
-        const ver = execSync(verCmd || cmd + ' --version', { encoding: 'utf8', timeout: 5000, shell: 'powershell' as const }).trim().split('\n')[0];
-        let p: string | null = null;
-        try { p = execSync('where ' + name, { encoding: 'utf8', timeout: 3000, shell: 'powershell' as const }).trim().split('\n')[0]; } catch {}
-        env.tools[name] = { available: true, version: ver, path: p };
-      } catch {
-        env.tools[name] = { available: false, version: null, path: null };
-      }
-    };
-
-    check('node', 'node', 'node -v');
-    check('npm', 'npm', 'npm -v');
-    check('npx', 'npx', 'npx -v');
-    check('python', 'python', 'python --version');
-    check('pip', 'pip', 'pip --version');
-    check('git', 'git', 'git --version');
-    check('java', 'java', 'java -version 2>&1');
-    check('go', 'go', 'go version');
-    check('rustc', 'rustc', 'rustc --version');
-    check('cargo', 'cargo', 'cargo --version');
-    check('docker', 'docker', 'docker --version');
-    check('tsc', 'tsc', 'npx tsc --version');
-    check('vite', 'vite', 'npx vite --version');
-    check('electron', 'electron', 'npx electron --version');
-    check('powershell', 'powershell', 'powershell -Command "$PSVersionTable.PSVersion.ToString()"');
-    check('gcc', 'gcc', 'gcc --version');
-    check('g++', 'g++', 'g++ --version');
-    check('make', 'make', 'make --version');
-    check('curl', 'curl', 'curl --version');
-    check('tar', 'tar', 'tar --version');
-
-    // Check for common package managers
-    check('yarn', 'yarn', 'yarn -v');
-    check('pnpm', 'pnpm', 'pnpm -v');
-    check('conda', 'conda', 'conda --version');
-    check('pip3', 'pip3', 'pip3 --version');
-    check('python3', 'python3', 'python3 --version');
-
-    // Desktop files
-    try {
-      const desktop = path.join(os.homedir(), 'Desktop');
-      env.desktopFiles = fs.readdirSync(desktop).slice(0, 50);
-    } catch { env.desktopFiles = []; }
-
-    // PATH entries
+        const r2 = ss('cmd.exe', ['/c', cmd], { encoding: 'utf8', timeout: 2000, windowsHide: true });
+        env.tools[name] = { available: r2.status === 0 && (r2.stdout||'').trim().length > 0, version: r2.status === 0 ? (r2.stdout||'').trim().split('\n')[0] : null, path: null };
+      } catch { env.tools[name] = { available: false, version: null, path: null }; }
+    }
+    try { env.desktopFiles = fs.readdirSync(path.join(os.homedir(), 'Desktop')).slice(0, 50); } catch { env.desktopFiles = []; }
     env.pathEntries = (process.env.PATH || '').split(path.delimiter).filter(Boolean);
-
     res.json(env);
+  });
+  // Async tool detection endpoint
+  r.get('/detect-tools', async (_req, res) => {
+    const { execFile: ef } = require('child_process');
+    const tools: Record<string, { available: boolean; version: string | null }> = {};
+    const all = [['gcc','gcc --version'],['g++','g++ --version'],['java','java -version 2>&1'],['go','go version'],['rustc','rustc --version'],['cargo','cargo --version'],['docker','docker --version'],['curl','curl --version']];
+    await Promise.all(all.map(([name, cmd]) => new Promise<void>((resolve) => {
+      const parts = cmd.split(' ');
+      const child = ef(parts[0], parts.slice(1), { encoding: 'utf8', timeout: 3000, windowsHide: true }, (err: any, stdout: string) => {
+        tools[name] = { available: !err && stdout.trim().length > 0, version: !err ? stdout.trim().split('\n')[0] : null };
+        resolve();
+      });
+    })));
+    res.json({ tools });
   });
 
   // ������ Shell Execution ��������������������������������������������������������������������������������������������
