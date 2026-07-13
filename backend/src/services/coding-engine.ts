@@ -122,7 +122,7 @@ export class CodingEngine {
           path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python312'),
           path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python311'),
           'C:\\Program Files\\nodejs',
-          'C:\\node20b\\node-v20.15.1-win-x64',
+          'C:\\tools\\nodejs\\node-v20.15.1-win-x64',
           'C:\\Program Files\\Git\\cmd',
           'C:\\Windows\\System32\\WindowsPowerShell\\v1.0',
           'C:\\Windows',
@@ -186,6 +186,23 @@ export class CodingEngine {
     return [this.convertBashToPS(cmd)];
   }
 
+
+  private execWithRetry(cmd: string, opts: any, retries = 2): string {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return String(execSync(cmd, opts));
+      } catch (e: any) {
+        const msg = (e.stderr || e.message || '');
+        if (attempt < retries && (msg.includes('EBUSY') || msg.includes('EPERM'))) {
+          try { execSync('Start-Sleep -Milliseconds ' + (1000 * (attempt + 1)), { shell: 'powershell' as const, windowsHide: true } as any); } catch {}
+          continue;
+        }
+        throw e;
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
   private async execStep(step: CodingStep, projectPath: string, workDir?: string): Promise<{success: boolean; output: string}> {
     const p = step.params;
     switch (step.action) {
@@ -222,19 +239,32 @@ export class CodingEngine {
               allOutput += '[cd tracked]\n';
               continue;
             }
-            const o = String(execSync(mappedCmd, {
+            const o = this.execWithRetry(mappedCmd, {
               cwd: wd,
               timeout: Math.min(p.timeout || 60000, 120000),
               encoding: 'utf8',
               shell: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe' as any,
               env: this.getEnv(),
               windowsHide: true,
-            }));
+            });
             allOutput += (o || '') + '\n';
           }
           return { success: true, output: allOutput.slice(0, 4000) };
         } catch (e: any) {
-          return { success: false, output: ((e.stdout || '') + '\n' + (e.stderr || e.message || '')).slice(0, 4000) };
+          const errOut = ((e.stdout || '') + '\n' + (e.stderr || e.message || '')).slice(0, 4000);
+          // Auto-fallback for missing npm scripts
+          if (errOut.includes('Missing script')) {
+            try {
+              const fallbacks = ['npm start', 'node index.js', 'node server.js', 'node app.js', 'node src/index.js', 'node src/server.js'];
+              for (const fb of fallbacks) {
+                try {
+                  const fbOut = this.execWithRetry(fb, { cwd: wd, timeout: 60000, encoding: 'utf8', shell: 'powershell' as const, env: this.getEnv(), windowsHide: true });
+                  return { success: true, output: '[Fallback: ' + fb + ']\n' + (fbOut || '').slice(0, 4000) };
+                } catch {}
+              }
+            } catch {}
+          }
+          return { success: false, output: errOut };
         }
       }
       case 'install_deps': {
@@ -244,9 +274,9 @@ export class CodingEngine {
         const pkgs = Array.isArray(p.packages) ? p.packages.join(' ') : '';
         try {
           const cmd = m + ' install' + (pkgs ? ' ' + pkgs : '');
-          execSync(cmd, {
+          this.execWithRetry(cmd, {
             cwd: wd,
-            timeout: 120000,
+            timeout: 180000,
             encoding: 'utf8',
             shell: 'powershell' as const,
             env: this.getEnv(),

@@ -351,7 +351,7 @@ body {
   gap: 12px;
   padding: 6px 4px 0;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 .prompt-meta-chip {
   display: inline-flex;
@@ -361,9 +361,10 @@ body {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-size: 10px;
+  font-size: 11px;
   cursor: pointer;
   transition: var(--transition);
+  color: var(--text-secondary);
 }
 .prompt-meta-chip:hover { border-color: var(--accent); color: var(--accent-light); }
 
@@ -393,8 +394,8 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: var(--text-muted);
   margin-bottom: 10px;
+  color: var(--text-secondary);
 }
 .settings-row {
   display: flex;
@@ -403,7 +404,11 @@ body {
   padding: 6px 0;
   font-size: 13px;
 }
-.settings-row label { color: var(--text-secondary); font-size: 12px; margin-bottom: 0; }
+.settings-row label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 0;
+}
 
 /* Welcome screen */
 .welcome-screen {

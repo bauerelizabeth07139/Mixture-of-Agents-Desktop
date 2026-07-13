@@ -76,6 +76,7 @@ export function runFile(filePath: string, cwd: string, timeout: number = 30000):
       path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python311'),
       path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python38'),
       'C:\\Program Files\\nodejs',
+      'C:\\tools\\nodejs\\node-v20.15.1-win-x64',
       'C:\\node20b\\node-v20.15.1-win-x64',
       'C:\\Program Files\\Git\\cmd',
       'C:\\Program Files\\LLVM\\bin',

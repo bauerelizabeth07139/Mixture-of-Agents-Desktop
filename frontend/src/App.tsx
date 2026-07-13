@@ -199,7 +199,7 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
 function WelcomeScreen({ onQuickStart }: { onQuickStart: (task: string) => void }) {
   return (
     <div className="welcome-screen">
-        <div className="welcome-logo">🤖</div>
+        <div className="welcome-logo">⚛️</div>
       <div className="welcome-title">Mixture of Agents</div>
         <div className="welcome-subtitle">基于 Claude Code 架构的多模型智能代理系统</div>
       <div className="welcome-cards">
@@ -208,14 +208,14 @@ function WelcomeScreen({ onQuickStart }: { onQuickStart: (task: string) => void 
           <div className="welcome-card-title">Web API 项目</div>
           <div className="welcome-card-desc">创建一个完整的 REST API 项目，包含 CRUD 操作和数据库集成</div>
         </div>
-        <div className="welcome-card" onClick={() => onQuickStart('数据处理：分析CSV数据并生成可视化报')}>
+        <div className="welcome-card" onClick={() => onQuickStart('数据分析：分析CSV数据并生成可视化报表')}>
           <div className="welcome-card-icon">📊</div>
-          <div className="welcome-card-title"></div>
-          <div className="welcome-card-desc"></div>
+          <div className="welcome-card-title">数据分析</div>
+          <div className="welcome-card-desc">分析CSV数据并生成可视化报表，包含统计分析和图表展示</div>
         </div>
         <div className="welcome-card" onClick={() => onQuickStart('创建一个机器学习模型训练和预测服务')}>
           <div className="welcome-card-icon">🧪</div>
-          <div className="welcome-card-title"></div>
+          <div className="welcome-card-title">机器学习</div>
           <div className="welcome-card-desc">构建机器学习模型训练和预测服务，支持多种算法</div>
         </div>
       </div>
@@ -252,15 +252,15 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
         <button className="btn btn-sm btn-icon" onClick={onClose}>✕</button>
       </div>
       <div className="settings-section">
-          <div className="settings-section-title"></div>
+          <div className="settings-section-title">选择模型</div>
         <select value={modelId} onChange={e => setModelId(e.target.value)}>
-            <option value=""></option>
+            <option value="">请选择模型...</option>
           {allModels.map(m => <option key={m.id} value={m.id}>{m.pIcon} {m.pName} - {m.name}</option>)}
         </select>
       </div>
       {modelId && getModelNote(providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || '') && (
         <div className="settings-section">
-          <div className="settings-section-title"></div>
+          <div className="settings-section-title">模型说明</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{getModelNote(providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || '')}</div>
         </div>
       )}
@@ -294,8 +294,8 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
         <CostEfficiencySlider value={ratio} onChange={setRatio} />
       </div>
       <div className="settings-section">
-          <div className="settings-section-title"></div>
-          <div className="settings-row"><label></label><span>{providers.length}</span></div>
+          <div className="settings-section-title">系统状态</div>
+          <div className="settings-row"><label>提供商</label><span>{providers.length}</span></div>
         <div className="settings-row"><label>已配置模型</label><span>{allModels.length}</span></div>
         <div className="settings-row"><label>API Keys</label><span>{totalKeys}</span></div>
       </div>
@@ -363,7 +363,6 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
               <>
                 <input placeholder="API Key" value={newKey} onChange={e => setNewKey(e.target.value)} type="password" style={{ flex: 2 }} />
                 <button className="btn btn-primary" onClick={addKey}>添加密钥</button>
-                <button className="btn btn-sm" onClick={() => removeKey(k.id)}>删除</button>
               </>
             ) : (
               <>
@@ -986,7 +985,7 @@ function ExtensionsPanel() {
               <textarea value={editingSkill.content} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditingSkill({...editingSkill, content: e.target.value})} style={{ minHeight: 120, marginBottom: 8 }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                   <button className="btn btn-sm" onClick={() => setEditingSkill(null)}>取消</button>
-                    <button className="btn btn-primary btn-sm" onClick={async () => { await api.updateSkill(editingSkill.id, { content: editingContent }); setEditingSkill(null); loadAll(); }}>保存</button>
+                    <button className="btn btn-primary btn-sm" onClick={async () => { await api.updateSkill(editingSkill.id, { content: editingSkill.content || '' }); setEditingSkill(null); loadAll(); }}>保存</button>
               </div>
             </div>
           )}
@@ -1234,7 +1233,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
       )}
       <input ref={fileInputRef} type="file" multiple accept="image/*,.txt,.md,.json,.csv,.py,.js,.ts,.tsx,.jsx,.html,.css,.xml,.yaml,.yml" style={{ display:'none' }} onChange={handleFileInput} />
       <div className="sidebar">
-            <div className="sidebar-logo"><span style={{ fontSize:22 }}>🤖</span><span style={{ fontWeight:700, fontSize:16 }}>MOA</span></div>
+            <div className="sidebar-logo"><span style={{ fontSize:22 }}>⚛️</span><span style={{ fontWeight:700, fontSize:14 }}>Mixture of Agents</span></div>
         <div className="sidebar-nav">
           {(['chat','providers','models','testing','extensions','files','terminal','editor','environment'] as const).map(k => (
             <div key={k} className={`sidebar-item ${tab===k?'active':''}`} onClick={() => setTab(k)}>
@@ -1282,7 +1281,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
             </div>
           ))}
           {threads.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 4px', textAlign: 'center' }}>暂无对话</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 4px', textAlign: 'center' }}>暂无对话，点击上方 + 按钮新建</div>
           )}
         </div>
       </div>
@@ -1317,7 +1316,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
                   rows={4} style={{ height: Math.min(200, Math.max(88, inputVal.split('\n').length * 22)) }} />
                 <div className="prompt-actions">
                   <button className="prompt-btn" onClick={() => setInputVal("")} style={{ fontSize:16, fontWeight:700 }}>✕</button>
-                  <button className="prompt-btn send" onClick={() => handleSend()} disabled={(!inputVal.trim() && attachments.length===0) || sending}>✕</button>
+                  <button className="prompt-btn send" onClick={() => handleSend()} disabled={(!inputVal.trim() && attachments.length===0) || sending}>➤</button>
                 </div>
               </div>
               <div className="prompt-meta">
