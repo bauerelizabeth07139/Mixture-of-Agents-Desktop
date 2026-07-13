@@ -6,7 +6,7 @@
   "license": "MIT",
   "main": "frontend/electron-main.cjs",
   "scripts": {
-    "dev": "concurrently \"cd backend && npx tsc -w\" \"cd frontend && npx vite --port 5173\" \"wait-on http://localhost:5173 && npx electron .\"",
+    "dev": "concurrently \"cd backend && npx tsc -w\" \"cd backend && npx tsc && node dist/index.js\" \"cd frontend && npx vite --port 5173\" \"wait-on http://localhost:5173 http://localhost:3001/api/health && npx electron .\"",
     "build:backend": "cd backend && npx tsc",
     "build:frontend": "cd frontend && npx vite build",
     "build:all": "npm run build:backend && npm run build:frontend",

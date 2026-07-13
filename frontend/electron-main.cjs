@@ -32,14 +32,13 @@ let mainWindow = null;
 let backendProcess = null;
 
 function startBackend() {
-  if (!isPackaged) return;
-  const backendDir = path.join(process.resourcesPath, 'backend');
+  const backendDir = isPackaged ? path.join(process.resourcesPath, 'backend') : path.join(__dirname, '..', 'backend');
   const backendEntry = path.join(backendDir, 'dist', 'index.js');
   console.log('[MoA] Starting backend:', backendEntry);
 
   backendProcess = fork(backendEntry, [], {
     cwd: backendDir,
-    env: { ...process.env, PORT: String(BACKEND_PORT), NODE_ENV: 'production', NODE_PATH: path.join(backendDir, 'node_modules') },
+    env: { ...process.env, PORT: String(BACKEND_PORT), NODE_ENV: isPackaged ? 'production' : 'development', NODE_PATH: path.join(backendDir, 'node_modules') },
     silent: false,
   });
   backendProcess.on('error', (err) => console.error('[MoA] Backend error:', err.message));
@@ -79,8 +78,8 @@ app.whenReady().then(async () => {
   console.log('[MoA] app.whenReady');
   startBackend();
 
-  if (isPackaged) {
-    // Wait a bit for backend to start, then create window regardless
+  {
+    // Wait for backend to start
     try {
       await waitForServer(BACKEND_URL, 15000);
       console.log('[MoA] Backend ready');

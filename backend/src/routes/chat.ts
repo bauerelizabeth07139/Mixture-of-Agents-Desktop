@@ -462,7 +462,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       );
 
       let llmContent = initialResp.content;
-
+      
       // --- Autonomous code generation with error recovery ---
       const filesWritten: FileWritten[] = [];
       const allCommandsRun: CommandResult[] = [];
@@ -472,7 +472,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const codeBlocks = extractCodeBlocks(llmContent);
       if (codeBlocks.length > 0) {
         const written = writeCodeBlocks(codeBlocks, projectDir);
-        filesWritten.push(...written);
+                filesWritten.push(...written);
 
         const dollarCmds = extractDollarCommands(llmContent);
         const commands = collectCommands(codeBlocks, dollarCmds);
