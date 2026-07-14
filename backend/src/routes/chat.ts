@@ -49,10 +49,12 @@ const SYSTEM_PROMPT = [
   '',
   '## Workflow',
   '1. Create all project files first (code blocks with filenames)',
-  '2. Then provide shell commands to install dependencies and compile',
+  '2. YOU MUST provide a ```cmd block with shell commands to run the project',
   '3. For server projects: use "start /B node index.js" then "timeout /t 2 >nul 2>&1" then test',
   '4. If something fails, diagnose the error and provide ONLY fix commands/code',
   '5. Always provide COMPLETE code with all imports',
+  'CRITICAL: After writing code files, ALWAYS include a ```cmd block with shell commands to install deps and run the project.',
+  'NEVER skip the command step. The system needs commands to execute your code.',
   '',
   '## Error Recovery',
   'When you see errors, fix them immediately. Common fixes:',
@@ -177,15 +179,20 @@ function inferFilename(language: string, content: string, idx: number): string {
 
 function extractCodeBlocks(response: string): ExtractedCodeBlock[] {
   const blocks: ExtractedCodeBlock[] = [];
-  const fenceRegex = /```(\w+)\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)```/g;
+  const fenceRegex = /```(\w+)(?:\s+(\S+\.[a-z]+))?\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)```/gi;
   let match: RegExpExecArray | null;
   let idx = 0;
   while ((match = fenceRegex.exec(response)) !== null) {
     const language = match[1] || '';
-    const explicitFilename = match[2] || null;
-    const content = match[3];
+    const explicitFilename = match[2] || match[3] || null;
+    const content = match[4];
     const isCommand = /^(bash|sh|cmd|bat|shell|powershell|ps1|zsh|console|terminal)$/i.test(language);
-    const filename = explicitFilename || (isCommand ? null : inferFilename(language, content, idx));
+    let filename = explicitFilename || (isCommand ? null : inferFilename(language, content, idx));
+    // Fallback: check for <!-- filename --> inside code
+    if (!filename && !isCommand) {
+      const htmlComment = content.match(/^\s*<!--\s*([^\s>]+\.[a-z]+)\s*-->/i);
+      if (htmlComment) filename = htmlComment[1];
+    }
     blocks.push({ language, filename, content: content.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), isCommand });
     idx++;
   }
@@ -545,6 +552,24 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       // Auto-install dependencies
       allCommandsRun.push(...autoInstallDeps(projectDir));
+
+      // Auto-serve: if HTML files were written and no server commands were run, start http-server
+      if (filesWritten.length > 0 && allCommandsRun.length === 0) {
+        const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
+        if (hasHtml) {
+          try {
+            const serveCmd = 'start /B npx http-server "' + projectDir + '" -p 8080 -c-1';
+            const sr = execCmd(serveCmd, projectDir, 5000);
+            allCommandsRun.push({ cmd: serveCmd, ...sr });
+          } catch (e: any) {
+            try {
+              const pyCmd = 'python -m http.server 8080';
+              const pr = execCmd(pyCmd, projectDir, 10000);
+              allCommandsRun.push({ cmd: pyCmd, ...pr });
+            } catch {}
+          }
+        }
+      }
 
       res.json({
         role: 'orchestrator',
