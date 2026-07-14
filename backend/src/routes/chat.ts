@@ -31,31 +31,34 @@ const SYSTEM_PROMPT = [
   'Supported languages: typescript, javascript, python, c, cpp, go, rust, java, html, css, json, yaml, markdown, shell',
   '',
   '## Shell Commands',
-  'When you need to run shell commands, use a ```cmd block with one command per line:',
-  '  ```cmd',
-  '  npm init -y',
-  '  npm install express',
-  '  node index.js',
-  '  ```',
-  'CRITICAL RULES:',
-  '- Each command runs ONE BY ONE, sequentially. If one fails, execution stops.',
-  '- This is Windows cmd.exe. Do NOT use: &&, ;, &, |, bash syntax, PowerShell syntax.',
-  '- Do NOT use "timeout" command (it works differently on Windows).',
-  '- Do NOT use "node index.js &" — the & does NOT work in cmd.exe.',
-  '- To test a server after starting it, just start the server — the system will verify it launched.',
-  '- For long-running servers (Express, HTTP, etc.), the system handles background execution automatically.',
-  '- Use "start /B node index.js" to start a server in background, then test with "curl http://localhost:PORT/"',
-  '- Always use the project directory for all file paths — do NOT use "cd" in commands.',
-  '',
+'After writing all files, you MUST include a ```cmd block to run the project.',
+'',
+'For static HTML websites:',
+'  ```cmd',
+'  npx http-server -p 8080 -c-1',
+'  ```',
+'',
+'For Node.js projects:',
+'  ```cmd',
+'  npm install',
+'  node index.js',
+'  ```',
+'',
+'CRITICAL RULES:',
+'- Each command runs ONE BY ONE, sequentially.',
+'- This is Windows. Do NOT use: &&, ;, &, |, bash syntax.',
+'- Do NOT use cd commands. All file paths are relative to the project root.',
+'- For static HTML sites, ALWAYS use: npx http-server -p 8080 -c-1',
+'- NEVER create unnecessary directories. Write files directly to the project root.',
+'- The system will auto-open the browser after the server starts.',  '',
   '## Workflow',
-  '1. Create all project files first (code blocks with filenames)',
-  '2. YOU MUST provide a ```cmd block with shell commands to run the project',
-  '3. For server projects: use "start /B node index.js" then "timeout /t 2 >nul 2>&1" then test',
-  '4. If something fails, diagnose the error and provide ONLY fix commands/code',
-  '5. Always provide COMPLETE code with all imports',
-  'CRITICAL: After writing code files, ALWAYS include a ```cmd block with shell commands to install deps and run the project.',
-  'NEVER skip the command step. The system needs commands to execute your code.',
-  '',
+'1. Create all project files first (code blocks with filenames)',
+'2. Then provide a ```cmd block with commands to run the project',
+'3. For static HTML: use npx http-server -p 8080 -c-1',
+'4. For Node.js: npm install then node index.js',
+'5. If something fails, read the error and provide ONLY fix commands/code',
+'6. Always provide COMPLETE code with all imports',
+'CRITICAL: NEVER skip the cmd block step. The system needs commands to serve your files.',  '',
   '## Error Recovery',
   'When you see errors, fix them immediately. Common fixes:',
   '- "MODULE_NOT_FOUND" -> add npm install <package> command',
@@ -194,12 +197,23 @@ function extractCodeBlocksRobust(response: string): ExtractedCodeBlock[] {
         i++;
       }
       const body = contentLines.join('\n');
-      let filename = explicitFilename || (isCommand ? null : inferFilename(language, body, blocks.length));
+      
+      // Content-based language correction: fix misclassified code blocks
+      let correctedLang = language;
+      if (language === 'c' || language === 'cpp' || language === 'cc') {
+        if (body.includes('{') && body.includes('}') && (body.includes('margin') || body.includes('padding') || body.includes('font-size') || body.includes('background') || body.includes('color:') || body.includes('display:'))) {
+          correctedLang = 'css';
+        }
+      }
+      if (language === 'html' && body.includes('function') && body.includes('console.log')) {
+        correctedLang = 'javascript';
+      }
+      let filename = explicitFilename || (isCommand ? null : inferFilename(correctedLang, body, blocks.length));
       if (!filename && !isCommand) {
         const htmlComment = body.match(/^\s*<!--\s*([^\s>]+\.[a-z]+)\s*-->/i);
         if (htmlComment) filename = htmlComment[1];
       }
-      blocks.push({ language, filename, content: body.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), isCommand });
+      blocks.push({ language: correctedLang, filename, content: body.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), isCommand });
     }
     i++;
   }
@@ -221,13 +235,21 @@ function extractCodeBlocksRegex(response: string): ExtractedCodeBlock[] {
     const explicitFilename = match[2] || match[3] || null;
     const content = match[4];
     const isCommand = /^(bash|sh|cmd|bat|shell|powershell|ps1|zsh|console|terminal)$/i.test(language);
-    let filename = explicitFilename || (isCommand ? null : inferFilename(language, content, idx));
+    
+    // Content-based language correction
+    let correctedLang = language;
+    if (language === 'c' || language === 'cpp' || language === 'cc') {
+      if (content.includes('{') && content.includes('}') && (content.includes('margin') || content.includes('padding') || content.includes('font-size') || content.includes('background') || content.includes('color:') || content.includes('display:'))) {
+        correctedLang = 'css';
+      }
+    }
+    let filename = explicitFilename || (isCommand ? null : inferFilename(correctedLang, content, idx));
     // Fallback: check for <!-- filename --> inside code
     if (!filename && !isCommand) {
       const htmlComment = content.match(/^\s*<!--\s*([^\s>]+\.[a-z]+)\s*-->/i);
       if (htmlComment) filename = htmlComment[1];
     }
-    blocks.push({ language, filename, content: content.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), isCommand });
+    blocks.push({ language: correctedLang, filename, content: content.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), isCommand });
     idx++;
   }
   return blocks;
