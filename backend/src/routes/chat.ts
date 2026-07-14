@@ -357,7 +357,7 @@ function runCommandsSequentially(
   let currentCwd = cwd;
 
   for (const cmd of allCommands) {
-    const isServerStart = /^\s*(start\s+\/B\s+)?(node|python|npm\s+start|npx\s+nodemon)\s+/i.test(cmd.trim());
+    const isServerStart = /^\s*(start\s+\/B\s+)?(node|python|npm\s+start|npx\s+(nodemon|http-server))\s+/i.test(cmd.trim());
     const timeout = isServerStart ? 15_000 : getCmdTimeout(cmd);
     
     // For server start commands without "start /B", wrap them to run in background
@@ -566,7 +566,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const chatMaxTokens = Math.round(2048 + ratio * 6144);
 
       const { response: initialResp, provider: usedProvider, model: usedModel } = await chatWithKeyRotation(
-        pool, resolved, messages, { thinkingEffort: thinkingEffort as any },
+        pool, resolved, messages, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens },
       );
 
       let llmContent = initialResp.content;
@@ -617,19 +617,25 @@ export function createChatRoutes(pool: ApiPoolManager) {
       allCommandsRun.push(...autoInstallDeps(projectDir));
 
       // Auto-serve: if HTML files were written and no server commands were run, start http-server
-      if (filesWritten.length > 0 && allCommandsRun.length === 0) {
+      // Auto-serve: if HTML files exist and no successful server command was run
+      const hasSuccessfulServer = allCommandsRun.some(r => r.exitCode === 0 && /http-server|serve|python.*http/i.test(r.cmd));
+      if (filesWritten.length > 0 && !hasSuccessfulServer) {
         const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
         if (hasHtml) {
           try {
-            const serveCmd = 'start /B npx http-server "' + projectDir + '" -p 8080 -c-1';
-            const sr = execCmd(serveCmd, projectDir, 5000);
-            allCommandsRun.push({ cmd: serveCmd, ...sr });
+            // Start http-server as a detached background process
+            const { spawn: spawnBg } = require('child_process');
+            const httpServer = spawnBg('npx', ['http-server', projectDir, '-p', '8080', '-c-1'], {
+              detached: true,
+              stdio: 'ignore',
+              shell: true,
+              env: { ...process.env, PATH: getAugmentedPath() },
+              windowsHide: true,
+            });
+            httpServer.unref();
+            allCommandsRun.push({ cmd: 'npx http-server -p 8080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
           } catch (e: any) {
-            try {
-              const pyCmd = 'python -m http.server 8080';
-              const pr = execCmd(pyCmd, projectDir, 10000);
-              allCommandsRun.push({ cmd: pyCmd, ...pr });
-            } catch {}
+            console.error('[AutoServe] Failed to start http-server:', e.message);
           }
         }
       }
