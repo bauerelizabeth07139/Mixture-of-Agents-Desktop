@@ -177,9 +177,43 @@ function inferFilename(language: string, content: string, idx: number): string {
   return langExtMap[language.toLowerCase()] || ('file_' + idx + (language ? '.' + language : '.txt'));
 }
 
-function extractCodeBlocks(response: string): ExtractedCodeBlock[] {
+function extractCodeBlocksRobust(response: string): ExtractedCodeBlock[] {
   const blocks: ExtractedCodeBlock[] = [];
-  const fenceRegex = /```(\w+)(?:\s+(\S+\.[a-z]+))?\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)```/gi;
+  const lines = response.split(/\r?\n/);
+  let i = 0;
+  while (i < lines.length) {
+    const fenceMatch = lines[i].match(/^```(\w+)(?:\s+(\S+\.[a-z]+))?\s*(?:\/\/\s*(\S+))?\s*$/);
+    if (fenceMatch) {
+      const language = fenceMatch[1] || '';
+      const explicitFilename = fenceMatch[2] || fenceMatch[3] || null;
+      const isCommand = /^(bash|sh|cmd|bat|shell|powershell|ps1|zsh|console|terminal)$/i.test(language);
+      const contentLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].match(/^```\s*$/)) {
+        contentLines.push(lines[i]);
+        i++;
+      }
+      const body = contentLines.join('\n');
+      let filename = explicitFilename || (isCommand ? null : inferFilename(language, body, blocks.length));
+      if (!filename && !isCommand) {
+        const htmlComment = body.match(/^\s*<!--\s*([^\s>]+\.[a-z]+)\s*-->/i);
+        if (htmlComment) filename = htmlComment[1];
+      }
+      blocks.push({ language, filename, content: body.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), isCommand });
+    }
+    i++;
+  }
+  return blocks;
+}
+function extractCodeBlocks(response: string): ExtractedCodeBlock[] {
+  const robust = extractCodeBlocksRobust(response);
+  if (robust.length > 0) return robust;
+  return extractCodeBlocksRegex(response);
+}
+
+function extractCodeBlocksRegex(response: string): ExtractedCodeBlock[] {
+  const blocks: ExtractedCodeBlock[] = [];
+  const fenceRegex = /```(\w+)(?:\s+(\S+\.[a-z]+))?\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)```(?:\s*\n|$)/gi;
   let match: RegExpExecArray | null;
   let idx = 0;
   while ((match = fenceRegex.exec(response)) !== null) {
@@ -459,6 +493,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         message, modelId, history, attachments, threadId,
         projectPath: userProjectPath,
         orchestratorThinkingMode, agentThinkingMode,
+        costEfficiencyRatio,
       } = req.body as {
         message?: string;
         modelId?: string;
@@ -468,6 +503,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         projectPath?: string;
         orchestratorThinkingMode?: 'auto' | 'none' | 'low' | 'medium' | 'high';
         agentThinkingMode?: 'auto' | 'none' | 'low' | 'medium' | 'high';
+        costEfficiencyRatio?: number;
       };
 
       if (!message && (!attachments || attachments.length === 0)) {
@@ -502,6 +538,11 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       const thinkingEffort = orchestratorThinkingMode && orchestratorThinkingMode !== 'auto' ? orchestratorThinkingMode : undefined;
 
+      // Map costEfficiencyRatio to temperature and maxTokens
+      const ratio = typeof costEfficiencyRatio === 'number' ? Math.max(0, Math.min(1, costEfficiencyRatio)) : 0.5;
+      const chatTemperature = 0.1 + ratio * 0.7;
+      const chatMaxTokens = Math.round(2048 + ratio * 6144);
+
       const { response: initialResp, provider: usedProvider, model: usedModel } = await chatWithKeyRotation(
         pool, resolved, messages, { thinkingEffort: thinkingEffort as any },
       );
@@ -531,7 +572,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
             const errorContext = buildErrorContext(projectDir, failedResults);
             const fixMessages = [...messages, { role: 'assistant', content: llmContent }, { role: 'user', content: errorContext }];
             try {
-              const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMessages, { thinkingEffort: thinkingEffort as any });
+              const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMessages, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
               llmContent += '\r\n\r\n---\r\n**Fix attempt ' + retryCount + '**\r\n\r\n' + fixResp.content;
               const fixBlocks = extractCodeBlocks(fixResp.content);
               filesWritten.push(...writeCodeBlocks(fixBlocks, projectDir));
