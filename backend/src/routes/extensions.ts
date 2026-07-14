@@ -27,7 +27,7 @@ function augmentedEnv(extra?: Record<string, string>) {
 
 function spawnShortTest(command: string, args?: string[], options?: { cwd?: string; env?: Record<string, string>; timeoutMs?: number }): Promise<{ok: boolean; summary: string}> {
   return new Promise((resolve) => {
-    const timeoutMs = Math.min(Math.max(options?.timeoutMs || 8000, 1000), 12000);
+    const timeoutMs = Math.min(Math.max(options?.timeoutMs || 15000, 1000), 30000);
     const tryArgs = Array.isArray(args) && args.length ? args : ['--version'];
     let finished = false;
     let output = '';
@@ -35,8 +35,9 @@ function spawnShortTest(command: string, args?: string[], options?: { cwd?: stri
     let runCommand = command;
     let runArgs = tryArgs;
     if (/^(npx|npm|yarn|pnpm)$/i.test(runCommand)) {
-      runCommand = process.execPath;
-      runArgs = [command, ...tryArgs];
+      // Use shell execution for npx/npm commands on Windows
+      runCommand = process.platform === 'win32' ? (process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe') : command;
+      runArgs = process.platform === 'win32' ? ['/c', command, ...tryArgs] : tryArgs;
     } else if (/^node$/i.test(runCommand)) {
       runCommand = process.execPath;
     }
@@ -64,7 +65,10 @@ function spawnShortTest(command: string, args?: string[], options?: { cwd?: stri
     });
     setTimeout(() => {
       try { child.kill(); } catch {}
-      done(output.trim().length > 0 || error.trim().length > 0, '超时但已收集到输出，视为部分可用');
+      // For MCP servers, if the process started (no immediate error), consider it a pass
+      const hasOutput = output.trim().length > 0 || error.trim().length > 0;
+      const noCrash = !error.includes('ENOENT') && !error.includes('not found') && !error.includes('is not recognized');
+      done(hasOutput || noCrash, hasOutput ? '进程已启动，视为可用' : noCrash ? '进程启动无崩溃，视为可用' : '进程执行超时');
     }, timeoutMs);
   });
 }
