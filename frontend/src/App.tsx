@@ -1126,6 +1126,11 @@ export default function App() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string>('');
   const [projectPath, setProjectPath] = useState<string>(() => localStorage.getItem('moa-chat-project') || '');
+  // Project directory browse dialog
+  const [browseVisible, setBrowseVisible] = useState(false);
+  const [browsePath, setBrowsePath] = useState('');
+  const [browseEntries, setBrowseEntries] = useState<any[]>([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
   const [editingThreadTitle, setEditingThreadTitle] = useState<string>('');
   const dragCounterRef = useRef(0);
 
@@ -1288,6 +1293,20 @@ export default function App() {
     setEditingThreadTitle('');
   };
 
+  // Browse dialog navigation
+  const navBrowse = async (p: string) => {
+    setBrowsePath(p);
+    setBrowseLoading(true);
+    try {
+      const resp = await fetch('/api/coding/browse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ browsePath: p }) });
+      const data = await resp.json();
+      setBrowseEntries(data?.entries || []);
+    } catch { setBrowseEntries([]); }
+    setBrowseLoading(false);
+  };
+  // Open browse dialog
+  const openBrowseProject = () => { setBrowseVisible(true); navBrowse(browsePath || ''); };
+
 const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files) { processFiles(Array.from(e.target.files)); e.target.value = ''; } };
 
@@ -1391,7 +1410,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{modelId ? providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || modelId : '未选择模型'}</span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{orchThinking==='auto'?'自动':orchThinking==='low'?'低':orchThinking==='medium'?'中':'高'} | {agentThinking==='auto'?'自动':agentThinking==='low'?'低':agentThinking==='medium'?'中':'高'}</span>
                 <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{ratio<=0.2?'⚡ 速度':ratio>=0.8?'🧠 质量':'⚖️ 平衡'} {ratio}</span>
-                <span className="prompt-meta-chip" onClick={() => { const p = prompt('项目目录:', projectPath); if (p !== null) { setProjectPath(p); localStorage.setItem('moa-chat-project', p); } }} style={{cursor:'pointer',fontSize:11}} title="设置项目目录">{projectPath ? '📁 ' + projectPath.split(/[\\/]/).pop() : '📁 项目目录'}</span>
+                <span className="prompt-meta-chip" onClick={openBrowseProject} style={{cursor:'pointer',fontSize:11}} title="设置项目目录">{projectPath ? '📁 ' + projectPath.split(/[\\/]/).pop() : '📁 项目目录'}</span>
         <span style={{ marginLeft:'auto' }}>{providers.length} 提供商, {providers.flatMap(p=>p.models).length} 模型</span>
               </div>
             </div>
@@ -1409,6 +1428,39 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
                     
           {tab === 'editor' && <div style={{height:'calc(100vh - 60px)'}}><EditorPanel onCommandExecute={(cmd) => { setInputVal(cmd); setTimeout(() => handleSend(cmd), 100); }} threadId={activeThreadId} projectPath={projectPath} onProjectPathChange={setProjectPath} /></div>}
           
+        </div>
+      )}
+    
+      {/* Browse Project Directory Dialog */}
+      {browseVisible && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setBrowseVisible(false)}>
+          <div style={{ width: 480, maxHeight: '70vh', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{'📁'} 选择项目目录</span>
+              <button onClick={() => setBrowseVisible(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}>{'✕'}</button>
+            </div>
+            <div style={{ padding: '6px 16px', fontSize: 11, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', fontFamily: 'monospace' }}>{browsePath || '选择磁盘...'}</div>
+            <div style={{ flex: 1, overflow: 'auto', padding: 8, minHeight: 200 }}>
+              {browseLoading ? (
+                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>加载中...</div>
+              ) : browseEntries.map((e: any) => (
+                <div key={e.path} onClick={() => e.isDir && navBrowse(e.path)}
+                  style={{ padding: '5px 12px', cursor: e.isDir ? 'pointer' : 'default', fontSize: 12, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8, color: e.isDir ? 'var(--text-primary)' : 'var(--text-muted)', opacity: e.isDir ? 1 : 0.5 }}
+                  onMouseEnter={ev => { if (e.isDir) ev.currentTarget.style.background = 'var(--bg-hover)'; }}
+                  onMouseLeave={ev => { ev.currentTarget.style.background = 'transparent'; }}>
+                  {e.isDir ? '📁' : '📄'} {e.name}
+                </div>
+              ))}
+              {!browseLoading && browseEntries.length === 0 && (
+                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>空目录</div>
+              )}
+            </div>
+            <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { if (browsePath) { const parent = browsePath.replace(/[\\/][^\\/]+[\\/]?$/, ''); navBrowse(parent || ''); } }} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '5px 14px' }}>{'←'} 上级</button>
+              <button onClick={() => setBrowseVisible(false)} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '5px 14px' }}>取消</button>
+              <button onClick={() => { setProjectPath(browsePath); localStorage.setItem('moa-chat-project', browsePath); setBrowseVisible(false); }} disabled={!browsePath} style={{ background: browsePath ? 'var(--accent)' : 'var(--bg-tertiary)', border: 'none', color: browsePath ? '#fff' : 'var(--text-muted)', borderRadius: 6, cursor: browsePath ? 'pointer' : 'default', fontSize: 12, padding: '5px 14px', fontWeight: 600 }}>选择此目录</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
