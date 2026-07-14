@@ -31,29 +31,36 @@ const SYSTEM_PROMPT = [
   'Supported languages: typescript, javascript, python, c, cpp, go, rust, java, html, css, json, yaml, markdown, shell',
   '',
   '## Shell Commands',
-  'When you need to run shell commands, use a ```powershell or ```cmd block:',
-  '  ```powershell',
+  'When you need to run shell commands, use a ```cmd block with one command per line:',
+  '  ```cmd',
   '  npm init -y',
   '  npm install express',
-  '  npx tsc --init',
-  '  node dist/index.js',
+  '  node index.js',
   '  ```',
-  'CRITICAL: Each command runs ONE BY ONE. If one fails, execution stops and you must fix it.',
-  'CRITICAL: This is Windows. Use cmd.exe syntax. Do NOT use && or ; to chain commands.',
-  'Write each command on its own line in the code block.',
+  'CRITICAL RULES:',
+  '- Each command runs ONE BY ONE, sequentially. If one fails, execution stops.',
+  '- This is Windows cmd.exe. Do NOT use: &&, ;, &, |, bash syntax, PowerShell syntax.',
+  '- Do NOT use "timeout" command (it works differently on Windows).',
+  '- Do NOT use "node index.js &" — the & does NOT work in cmd.exe.',
+  '- To test a server after starting it, just start the server — the system will verify it launched.',
+  '- For long-running servers (Express, HTTP, etc.), the system handles background execution automatically.',
+  '- Use "start /B node index.js" to start a server in background, then test with "curl http://localhost:PORT/"',
+  '- Always use the project directory for all file paths — do NOT use "cd" in commands.',
   '',
   '## Workflow',
   '1. Create all project files first (code blocks with filenames)',
-  '2. Then provide shell commands to install dependencies, compile, and run',
-  '3. If something fails, diagnose the error and provide ONLY fix commands/code',
-  '4. Always provide COMPLETE code with all imports',
+  '2. Then provide shell commands to install dependencies and compile',
+  '3. For server projects: use "start /B node index.js" then "timeout /t 2 >nul 2>&1" then test',
+  '4. If something fails, diagnose the error and provide ONLY fix commands/code',
+  '5. Always provide COMPLETE code with all imports',
   '',
   '## Error Recovery',
   'When you see errors, fix them immediately. Common fixes:',
   '- "MODULE_NOT_FOUND" -> add npm install <package> command',
   '- "tsc not found" -> add npm install typescript --save-dev command',
   '- Syntax errors -> provide the corrected file',
-  '- Port in use -> use a different port',
+  '- "EADDRINUSE" -> the port is already in use, use a different port in your code',
+  '- "command not found" -> check if the tool is installed',
 ].join('\r\n');
 
 // ============================================================
@@ -287,8 +294,16 @@ function runCommandsSequentially(
   let currentCwd = cwd;
 
   for (const cmd of allCommands) {
-    const timeout = getCmdTimeout(cmd);
-    const result = execSingleCmd(cmd, currentCwd, timeout);
+    const isServerStart = /^\s*(start\s+\/B\s+)?(node|python|npm\s+start|npx\s+nodemon)\s+/i.test(cmd.trim());
+    const timeout = isServerStart ? 15_000 : getCmdTimeout(cmd);
+    
+    // For server start commands without "start /B", wrap them to run in background
+    let actualCmd = cmd;
+    if (isServerStart && !/^\s*start\s+\/B/i.test(cmd)) {
+      actualCmd = 'start /B ' + cmd;
+    }
+    
+    const result = execSingleCmd(actualCmd, currentCwd, timeout);
     results.push({ cmd, exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr });
 
     // Track cd
@@ -301,6 +316,11 @@ function runCommandsSequentially(
 
     // Stop on failure — error recovery loop will handle retries
     if (result.exitCode !== 0) break;
+    
+    // Brief pause after server start to let it initialize
+    if (isServerStart) {
+      try { execSingleCmd('ping -n 3 127.0.0.1 >nul', currentCwd, 10_000); } catch {}
+    }
   }
 
   return { results, finalDir: currentCwd };
