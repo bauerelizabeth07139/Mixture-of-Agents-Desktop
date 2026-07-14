@@ -52,7 +52,7 @@ const SYSTEM_PROMPT = [
 '- NEVER create unnecessary directories. Write files directly to the project root.',
 '- The system will auto-open the browser after the server starts.',  '',
   '## Workflow',
-'1. Create all project files first (code blocks with filenames)',
+'1. Create all project files (code blocks with filenames). For multi-page sites, create separate HTML files (about.html, projects.html, etc.) with navigation links between them.',
 '2. Then provide a ```cmd block with commands to run the project',
 '3. For static HTML: use npx http-server -p 8080 -c-1',
 '4. For Node.js: npm install then node index.js',
@@ -267,9 +267,32 @@ function extractDollarCommands(response: string): string[] {
 
 function writeCodeBlocks(blocks: ExtractedCodeBlock[], projectDir: string): FileWritten[] {
   const written: FileWritten[] = [];
+  const usedNames = new Set<string>();
   for (const block of blocks.filter(b => !b.isCommand)) {
     if (!block.filename) continue;
-    const filePath = path.resolve(projectDir, block.filename);
+    let filename = block.filename;
+    if (filename.endsWith('.html') && usedNames.has(filename)) {
+      // Use title tag for precise detection (not nav bar links)
+      const titleMatch = block.content.match(/<title[^>]*>([^<]+)<\/title>/i);
+      const title = (titleMatch ? titleMatch[1] : '').toLowerCase();
+      // Use first h1/h2 heading as fallback
+      const h1Match = block.content.match(/<h[12][^>]*>([^<]+)<\/h[12]>/i);
+      const heading = (h1Match ? h1Match[1] : '').toLowerCase();
+      const detect = title + ' ' + heading;
+      if (detect.includes('about') || detect.includes('biography') || detect.includes('who')) filename = 'about.html';
+      else if (detect.includes('project') || detect.includes('gallery') || detect.includes('work')) filename = 'projects.html';
+      else if (detect.includes('contact') || detect.includes('get in touch') || detect.includes('reach')) filename = 'contact.html';
+      else if (detect.includes('service')) filename = 'services.html';
+      else if (detect.includes('blog') || detect.includes('article')) filename = 'blog.html';
+      else {
+        const ext = path.extname(filename);
+        const base = path.basename(filename, ext);
+        let c = 2;
+        while (usedNames.has(filename)) { filename = base + c + ext; c++; }
+      }
+    }
+    usedNames.add(filename);
+    const filePath = path.resolve(projectDir, filename);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, block.content, 'utf-8');
     written.push({ path: filePath, size: Buffer.byteLength(block.content, 'utf-8') });
@@ -437,7 +460,8 @@ function resolveModel(pool: ApiPoolManager, modelId?: string): ResolvedModel | n
   for (const prov of pool.getAllProviders()) {
     const key = pool.getNextApiKey(prov.id);
     if (!key) continue;
-    const llm = prov.models.find((m: Model) => m.type === 'llm');
+    const multimodal = prov.models.find((m: Model) => m.type === 'llm' && (m.capabilities.multimodal || m.capabilities.visionScore > 0));
+    const llm = multimodal || prov.models.find((m: Model) => m.type === 'llm');
     if (llm) return { provider: prov, model: llm, apiKey: key };
   }
   return null;
