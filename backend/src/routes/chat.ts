@@ -485,8 +485,7 @@ function resolveModel(pool: ApiPoolManager, modelId?: string): ResolvedModel | n
   for (const prov of pool.getAllProviders()) {
     const key = pool.getNextApiKey(prov.id);
     if (!key) continue;
-    const multimodal = prov.models.find((m: Model) => m.type === 'llm' && (m.capabilities.multimodal || m.capabilities.visionScore > 0));
-    const llm = multimodal || prov.models.find((m: Model) => m.type === 'llm');
+    const llm = prov.models.find((m: Model) => m.type === 'llm');
     if (llm) return { provider: prov, model: llm, apiKey: key };
   }
   return null;
