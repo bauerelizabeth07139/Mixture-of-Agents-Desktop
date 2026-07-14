@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from './services/api';
 import type { Provider, ProviderPreset, Model, McpPreset, SkillPreset, McpServerConfig, SkillConfig, Project } from './types';
 // TerminalPanel merged into Editor
@@ -1192,6 +1192,10 @@ export default function App() {
         reader.readAsDataURL(file);
       }
     });
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) processFiles(Array.from(e.target.files));
+    e.target.value = '';
+  }, [processFiles]);
   }, []);
 
   const selectedModelSupportsVision = useCallback(() => {
@@ -1382,7 +1386,9 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
                   onKeyDown={handleKeyDown} placeholder="输入消息..."
                   rows={4} style={{ height: Math.min(200, Math.max(88, inputVal.split('\n').length * 22)) }} />
                 <div className="prompt-actions">
-                  <button className="prompt-btn" onClick={() => setInputVal("")} style={{ fontSize:16, fontWeight:700 }}>✕</button>
+                  <input ref={fileInputRef} type="file" multiple accept="*/*" style={{ display:'none' }} onChange={handleFileSelect} />
+                  <button className="prompt-btn upload" onClick={() => fileInputRef.current?.click()} style={{ fontSize:18, fontWeight:700 }} title="上传文件">+</button>
+                  <button className="prompt-btn" onClick={() => setInputVal("")} style={{ fontSize:16, fontWeight:700 }} title="清空输入">✕</button>
                   <button className="prompt-btn send" onClick={() => handleSend()} disabled={(!inputVal.trim() && attachments.length===0) || sending}>➤</button>
                 </div>
               </div>
