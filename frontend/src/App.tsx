@@ -275,10 +275,10 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
         </div>
       </div>
       <div className="settings-section">
-          <div className="settings-section-title">宏观调控模型 思考强度 子代理分配</div>
+          <div className="settings-section-title">子代理 思考强度</div>
         <div style={{ display: "flex", gap: 6 }}>
           {["auto", "low", "medium", "high"].map(m => (
-            <button key={m} className={`btn btn-sm ${agentThinking === m ? "btn-primary" : ""}`}
+            <button key={m} className={`btn btn-sm ${agentThinking} === m ? "btn-primary" : ""}`}
               onClick={() => setAgentThinking(m as any)} style={{ flex: 1 }}>
               {m === "auto" ? "自动" : m === "low" ? "低" : m === "medium" ? "中" : "高"}
             </button>
