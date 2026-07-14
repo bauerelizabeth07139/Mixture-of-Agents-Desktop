@@ -3,7 +3,7 @@ import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
-import { spawnSync, execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient, QuotaExhaustedError, LLMError } from '../services/llm-client';
 import { Provider, Model, ApiKeyEntry } from '../types';
@@ -25,22 +25,22 @@ const SYSTEM_PROMPT = [
   '',
   '## File Generation',
   'When generating a project, emit each file inside a fenced code block with language AND filename:',
-  '  `	ypescript // src/index.ts',
+  '  ```typescript // src/index.ts',
   '  ...code...',
-  '  `',
+  '  ```',
   'Supported languages: typescript, javascript, python, c, cpp, go, rust, java, html, css, json, yaml, markdown, shell',
   '',
   '## Shell Commands',
-  'When you need to run shell commands, use a `powershell block:',
-  '  `powershell',
+  'When you need to run shell commands, use a ```powershell or ```cmd block:',
+  '  ```powershell',
   '  npm init -y',
   '  npm install express',
   '  npx tsc --init',
   '  node dist/index.js',
-  '  `',
-  'CRITICAL: Each command runs in the SAME shell session. You can use "cd" to change directories.',
-  'CRITICAL: This is Windows. Use PowerShell syntax. Do NOT use && or ; to chain commands.',
-  'Write each command on its own line. They will be executed sequentially in the same session.',
+  '  ```',
+  'CRITICAL: Each command runs ONE BY ONE. If one fails, execution stops and you must fix it.',
+  'CRITICAL: This is Windows. Use cmd.exe syntax. Do NOT use && or ; to chain commands.',
+  'Write each command on its own line in the code block.',
   '',
   '## Workflow',
   '1. Create all project files first (code blocks with filenames)',
@@ -50,14 +50,14 @@ const SYSTEM_PROMPT = [
   '',
   '## Error Recovery',
   'When you see errors, fix them immediately. Common fixes:',
-  '- "MODULE_NOT_FOUND" → add npm install <package> command',
-  '- "tsc not found" → add npm install typescript --save-dev command',
-  '- Syntax errors → provide the corrected file',
-  '- Port in use → use a different port',
+  '- "MODULE_NOT_FOUND" -> add npm install <package> command',
+  '- "tsc not found" -> add npm install typescript --save-dev command',
+  '- Syntax errors -> provide the corrected file',
+  '- Port in use -> use a different port',
 ].join('\r\n');
 
 // ============================================================
-// PATH augmentation (Node, Python, Git, etc.)
+// PATH augmentation
 // ============================================================
 
 function getAugmentedPath(): string {
@@ -82,6 +82,29 @@ function getAugmentedPath(): string {
     extraDirs.push('/usr/local/bin', '/usr/bin', '/usr/sbin');
   }
   return extraDirs.join(path.delimiter) + path.delimiter + (process.env.PATH || '');
+}
+
+// ============================================================
+// Interfaces
+// ============================================================
+
+interface ExtractedCodeBlock {
+  language: string;
+  filename: string | null;
+  content: string;
+  isCommand: boolean;
+}
+
+interface FileWritten {
+  path: string;
+  size: number;
+}
+
+interface CommandResult {
+  cmd: string;
+  exitCode: number;
+  stdout: string;
+  stderr: string;
 }
 
 // ============================================================
@@ -120,153 +143,34 @@ function getProjectDir(threadId?: string, projectPath?: string): string {
 }
 
 // ============================================================
-// FIXED: Execute multiple commands in a SINGLE cmd.exe session
-// This ensures cd commands persist between lines
-// ============================================================
-
-function execCmdSession(commands: string[], cwd: string, timeoutMs: number = DEFAULT_CMD_TIMEOUT): CommandResult[] {
-  const results: CommandResult[] = [];
-  
-  // Build a single .cmd script with all commands
-  const lines: string[] = ['@echo off', '@setlocal'];
-  
-  // Add PATH augmentation
-  const augmentedPath = getAugmentedPath();
-  lines.push('set "PATH=' + augmentedPath.replace(/"/g, '') + '"');
-  lines.push('cd /d "' + cwd + '"');
-  
-  for (const cmd of commands) {
-    lines.push('echo [MOA] ' + cmd.replace(/"/g, ''));
-    lines.push(cmd);
-    lines.push('if errorlevel 1 (echo [MOA-EXIT]1) else (echo [MOA-EXIT]0)');
-  }
-  
-  const scriptFile = path.join(os.tmpdir(), 'moa-session-' + uuid() + '.cmd');
-  fs.writeFileSync(scriptFile, lines.join('\r\n'), 'utf-8');
-  
-  try {
-    const result = spawnSync('cmd.exe', ['/c', scriptFile], {
-      cwd,
-      timeout: timeoutMs,
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env, PATH: augmentedPath },
-      windowsHide: true,
-    });
-    
-    const output = (result.stdout || '').toString();
-    const errorOutput = (result.stderr || '').toString();
-    
-    // Parse output to extract per-command results
-    const exitCode = result.status ?? 0;
-    
-    // Split by our markers
-    const sections = output.split(/\[MOA\]\s*/);
-    let cmdIdx = 0;
-    for (const section of sections) {
-      if (!section.trim()) continue;
-      const exitMatch = section.match(/([\s\S]*?)\[MOA-EXIT\](\d+)/);
-      if (exitMatch) {
-        const cmdOutput = exitMatch[1].trim();
-        const cmdExit = parseInt(exitMatch[2]);
-        results.push({
-          cmd: commands[cmdIdx] || 'unknown',
-          exitCode: cmdExit,
-          stdout: cmdOutput,
-          stderr: '',
-        });
-        cmdIdx++;
-      }
-    }
-    
-    // If parsing failed, return a single result
-    if (results.length === 0) {
-      for (const cmd of commands) {
-        results.push({
-          cmd,
-          exitCode,
-          stdout: output.slice(0, 8000),
-          stderr: errorOutput.slice(0, 4000),
-        });
-      }
-    }
-  } catch (err: any) {
-    for (const cmd of commands) {
-      results.push({
-        cmd,
-        exitCode: 1,
-        stdout: '',
-        stderr: err.message || 'Execution failed',
-      });
-    }
-  } finally {
-    try { fs.unlinkSync(scriptFile); } catch { /* ignore */ }
-  }
-  
-  return results;
-}
-
-// Legacy single-command exec (for backward compat)
-function execCmd(cmd: string, cwd: string, timeoutMs: number = DEFAULT_CMD_TIMEOUT): { exitCode: number; stdout: string; stderr: string } {
-  const results = execCmdSession([cmd], cwd, timeoutMs);
-  return results[0] || { exitCode: 1, stdout: '', stderr: 'No result' };
-}
-
-function getCmdTimeout(cmd: string): number {
-  const lower = cmd.trim().toLowerCase();
-  if (/^(npm\s+install|yarn\s+install|pnpm\s+install|pip\s+install|cargo\s+build|cargo\s+install|npm\s+i)\b/.test(lower)) {
-    return INSTALL_CMD_TIMEOUT;
-  }
-  return DEFAULT_CMD_TIMEOUT;
-}
-
-// ============================================================
 // Code block extraction
 // ============================================================
-
-interface ExtractedCodeBlock {
-  language: string;
-  filename: string | null;
-  content: string;
-  isCommand: boolean;
-}
 
 function inferFilename(language: string, content: string, idx: number): string {
   const firstLine = content.split(/\r?\n/)[0] || '';
   const commentMatch = firstLine.match(/^(?:\/\/|#|--|\/\*)\s*([^\s*]+\.(?:ts|tsx|js|jsx|py|rs|go|java|c|cpp|html|css|json|yaml|yml|toml|md|sh|cmd|bat|sql|xml|scss|less|vue|svelte))/i);
   if (commentMatch) return commentMatch[1].replace(/\*\/$/, '').trim();
-
   const langExtMap: Record<string, string> = {
     typescript: 'index.ts', ts: 'index.ts', tsx: 'App.tsx',
     javascript: 'index.js', js: 'index.js', jsx: 'App.jsx',
     python: 'main.py', py: 'main.py',
-    rust: 'main.rs', rs: 'main.rs',
-    go: 'main.go',
-    java: 'Main.java',
+    rust: 'main.rs', rs: 'main.rs', go: 'main.go', java: 'Main.java',
     c: 'main.c', cpp: 'main.cpp', 'c++': 'main.cpp',
-    html: 'index.html',
-    css: 'style.css',
-    json: 'data.json',
-    yaml: 'config.yaml', yml: 'config.yml',
-    toml: 'config.toml',
-    markdown: 'README.md', md: 'README.md',
-    sql: 'query.sql',
-    xml: 'config.xml',
-    scss: 'style.scss', less: 'style.less',
+    html: 'index.html', css: 'style.css', json: 'data.json',
+    yaml: 'config.yaml', yml: 'config.yml', toml: 'config.toml',
+    markdown: 'README.md', md: 'README.md', sql: 'query.sql',
+    xml: 'config.xml', scss: 'style.scss', less: 'style.less',
     vue: 'App.vue', svelte: 'App.svelte',
     bash: 'script.sh', sh: 'script.sh',
     cmd: 'script.cmd', bat: 'script.cmd',
     powershell: 'script.ps1', ps1: 'script.ps1',
   };
-  const mapped = langExtMap[language.toLowerCase()];
-  if (mapped) return mapped;
-  return 'file_' + idx + (language ? '.' + language : '.txt');
+  return langExtMap[language.toLowerCase()] || ('file_' + idx + (language ? '.' + language : '.txt'));
 }
 
 function extractCodeBlocks(response: string): ExtractedCodeBlock[] {
   const blocks: ExtractedCodeBlock[] = [];
-  // Match code blocks with optional filename comment
-  const fenceRegex = /`(\w+)\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)`/g;
+  const fenceRegex = /```(\w+)\s*(?:\/\/\s*(\S+))?\s*\n([\s\S]*?)```/g;
   let match: RegExpExecArray | null;
   let idx = 0;
   while ((match = fenceRegex.exec(response)) !== null) {
@@ -286,37 +190,17 @@ function extractDollarCommands(response: string): string[] {
   const lines = response.split(/\r?\n/);
   for (const line of lines) {
     const trimmed = line.trim();
-    if (/^\$\s+(.+)/.test(trimmed)) {
-      commands.push(trimmed.replace(/^\$\s+/, ''));
-    }
+    if (/^\$\s+(.+)/.test(trimmed)) commands.push(trimmed.replace(/^\$\s+/, ''));
   }
   return commands;
 }
 
-// ============================================================
-// File writing and command execution engine
-// ============================================================
-
-interface FileWritten {
-  path: string;
-  size: number;
-}
-
-interface CommandResult {
-  cmd: string;
-  exitCode: number;
-  stdout: string;
-  stderr: string;
-}
-
 function writeCodeBlocks(blocks: ExtractedCodeBlock[], projectDir: string): FileWritten[] {
   const written: FileWritten[] = [];
-  const codeBlocks = blocks.filter(b => !b.isCommand);
-  for (const block of codeBlocks) {
+  for (const block of blocks.filter(b => !b.isCommand)) {
     if (!block.filename) continue;
     const filePath = path.resolve(projectDir, block.filename);
-    const dir = path.dirname(filePath);
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
     fs.writeFileSync(filePath, block.content, 'utf-8');
     written.push({ path: filePath, size: Buffer.byteLength(block.content, 'utf-8') });
   }
@@ -327,24 +211,63 @@ function collectCommands(blocks: ExtractedCodeBlock[], dollarCommands: string[])
   const cmds: string[] = [];
   for (const block of blocks) {
     if (block.isCommand) {
-      const lines = block.content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-      for (const line of lines) {
+      for (const line of block.content.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0)) {
         if (line.startsWith('#') || line.startsWith('REM') || line.startsWith('::')) continue;
         const cleaned = line.replace(/^\$\s+/, '').replace(/^>\s+/, '');
         if (cleaned.length > 0) cmds.push(cleaned);
       }
     }
   }
-  for (const dc of dollarCommands) {
-    cmds.push(dc);
-  }
+  cmds.push(...dollarCommands);
   return cmds;
 }
 
 // ============================================================
-// FIXED: runCommandsSequentially now merges ALL commands into one session
-// This ensures cd works properly
+// Command execution — ONE BY ONE like Claude Code
 // ============================================================
+
+function getCmdTimeout(cmd: string): number {
+  const lower = cmd.trim().toLowerCase();
+  if (/^(npm\s+install|yarn\s+install|pnpm\s+install|pip\s+install|cargo\s+build|cargo\s+install|npm\s+i)\b/.test(lower)) {
+    return INSTALL_CMD_TIMEOUT;
+  }
+  return DEFAULT_CMD_TIMEOUT;
+}
+
+function execSingleCmd(cmd: string, cwd: string, timeoutMs: number = DEFAULT_CMD_TIMEOUT): { exitCode: number; stdout: string; stderr: string } {
+  const scriptContent = [
+    '@echo off',
+    '@setlocal enableextensions',
+    'set "PATH=' + getAugmentedPath().replace(/"/g, '') + '"',
+    'cd /d "' + cwd + '"',
+    cmd,
+    'exit /b %errorlevel%',
+  ].join('\r\n');
+  const scriptFile = path.join(os.tmpdir(), 'moa-exec-' + uuid() + '.cmd');
+  fs.writeFileSync(scriptFile, scriptContent, 'utf-8');
+  try {
+    const result = spawnSync('cmd.exe', ['/c', scriptFile], {
+      cwd, timeout: timeoutMs, encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, PATH: getAugmentedPath() },
+      windowsHide: true,
+    });
+    return {
+      exitCode: result.status ?? 0,
+      stdout: (result.stdout || '').toString().slice(0, 16000),
+      stderr: (result.stderr || '').toString().slice(0, 8000),
+    };
+  } catch (err: any) {
+    return { exitCode: 1, stdout: '', stderr: err.message || 'Execution failed' };
+  } finally {
+    try { fs.unlinkSync(scriptFile); } catch { /* ignore */ }
+  }
+}
+
+// Legacy alias
+function execCmd(cmd: string, cwd: string, timeoutMs: number = DEFAULT_CMD_TIMEOUT): { exitCode: number; stdout: string; stderr: string } {
+  return execSingleCmd(cmd, cwd, timeoutMs);
+}
 
 function runCommandsSequentially(
   commands: string[],
@@ -353,76 +276,50 @@ function runCommandsSequentially(
 ): { results: CommandResult[]; finalDir: string } {
   if (commands.length === 0) return { results: [], finalDir: cwd };
 
-  // Auto-detect and prepend dependency installation
   const needsTypescript = commands.some(c => /\b(tsc|npx\s+tsc|ts-node)\b/i.test(c));
   const needsNodemon = commands.some(c => /\bnodemon\b/i.test(c));
-  const needsNpmInstall = commands.some(c => /\bnpm\s+(install|i)\b/i.test(c));
-  
   const prepends: string[] = [];
-  
-  // If any command needs tsc but there's no npm install for typescript, add it
-  if (needsTypescript && !commands.some(c => /typescript/.test(c))) {
-    prepends.push('npm install typescript --save-dev 2>nul');
-  }
-  if (needsNodemon && !commands.some(c => /nodemon/.test(c))) {
-    prepends.push('npm install nodemon --save-dev 2>nul');
-  }
-  
+  if (needsTypescript && !commands.some(c => /typescript/.test(c))) prepends.push('npm install typescript --save-dev 2>nul');
+  if (needsNodemon && !commands.some(c => /nodemon/.test(c))) prepends.push('npm install nodemon --save-dev 2>nul');
+
   const allCommands = [...prepends, ...commands];
-  
-  // Calculate total timeout
-  let totalTimeout = 0;
+  const results: CommandResult[] = [];
+  let currentCwd = cwd;
+
   for (const cmd of allCommands) {
-    totalTimeout += getCmdTimeout(cmd);
-  }
-  totalTimeout = Math.min(totalTimeout, 300_000); // Cap at 5 minutes
-  
-  // Run ALL commands in a single session
-  const results = execCmdSession(allCommands, cwd, totalTimeout);
-  
-  // Determine final directory from cd commands
-  let finalDir = cwd;
-  for (const cmd of commands) {
+    const timeout = getCmdTimeout(cmd);
+    const result = execSingleCmd(cmd, currentCwd, timeout);
+    results.push({ cmd, exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr });
+
+    // Track cd
     const cdMatch = cmd.trim().match(/^cd\s+(.+)$/i);
-    if (cdMatch) {
+    if (cdMatch && result.exitCode === 0) {
       const target = cdMatch[1].trim().replace(/^["']|["']$/g, '');
-      const resolved = path.resolve(finalDir, target);
-      if (fs.existsSync(resolved)) {
-        finalDir = resolved;
-      }
+      const resolved = path.resolve(currentCwd, target);
+      if (fs.existsSync(resolved)) currentCwd = resolved;
     }
+
+    // Stop on failure — error recovery loop will handle retries
+    if (result.exitCode !== 0) break;
   }
-  
-  return { results, finalDir };
+
+  return { results, finalDir: currentCwd };
 }
 
 function autoInstallDeps(projectDir: string): CommandResult[] {
   const results: CommandResult[] = [];
-  
-  // Check for package.json and install
-  if (fs.existsSync(path.join(projectDir, 'package.json'))) {
-    const nodeModulesPath = path.join(projectDir, 'node_modules');
-    if (!fs.existsSync(nodeModulesPath)) {
-      const exit = execCmd('npm install', projectDir, INSTALL_CMD_TIMEOUT);
-      results.push({ cmd: 'npm install (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
-    }
+  if (fs.existsSync(path.join(projectDir, 'package.json')) && !fs.existsSync(path.join(projectDir, 'node_modules'))) {
+    const exit = execCmd('npm install', projectDir, INSTALL_CMD_TIMEOUT);
+    results.push({ cmd: 'npm install (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
   }
-  
-  // Check for requirements.txt
   if (fs.existsSync(path.join(projectDir, 'requirements.txt'))) {
     const exit = execCmd('pip install -r requirements.txt', projectDir, INSTALL_CMD_TIMEOUT);
     results.push({ cmd: 'pip install -r requirements.txt (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
   }
-  
-  // Check for tsconfig.json and ensure typescript is installed
-  if (fs.existsSync(path.join(projectDir, 'tsconfig.json'))) {
-    const tsBinary = path.join(projectDir, 'node_modules', '.bin', 'tsc.cmd');
-    if (!fs.existsSync(tsBinary)) {
-      const exit = execCmd('npm install typescript --save-dev', projectDir, INSTALL_CMD_TIMEOUT);
-      results.push({ cmd: 'npm install typescript (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
-    }
+  if (fs.existsSync(path.join(projectDir, 'tsconfig.json')) && !fs.existsSync(path.join(projectDir, 'node_modules', '.bin', 'tsc.cmd'))) {
+    const exit = execCmd('npm install typescript --save-dev', projectDir, INSTALL_CMD_TIMEOUT);
+    results.push({ cmd: 'npm install typescript (auto)', exitCode: exit.exitCode, stdout: exit.stdout, stderr: exit.stderr });
   }
-  
   return results;
 }
 
@@ -430,18 +327,17 @@ function buildErrorContext(projectDir: string, failedResults: CommandResult[]): 
   let ctx = '## Execution Errors\r\n\r\nProject directory: ' + projectDir + '\r\n\r\n';
   for (const r of failedResults) {
     if (r.exitCode !== 0) {
-      ctx += '### FAILED COMMAND: ' + r.cmd + '\r\n';
-      ctx += 'EXIT CODE: ' + r.exitCode + '\r\n';
-      ctx += 'STDOUT:\r\n`\r\n' + (r.stdout || '(empty)') + '\r\n`\r\n';
-      ctx += 'STDERR:\r\n`\r\n' + (r.stderr || '(empty)') + '\r\n`\r\n\r\n';
+      ctx += '### FAILED: ' + r.cmd + '\r\nEXIT: ' + r.exitCode + '\r\n';
+      ctx += 'STDOUT:\r\n```\r\n' + (r.stdout || '(empty)') + '\r\n```\r\n';
+      ctx += 'STDERR:\r\n```\r\n' + (r.stderr || '(empty)') + '\r\n```\r\n\r\n';
     }
   }
-  ctx += 'Please diagnose and fix these errors. Provide corrected code blocks and/or fix commands.';
+  ctx += 'Please fix these errors. Provide corrected code and/or fix commands.';
   return ctx;
 }
 
 // ============================================================
-// Model / Provider selection with key-rotation on 401/402/403
+// Model selection with key-rotation on 401/402/403
 // ============================================================
 
 interface ResolvedModel {
@@ -475,7 +371,6 @@ async function chatWithKeyRotation(
   let currentKey = initial.apiKey;
   const maxAttempts = 10;
   let lastError: any = null;
-
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const resp = await LLMClient.chatCompletion(currentProvider, currentKey, {
@@ -494,12 +389,7 @@ async function chatWithKeyRotation(
         const nextKey = pool.getNextApiKey(currentProvider.id);
         if (nextKey) { currentKey = nextKey; continue; }
         const nextResolved = resolveModel(pool);
-        if (nextResolved) {
-          currentProvider = nextResolved.provider;
-          currentModel = nextResolved.model;
-          currentKey = nextResolved.apiKey;
-          continue;
-        }
+        if (nextResolved) { currentProvider = nextResolved.provider; currentModel = nextResolved.model; currentKey = nextResolved.apiKey; continue; }
         break;
       }
       throw err;
@@ -523,17 +413,13 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
   r.get('/projects', (_req: Request, res: Response) => {
     try {
-      if (!fs.existsSync(WORKSPACE_ROOT)) {
-        return res.json({ projects: [] });
-      }
+      if (!fs.existsSync(WORKSPACE_ROOT)) return res.json({ projects: [] });
       const entries = fs.readdirSync(WORKSPACE_ROOT, { withFileTypes: true });
-      const projects = entries
-        .filter(e => e.isDirectory())
-        .map(e => ({
-          threadId: e.name,
-          path: path.join(WORKSPACE_ROOT, e.name),
-          hasPackageJson: fs.existsSync(path.join(WORKSPACE_ROOT, e.name, 'package.json')),
-        }));
+      const projects = entries.filter(e => e.isDirectory()).map(e => ({
+        threadId: e.name,
+        path: path.join(WORKSPACE_ROOT, e.name),
+        hasPackageJson: fs.existsSync(path.join(WORKSPACE_ROOT, e.name, 'package.json')),
+      }));
       res.json({ projects });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -565,11 +451,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       const resolved = resolveModel(pool, modelId);
       if (!resolved) {
-        return res.status(400).json({
-          error: 'No available models with active API keys. Add a provider and key first.',
-          role: 'error',
-          content: 'No available models with active API keys. Add a provider and key first.',
-        });
+        return res.status(400).json({ error: 'No available models with active API keys. Add a provider and key first.', role: 'error', content: 'No available models with active API keys.' });
       }
 
       const messages: Array<{ role: string; content: any }> = [
@@ -578,84 +460,61 @@ export function createChatRoutes(pool: ApiPoolManager) {
       ];
 
       const compressedHistory = compressHistory(history || []);
-      for (const msg of compressedHistory) {
-        messages.push({ role: msg.role, content: msg.content });
-      }
+      for (const msg of compressedHistory) messages.push({ role: msg.role, content: msg.content });
 
       const imageAttachments = (attachments || []).filter((a: any) => a.type === 'image');
       let userContent: any = message || '';
       if (imageAttachments.length > 0 && (resolved.model.capabilities.visionScore > 0 || resolved.model.capabilities?.multimodal)) {
         const contentArr: any[] = [{ type: 'text', text: message || 'Describe this image.' }];
         for (const img of imageAttachments) {
-          if (img.data && img.data.startsWith('data:')) {
-            contentArr.push({ type: 'image_url', image_url: { url: img.data } });
-          }
+          if (img.data && img.data.startsWith('data:')) contentArr.push({ type: 'image_url', image_url: { url: img.data } });
         }
         userContent = contentArr;
       }
       messages.push({ role: 'user', content: userContent });
 
-      const thinkingEffort = orchestratorThinkingMode && orchestratorThinkingMode !== 'auto'
-        ? orchestratorThinkingMode : undefined;
+      const thinkingEffort = orchestratorThinkingMode && orchestratorThinkingMode !== 'auto' ? orchestratorThinkingMode : undefined;
 
       const { response: initialResp, provider: usedProvider, model: usedModel } = await chatWithKeyRotation(
         pool, resolved, messages, { thinkingEffort: thinkingEffort as any },
       );
 
       let llmContent = initialResp.content;
-      
-      // --- Autonomous code generation with error recovery ---
       const filesWritten: FileWritten[] = [];
       const allCommandsRun: CommandResult[] = [];
       let totalRetries = 0;
       let currentDir = projectDir;
 
+      // Extract and execute code blocks
       const codeBlocks = extractCodeBlocks(llmContent);
       if (codeBlocks.length > 0) {
-        const written = writeCodeBlocks(codeBlocks, projectDir);
-        filesWritten.push(...written);
-
+        filesWritten.push(...writeCodeBlocks(codeBlocks, projectDir));
         const dollarCmds = extractDollarCommands(llmContent);
         const commands = collectCommands(codeBlocks, dollarCmds);
 
         if (commands.length > 0) {
           const { results } = runCommandsSequentially(commands, projectDir, currentDir);
           allCommandsRun.push(...results);
-
           let failedResults = results.filter(r => r.exitCode !== 0);
           let retryCount = 0;
 
           while (failedResults.length > 0 && retryCount < MAX_RETRIES) {
             retryCount++;
             totalRetries++;
-
             const errorContext = buildErrorContext(projectDir, failedResults);
-            const fixMessages = [
-              ...messages,
-              { role: 'assistant', content: llmContent },
-              { role: 'user', content: errorContext },
-            ];
-
+            const fixMessages = [...messages, { role: 'assistant', content: llmContent }, { role: 'user', content: errorContext }];
             try {
-              const { response: fixResp } = await chatWithKeyRotation(
-                pool, resolved, fixMessages, { thinkingEffort: thinkingEffort as any },
-              );
+              const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMessages, { thinkingEffort: thinkingEffort as any });
               llmContent += '\r\n\r\n---\r\n**Fix attempt ' + retryCount + '**\r\n\r\n' + fixResp.content;
-
               const fixBlocks = extractCodeBlocks(fixResp.content);
-              const fixWritten = writeCodeBlocks(fixBlocks, projectDir);
-              filesWritten.push(...fixWritten);
-
+              filesWritten.push(...writeCodeBlocks(fixBlocks, projectDir));
               const fixDollarCmds = extractDollarCommands(fixResp.content);
               const fixCommands = collectCommands(fixBlocks, fixDollarCmds);
-
               if (fixCommands.length > 0) {
                 const { results: fixResults } = runCommandsSequentially(fixCommands, projectDir, currentDir);
                 allCommandsRun.push(...fixResults);
                 failedResults = fixResults.filter(r => r.exitCode !== 0);
-              } else {
-                break;
-              }
+              } else break;
             } catch (retryErr: any) {
               console.error('[Chat] Retry LLM call failed:', retryErr.message);
               break;
@@ -664,9 +523,8 @@ export function createChatRoutes(pool: ApiPoolManager) {
         }
       }
 
-      // --- Auto-install dependencies ---
-      const installResults = autoInstallDeps(projectDir);
-      allCommandsRun.push(...installResults);
+      // Auto-install dependencies
+      allCommandsRun.push(...autoInstallDeps(projectDir));
 
       res.json({
         role: 'orchestrator',
@@ -690,11 +548,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       console.error('[Chat] Error:', err.message);
       const statusCode = err.response?.status;
       if (statusCode && [401, 402, 403].includes(statusCode)) {
-        return res.status(statusCode).json({
-          error: 'API authentication/quota error: ' + err.message,
-          role: 'error',
-          content: 'All API keys exhausted. Please add a new API key.',
-        });
+        return res.status(statusCode).json({ error: 'API authentication/quota error: ' + err.message, role: 'error', content: 'All API keys exhausted.' });
       }
       res.status(500).json({ error: err.message, role: 'error', content: err.message });
     }
