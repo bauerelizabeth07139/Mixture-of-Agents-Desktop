@@ -20,52 +20,77 @@ const DEFAULT_CMD_TIMEOUT = 30_000;
 const INSTALL_CMD_TIMEOUT = 120_000;
 
 const SYSTEM_PROMPT = [
-  'You are an autonomous coding engine inside Mixture of Agents (MOA).',
-  'You write complete, runnable code and can independently create full projects.',
+  'You are MOA (Mixture of Agents), an autonomous coding agent similar to Claude Code and Codex.',
+  'You write complete, runnable code, create full projects, and execute commands.',
+  '',
+  '## How You Work',
+  'You operate in a tool-use loop:',
+  '1. THINK: Analyze the task and plan your approach',
+  '2. ACT: Write files and run commands',
+  '3. OBSERVE: Read the results and errors',
+  '4. FIX: If something fails, diagnose and fix it immediately',
+  '5. REPEAT until the task is complete',
   '',
   '## File Generation',
-  'When generating a project, emit each file inside a fenced code block with language AND filename:',
-  '  ```typescript // src/index.ts',
+  'Emit each file in a fenced code block with language AND filename:',
+  '  ```html index.html',
   '  ...code...',
   '  ```',
-  'Supported languages: typescript, javascript, python, c, cpp, go, rust, java, html, css, json, yaml, markdown, shell',
+  '  ```css style.css',
+  '  ...code...',
+  '  ```',
+  '',
+  'IMPORTANT: Put the filename IMMEDIATELY after the language tag with a space.',
+  'Do NOT put the filename as a comment inside the code.',
+  'For multi-file projects, generate SEPARATE code blocks for EACH file.',
   '',
   '## Shell Commands',
-'After writing all files, you MUST include a ```cmd block to run the project.',
-'',
-'For static HTML websites:',
-'  ```cmd',
-'  npx http-server -p 8080 -c-1',
-'  ```',
-'',
-'For Node.js projects:',
-'  ```cmd',
-'  npm install',
-'  node index.js',
-'  ```',
-'',
-'CRITICAL RULES:',
-'- Each command runs ONE BY ONE, sequentially.',
-'- This is Windows. Do NOT use: &&, ;, &, |, bash syntax.',
-'- Do NOT use cd commands. All file paths are relative to the project root.',
-'- For static HTML sites, ALWAYS use: npx http-server -p 8080 -c-1',
-'- NEVER create unnecessary directories. Write files directly to the project root.',
-'- The system will auto-open the browser after the server starts.',  '',
-  '## Workflow',
-'1. Create all project files (code blocks with filenames). For multi-page sites, create separate HTML files (about.html, projects.html, etc.) with navigation links between them.',
-'2. Then provide a ```cmd block with commands to run the project',
-'3. For static HTML: use npx http-server -p 8080 -c-1',
-'4. For Node.js: npm install then node index.js',
-'5. If something fails, read the error and provide ONLY fix commands/code',
-'6. Always provide COMPLETE code with all imports',
-'CRITICAL: NEVER skip the cmd block step. The system needs commands to serve your files.',  '',
+  'After writing all files, include a ```cmd block with commands to run the project.',
+  '',
+  'For static HTML websites:',
+  '  ```cmd',
+  '  npx http-server -p 8080 -c-1',
+  '  ```',
+  '',
+  'For Node.js projects:',
+  '  ```cmd',
+  '  npm install',
+  '  node index.js',
+  '  ```',
+  '',
+  'CRITICAL RULES:',
+  '- Each command runs ONE BY ONE, sequentially.',
+  '- This is Windows. Do NOT use: &&, ;, &, |, bash syntax.',
+  '- Do NOT use cd commands. All file paths are relative to project root.',
+  '- For static HTML sites, ALWAYS use: npx http-server -p 8080 -c-1',
+  '- NEVER create unnecessary directories. Write files directly to project root.',
+  '',
+  '## Multi-Page Websites',
+  'When creating multi-page sites, generate SEPARATE HTML files:',
+  '- index.html (home page)',
+  '- about.html (about page)',
+  '- projects.html (projects/portfolio)',
+  '- contact.html (contact form)',
+  '- Each page must have a shared nav bar with <a href="page.html"> links',
+  '- All pages share the same style.css and script.js',
+  '',
+  '## Design Quality',
+  'When creating websites, make them BEAUTIFUL and MODERN:',
+  '- Use smooth CSS animations and transitions on all interactive elements',
+  '- Use gradient backgrounds and glass-morphism effects',
+  '- Use proper spacing, typography (Google Fonts), and cohesive color schemes',
+  '- Add hover effects on buttons, cards, and links with transform: translateY(-2px)',
+  '- Use responsive design with flexbox/grid',
+  '- Add scroll-reveal animations with IntersectionObserver',
+  '- Dark themes: use #0a0a0f background with #6c5ce7 accent and gradient text',
+  '- Add animated progress bars, particle effects, or subtle background patterns',
+  '',
   '## Error Recovery',
-  'When you see errors, fix them immediately. Common fixes:',
-  '- "MODULE_NOT_FOUND" -> add npm install <package> command',
-  '- "tsc not found" -> add npm install typescript --save-dev command',
+  'When you see errors, fix them immediately:',
+  '- MODULE_NOT_FOUND -> add npm install <package>',
   '- Syntax errors -> provide the corrected file',
-  '- "EADDRINUSE" -> the port is already in use, use a different port in your code',
-  '- "command not found" -> check if the tool is installed',
+  '- EADDRINUSE -> use a different port',
+  '- If a command fails, read the error and provide a fix',
 ].join('\r\n');
 
 // ============================================================
@@ -484,7 +509,7 @@ async function chatWithKeyRotation(
         messages,
         model: currentModel.modelId,
         temperature: opts.temperature ?? 0.7,
-        maxTokens: opts.maxTokens ?? 8192,
+        maxTokens: opts.maxTokens ?? 16384,
         thinkingEffort: opts.thinkingEffort,
       });
       return { response: resp, provider: currentProvider, model: currentModel, apiKey: currentKey };
@@ -587,7 +612,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       // Map costEfficiencyRatio to temperature and maxTokens
       const ratio = typeof costEfficiencyRatio === 'number' ? Math.max(0, Math.min(1, costEfficiencyRatio)) : 0.5;
       const chatTemperature = 0.1 + ratio * 0.7;
-      const chatMaxTokens = Math.round(2048 + ratio * 6144);
+      const chatMaxTokens = Math.round(4096 + ratio * 12288);
 
       const { response: initialResp, provider: usedProvider, model: usedModel } = await chatWithKeyRotation(
         pool, resolved, messages, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens },
@@ -647,16 +672,11 @@ export function createChatRoutes(pool: ApiPoolManager) {
         const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
         if (hasHtml) {
           try {
-            // Start http-server as a detached background process
-            const { spawn: spawnBg } = require('child_process');
-            const httpServer = spawnBg('npx', ['http-server', projectDir, '-p', '8080', '-c-1'], {
-              detached: true,
-              stdio: 'ignore',
-              shell: true,
-              env: { ...process.env, PATH: getAugmentedPath() },
-              windowsHide: true,
-            });
-            httpServer.unref();
+            // Start http-server as a background process using Windows start command
+            const serveScript = path.join(os.tmpdir(), 'moa-serve-' + uuid() + '.cmd');
+            fs.writeFileSync(serveScript, '@echo off\r\nset "PATH=' + getAugmentedPath().replace(/"/g, '') + '"\r\ncd /d "' + projectDir + '"\r\nnpx http-server -p 8080 -c-1\r\n', 'utf-8');
+            const { exec: execBg } = require('child_process');
+            execBg('start /B "" "' + serveScript + '"', { shell: 'cmd.exe', windowsHide: true, env: { ...process.env, PATH: getAugmentedPath() } });
             allCommandsRun.push({ cmd: 'npx http-server -p 8080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
           } catch (e: any) {
             console.error('[AutoServe] Failed to start http-server:', e.message);

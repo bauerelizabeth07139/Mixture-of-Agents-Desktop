@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // LLM Client - Unified API client for all providers
 // ============================================================
 
@@ -69,7 +69,7 @@ export class LLMClient {
         stream: false,
         ...(request.tools ? { tools: request.tools } : {}),
         ...(request.thinkingEffort && request.thinkingEffort !== 'none' ? { reasoning_effort: request.thinkingEffort } : {}),
-      }, { headers, timeout: request.timeout || 120000 });
+      }, { headers, timeout: request.timeout || 300000 });
 
       const data = response.data;
       const latencyMs = Date.now() - startTime;
@@ -119,7 +119,7 @@ export class LLMClient {
           'x-api-key': apiKey.key,
           'anthropic-version': '2023-06-01',
         },
-        timeout: 120000,
+        timeout: 300000,
       });
 
       const data = response.data;
