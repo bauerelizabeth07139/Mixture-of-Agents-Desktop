@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+﻿import { v4 as uuid } from 'uuid';
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
@@ -341,7 +341,7 @@ function collectCommands(blocks: ExtractedCodeBlock[], dollarCommands: string[])
 }
 
 // ============================================================
-// Command execution — ONE BY ONE like Claude Code
+// Command execution 鈥?ONE BY ONE like Claude Code
 // ============================================================
 
 function getCmdTimeout(cmd: string): number {
@@ -425,7 +425,7 @@ function runCommandsSequentially(
       if (fs.existsSync(resolved)) currentCwd = resolved;
     }
 
-    // Stop on failure — error recovery loop will handle retries
+    // Stop on failure 鈥?error recovery loop will handle retries
     if (result.exitCode !== 0) break;
     
     // Brief pause after server start to let it initialize
@@ -557,7 +557,18 @@ export function createChatRoutes(pool: ApiPoolManager) {
     }
   });
 
-  r.post('/', async (req: Request, res: Response) => {
+﻿  r.post('/', async (req: Request, res: Response) => {
+    // SSE streaming
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    const sendEvent = (event: string, data: any) => {
+      try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
+    };
+
     try {
       const {
         message, modelId, history, attachments, threadId,
@@ -577,15 +588,20 @@ export function createChatRoutes(pool: ApiPoolManager) {
       };
 
       if (!message && (!attachments || attachments.length === 0)) {
-        return res.status(400).json({ error: 'Empty message' });
+        sendEvent('error', { error: 'Empty message' });
+        return res.end();
       }
 
       const projectDir = getProjectDir(threadId, userProjectPath ?? undefined);
+      sendEvent('status', { status: 'starting', projectDir });
 
       const resolved = resolveModel(pool, modelId);
       if (!resolved) {
-        return res.status(400).json({ error: 'No available models with active API keys. Add a provider and key first.', role: 'error', content: 'No available models with active API keys.' });
+        sendEvent('error', { error: 'No available models with active API keys. Add a provider and key first.' });
+        return res.end();
       }
+
+      sendEvent('status', { status: 'thinking', model: resolved.model.name, provider: resolved.provider.name });
 
       const messages: Array<{ role: string; content: any }> = [
         { role: 'system', content: SYSTEM_PROMPT },
@@ -608,82 +624,128 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       const thinkingEffort = orchestratorThinkingMode && orchestratorThinkingMode !== 'auto' ? orchestratorThinkingMode : undefined;
 
-      // Map costEfficiencyRatio to temperature and maxTokens
       const ratio = typeof costEfficiencyRatio === 'number' ? Math.max(0, Math.min(1, costEfficiencyRatio)) : 0.5;
       const chatTemperature = 0.1 + ratio * 0.7;
       const chatMaxTokens = Math.round(4096 + ratio * 12288);
 
+      // Step 1: LLM call
+      sendEvent('status', { status: 'calling_llm' });
       const { response: initialResp, provider: usedProvider, model: usedModel } = await chatWithKeyRotation(
         pool, resolved, messages, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens },
       );
 
       let llmContent = initialResp.content;
+      sendEvent('llm_response', { content: llmContent, model: usedModel.name, provider: usedProvider.name, latencyMs: initialResp.latencyMs, usage: initialResp.usage });
+
       const filesWritten: FileWritten[] = [];
       const allCommandsRun: CommandResult[] = [];
       let totalRetries = 0;
       let currentDir = projectDir;
 
-      // Extract and execute code blocks
+      // Step 2: Write code blocks
       const codeBlocks = extractCodeBlocks(llmContent);
       if (codeBlocks.length > 0) {
-        filesWritten.push(...writeCodeBlocks(codeBlocks, projectDir));
+        const written = writeCodeBlocks(codeBlocks, projectDir);
+        filesWritten.push(...written);
+        for (const f of written) {
+          sendEvent('file_written', { path: f.path, size: f.size, name: path.basename(f.path) });
+        }
+
+        // Step 3: Execute commands
         const dollarCmds = extractDollarCommands(llmContent);
         const commands = collectCommands(codeBlocks, dollarCmds);
 
         if (commands.length > 0) {
+          sendEvent('status', { status: 'executing', commandCount: commands.length });
           const { results } = runCommandsSequentially(commands, projectDir, currentDir);
           allCommandsRun.push(...results);
+          for (const r of results) {
+            sendEvent('command_result', { cmd: r.cmd, exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr });
+          }
+
+          // Step 4: Error recovery
           let failedResults = results.filter(r => r.exitCode !== 0);
           let retryCount = 0;
 
           while (failedResults.length > 0 && retryCount < MAX_RETRIES) {
             retryCount++;
             totalRetries++;
+            sendEvent('status', { status: 'fixing', attempt: retryCount, errors: failedResults.length });
             const errorContext = buildErrorContext(projectDir, failedResults);
             const fixMessages = [...messages, { role: 'assistant', content: llmContent }, { role: 'user', content: errorContext }];
             try {
               const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMessages, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
               llmContent += '\r\n\r\n---\r\n**Fix attempt ' + retryCount + '**\r\n\r\n' + fixResp.content;
+              sendEvent('fix_response', { attempt: retryCount, content: fixResp.content });
+
               const fixBlocks = extractCodeBlocks(fixResp.content);
-              filesWritten.push(...writeCodeBlocks(fixBlocks, projectDir));
+              const fixWritten = writeCodeBlocks(fixBlocks, projectDir);
+              filesWritten.push(...fixWritten);
+              for (const f of fixWritten) {
+                sendEvent('file_written', { path: f.path, size: f.size, name: path.basename(f.path) });
+              }
+
               const fixDollarCmds = extractDollarCommands(fixResp.content);
               const fixCommands = collectCommands(fixBlocks, fixDollarCmds);
               if (fixCommands.length > 0) {
                 const { results: fixResults } = runCommandsSequentially(fixCommands, projectDir, currentDir);
                 allCommandsRun.push(...fixResults);
+                for (const r of fixResults) {
+                  sendEvent('command_result', { cmd: r.cmd, exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr });
+                }
                 failedResults = fixResults.filter(r => r.exitCode !== 0);
               } else break;
             } catch (retryErr: any) {
               console.error('[Chat] Retry LLM call failed:', retryErr.message);
+              sendEvent('error', { error: 'Retry failed: ' + retryErr.message });
               break;
             }
           }
         }
       }
 
-      // Auto-install dependencies
-      allCommandsRun.push(...autoInstallDeps(projectDir));
+      // Auto-install
+      const autoResults = autoInstallDeps(projectDir);
+      if (autoResults.length > 0) {
+        allCommandsRun.push(...autoResults);
+        for (const r of autoResults) {
+          sendEvent('command_result', { cmd: r.cmd, exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr });
+        }
+      }
 
-      // Auto-serve: if HTML files were written and no server commands were run, start http-server
-      // Auto-serve: if HTML files exist and no successful server command was run
+      // Auto-serve + auto-open browser
       const hasSuccessfulServer = allCommandsRun.some(r => r.exitCode === 0 && /http-server|serve|python.*http/i.test(r.cmd));
+            // Detect serve URL from commands
+      let serveUrl: string | null = null;
+      for (const cmd of allCommandsRun) {
+        if (cmd.exitCode === 0) {
+          const portMatch = cmd.cmd.match(/http-server.*-p\s+(\d+)/);
+          if (portMatch) { serveUrl = 'http://localhost:' + portMatch[1]; break; }
+          const pyMatch = cmd.cmd.match(/python.*-m\s+http\.server\s+(\d+)/);
+          if (pyMatch) { serveUrl = 'http://localhost:' + pyMatch[1]; break; }
+        }
+      }
       if (filesWritten.length > 0 && !hasSuccessfulServer) {
         const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
         if (hasHtml) {
           try {
-            // Start http-server as a background process using Windows start command
             const serveScript = path.join(os.tmpdir(), 'moa-serve-' + uuid() + '.cmd');
             fs.writeFileSync(serveScript, '@echo off\r\nset "PATH=' + getAugmentedPath().replace(/"/g, '') + '"\r\ncd /d "' + projectDir + '"\r\nnpx http-server -p 8080 -c-1\r\n', 'utf-8');
             const { exec: execBg } = require('child_process');
             execBg('start /B "" "' + serveScript + '"', { shell: 'cmd.exe', windowsHide: true, env: { ...process.env, PATH: getAugmentedPath() } });
             allCommandsRun.push({ cmd: 'npx http-server -p 8080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
+            sendEvent('command_result', { cmd: 'npx http-server -p 8080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
+            serveUrl = 'http://localhost:8080';
+            // Auto-open browser
+            try { execBg('start http://localhost:8080', { shell: 'cmd.exe', windowsHide: true }); } catch {}
           } catch (e: any) {
-            console.error('[AutoServe] Failed to start http-server:', e.message);
+            console.error('[AutoServe] Failed:', e.message);
           }
         }
       }
 
-      res.json({
+      // Final done event
+      sendEvent('done', {
         role: 'orchestrator',
         content: llmContent,
         model: usedModel.name,
@@ -697,17 +759,20 @@ export function createChatRoutes(pool: ApiPoolManager) {
           stderr: cmd.stderr,
           exitCode: cmd.exitCode,
         })),
-        codeExecutionDetail: { filesWritten, commandsRun: allCommandsRun, retries: totalRetries, projectDir },
+        codeExecutionDetail: { filesWritten, commandsRun: allCommandsRun, retries: totalRetries, projectDir, serveUrl },
         tools: [],
         agents: [],
       });
+      res.end();
     } catch (err: any) {
       console.error('[Chat] Error:', err.message);
       const statusCode = err.response?.status;
       if (statusCode && [401, 402, 403].includes(statusCode)) {
-        return res.status(statusCode).json({ error: 'API authentication/quota error: ' + err.message, role: 'error', content: 'All API keys exhausted.' });
+        sendEvent('error', { error: 'API authentication/quota error: ' + err.message });
+      } else {
+        sendEvent('error', { error: err.message });
       }
-      res.status(500).json({ error: err.message, role: 'error', content: err.message });
+      res.end();
     }
   });
 
