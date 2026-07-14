@@ -575,6 +575,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         projectPath: userProjectPath,
         orchestratorThinkingMode, agentThinkingMode,
         costEfficiencyRatio,
+        agentModelMap,
       } = req.body as {
         message?: string;
         modelId?: string;
@@ -585,6 +586,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         orchestratorThinkingMode?: 'auto' | 'none' | 'low' | 'medium' | 'high';
         agentThinkingMode?: 'auto' | 'none' | 'low' | 'medium' | 'high';
         costEfficiencyRatio?: number;
+        agentModelMap?: Record<string, string>;
       };
 
       if (!message && (!attachments || attachments.length === 0)) {
@@ -595,7 +597,16 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const projectDir = getProjectDir(threadId, userProjectPath ?? undefined);
       sendEvent('status', { status: 'starting', projectDir });
 
-      const resolved = resolveModel(pool, modelId);
+      // Resolve model - use agentModelMap for specific task types if available
+      let resolved = resolveModel(pool, modelId);
+      if (agentModelMap && Object.keys(agentModelMap).length > 0) {
+        // Try to find a model from agentModelMap for the 'general' task type
+        const generalModel = agentModelMap['general'];
+        if (generalModel) {
+          const mapped = resolveModel(pool, generalModel);
+          if (mapped) resolved = mapped;
+        }
+      }
       if (!resolved) {
         sendEvent('error', { error: 'No available models with active API keys. Add a provider and key first.' });
         return res.end();

@@ -1,4 +1,4 @@
-export interface Provider { id: string; name: string; baseUrl: string; type: string; icon?: string; apiKeys: ApiKeyEntry[]; models: Model[]; isLocal: boolean; }
+﻿export interface Provider { id: string; name: string; baseUrl: string; type: string; icon?: string; apiKeys: ApiKeyEntry[]; models: Model[]; isLocal: boolean; }
 export interface ApiKeyEntry { id: string; key: string; isActive: boolean; }
 export type ModelType = 'llm' | 'tts' | 'image' | 'video' | '3d' | 'stt' | 'multimodal';
 export interface Model { id: string; name: string; providerId: string; modelId: string; type: ModelType; capabilities: ModelCapabilityProfile; }
@@ -72,4 +72,8 @@ export interface TestProgress {
   current: number;
   total: number;
   scope: 'single' | 'provider' | 'all';
+}
+export interface AgentModelAssignment {
+  taskType: 'code' | 'agent' | 'chat' | 'general' | 'reasoning';
+  modelId: string;
 }

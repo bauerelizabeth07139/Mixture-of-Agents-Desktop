@@ -242,11 +242,12 @@ interface ChatMsg {
   agents?: Array<{ name: string; status: string; task: string; model: string }>;
 }
 // ...
-function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinking, agentThinking, setAgentThinking, modelId, setModelId, visible, onClose }: {
+function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinking, agentThinking, setAgentThinking, modelId, setModelId, agentModelMap, setAgentModelMap, visible, onClose }: {
   providers: Provider[]; ratio: number; setRatio: (v: number) => void;
   orchThinking: string; setOrchThinking: (v: any) => void;
   agentThinking: string; setAgentThinking: (v: any) => void;
   modelId: string; setModelId: (v: string) => void;
+  agentModelMap: Record<string, string>; setAgentModelMap: (v: Record<string, string>) => void;
   visible: boolean; onClose: () => void;
 }) {
   if (!visible) return null;
@@ -302,6 +303,24 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
         <CostEfficiencySlider value={ratio} onChange={setRatio} />
       </div>
       <div className="settings-section">
+        <div className="settings-section">
+          <div className="settings-section-title">🤖 子代理模型分配</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>为不同任务类型指定专用模型，未指定的使用全局模型</div>
+          {['code', 'reasoning', 'chat', 'general'].map(taskType => (
+            <div key={taskType} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 12, minWidth: 60, color: 'var(--text-secondary)' }}>
+                {taskType === 'code' ? '💻 代码' : taskType === 'reasoning' ? '🧠 推理' : taskType === 'chat' ? '💬 对话' : '📋 通用'}
+              </span>
+              <select value={agentModelMap[taskType] || ''} onChange={e => setAgentModelMap({ ...agentModelMap, [taskType]: e.target.value })}
+                style={{ flex: 1, fontSize: 11 }}>
+                <option value="">跟随全局模型</option>
+                {providers.flatMap(p => p.models.filter(m => m.type === 'llm').map(m => (
+                  <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name}</option>
+                )))}
+              </select>
+            </div>
+          ))}
+        </div>
           <div className="settings-section-title">系统状态</div>
           <div className="settings-row"><label>提供商</label><span>{providers.length}</span></div>
         <div className="settings-row"><label>已配置模型</label><span>{allModels.length}</span></div>
@@ -1115,6 +1134,7 @@ export default function App() {
   const [inputVal, setInputVal] = useState('');
   const [sending, setSending] = useState(false);
   const [modelId, setModelId] = useState('');
+  const [agentModelMap, setAgentModelMap] = useState<Record<string, string>>(() => { try { return JSON.parse(localStorage.getItem('moa-agent-models') || '{}'); } catch { return {}; } });
   const [orchThinking, setOrchThinking] = useState<'auto'|'low'|'medium'|'high'>('medium');
   const [agentThinking, setAgentThinking] = useState<'auto'|'low'|'medium'|'high'>('auto');
   const [ratio, setRatio] = useState(0.5);
@@ -1261,7 +1281,7 @@ export default function App() {
       const assistantId = (Date.now()+1).toString();
       setMessages(prev => [...prev, { id: assistantId, role: 'orchestrator', content: '⏳ 正在连接...', time: new Date().toLocaleTimeString('zh-CN'), _streaming: true }]);
 
-      const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, threadId: activeThreadId, projectPath: projectPath || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, history: chatHistory }) });
+      const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, threadId: activeThreadId, projectPath: projectPath || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, agentModelMap, history: chatHistory }) });
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -1464,7 +1484,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               </div>
             </div>
           </div>
-          <SettingsPanel providers={providers} ratio={ratio} setRatio={setRatio} orchThinking={orchThinking} setOrchThinking={setOrchThinking} agentThinking={agentThinking} setAgentThinking={setAgentThinking}
+          <SettingsPanel providers={providers} ratio={ratio} setRatio={setRatio} orchThinking={orchThinking} setOrchThinking={setOrchThinking} agentThinking={agentThinking} setAgentThinking={setAgentThinking} agentModelMap={agentModelMap} setAgentModelMap={setAgentModelMap}
             modelId={modelId} setModelId={setModelId} visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
       ) : (
