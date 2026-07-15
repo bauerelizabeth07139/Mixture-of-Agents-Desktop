@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 <a id='top'></a>
 
@@ -42,11 +42,12 @@ A full-featured AI development desktop environment with multi-model collaboratio
 
 ### 🤖 Multi-Model Collaborative Chat
 - **Orchestrator Model** analyzes tasks and dispatches sub-agents with different models
+- **Plan → Act → Observe → Replan** loop — same core as Claude Code / Codex
 - **Global thinking intensity**: Low / Medium / High / Auto (orchestrator decides for sub-agents)
 - Orchestrator and sub-agent thinking strength configured independently
-- **Context compression** — automatically condenses long conversation history
+- **Stateless verification sub-agents** check project completeness
+- **Context compression** — DeepSeek-style cache-friendly message formatting
 - Local conversation persistence with multi-thread management
-- DeepSeek-style cache-friendly message formatting for improved cache hit rates
 
 ### 📝 Code Editor (Integrated File Management)
 - **Monaco Editor** — the same engine powering VS Code
@@ -77,7 +78,7 @@ A full-featured AI development desktop environment with multi-model collaboratio
 - **15 Expert/Skill presets** — Pre-configured skill templates with custom content
 - All extensions: one-click add, test, enable/disable, and delete
 
-### ⚡ Agent Orchestration
+### 🏗 Agent Orchestration
 - Inspired by Claude Code, Codex, Trae, and open-source agents (OpenHands, Cline, OpenSpec)
 - Sub-agents can use **different models** for different task types
 - Task verification loop — orchestrator assigns sub-agents to check completion
@@ -106,7 +107,8 @@ git clone https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop.git
 cd Mixture-of-Agents-Desktop
 npm install
 npm run build:all
-npm run dist
+npx electron-builder --win dir
+# EXE in release/win-unpacked/
 ```
 
 ### Development Mode
@@ -117,7 +119,7 @@ npm run dev
 
 ---
 
-## 🖼 Screenshots
+## 📸 Screenshots
 
 | Chat | Providers | Models |
 |:----:|:---------:|:------:|
@@ -126,8 +128,8 @@ npm run dev
 
 | Testing | Editor | Extensions |
 |:-------:|:------:|:----------:|
-| 8-dimension model testing | Monaco Editor + File Tree | MCP + Skill servers |
-| Quick & Standard modes | Change highlighting | One-click setup |
+| 8-dimension model testing | Monaco code editor | MCP / Skill servers |
+| Multimodal detection | File tree + terminal | Expert library |
 
 ---
 
@@ -135,54 +137,50 @@ npm run dev
 
 ```
 Mixture-of-Agents-Desktop/
-├── frontend/                    # React + TypeScript + Vite
+├── frontend/                     # React + TypeScript + Vite
 │   ├── src/
-│   │   ├── App.tsx              # Main application (1500+ lines)
-│   │   ├── components/
-│   │   │   ├── Editor.tsx       # Monaco Editor + File Tree + Terminal
-│   │   │   ├── FileManager.tsx  # File operations UI
-│   │   │   └── Terminal.tsx     # xterm.js terminal
-│   │   ├── services/api.ts      # Backend API client
-│   │   └── types.ts             # TypeScript type definitions
-│   └── dist/                    # Built frontend assets
+│   │   ├── App.tsx               # Main application
+│   │   ├── components/           # Chat, Editor, FileTree, Terminal, Testing, Extensions
+│   │   ├── services/api.ts       # API client with SSE support
+│   │   └── types.ts
+│   ├── electron-main.cjs         # Electron main process
+│   └── dist/                     # Built frontend
 │
-├── backend/                     # Express.js + TypeScript
+├── backend/                      # Express.js + TypeScript
 │   ├── src/
-│   │   ├── index.ts             # Server entry point
-│   │   ├── providers/
-│   │   │   ├── api-pool.ts      # API key pool & concurrency control
-│   │   │   └── presets.ts       # 17 provider presets
-│   │   ├── routes/
-│   │   │   ├── chat.ts          # Chat endpoints (SSE streaming)
-│   │   │   ├── providers.ts     # Provider CRUD
-│   │   │   ├── models.ts        # Model management
-│   │   │   ├── testing.ts       # Model capability testing
-│   │   │   ├── coding.ts        # Code execution engine
-│   │   │   ├── projects.ts      # Project file operations
-│   │   │   └── extensions.ts    # MCP/Skill management
-│   │   └── services/
-│   │       ├── project-manager.ts
-│   │       ├── ws-manager.ts
-│   │       ├── coding-engine.ts
-│   │       └── extensions/
-│   │           ├── extension-manager.ts
-│   │           └── presets.ts   # 28 MCP + 27 Skill + 15 Expert
-│   └── public/                  # Static frontend files
+│   │   ├── index.ts              # Server entry point
+│   │   ├── providers/            # API pool + 17 presets
+│   │   ├── routes/               # REST + SSE endpoints
+│   │   └── services/             # LLM client, project service
+│   ├── public/                   # Static frontend files
+│   ├── data/                     # Runtime data
+│   └── dist/                     # Compiled TypeScript
 │
-├── electron/                    # Electron main process
-├── package.json
+├── package.json                  # Electron app config
+├── electron-builder.yml          # Build configuration
 └── README.md
 ```
 
-### Key Design Principles
+### Orchestration Flow
 
-| Principle | Description |
-|-----------|-------------|
-| **Orchestrator Pattern** | Macro model analyzes tasks and dispatches sub-agents |
-| **API Pool** | Round-robin key rotation, max 80 concurrent/key, auto-failover |
-| **Cache Optimization** | DeepSeek-style formatting for improved API cache hit rates |
-| **Context Compression** | Automatic history condensation to prevent overflow |
-| **Real-time Sync** | WebSocket-based live updates from backend to frontend |
+```
+User Message
+    ↓
+┌─────────────────────────────────────────┐
+│  1. THINK — Orchestrator creates plan   │
+│  2. ACT — Write files, run commands     │
+│  3. OBSERVE — Check errors, verify      │
+│  4. FIX — If errors, generate fixes     │
+│  5. REPEAT (up to 12 rounds)            │
+└─────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────┐
+│  VERIFY — Stateless sub-agent checks    │
+│  project completeness & correctness     │
+└─────────────────────────────────────────┘
+    ↓
+Done → Auto-serve & open browser
+```
 
 ---
 
@@ -190,55 +188,47 @@ Mixture-of-Agents-Desktop/
 
 ### MCP Servers (28 presets)
 
-| Category | Servers |
-|----------|---------|
-| 🔧 **Tools** | Filesystem, GitHub, Git, Fetch, Everything |
-| 🔍 **Search** | Brave Search, Exa, Google Maps |
-| 🗄️ **Database** | PostgreSQL, MySQL, SQLite, Redis |
-| 📊 **Data** | Pandoc, Excel, CSV |
-| 🎨 **Creative** | Replicate, Figma, Puppeteer |
-| 🤖 **AI** | OpenAI, Context7 |
-| ☁️ **Cloud** | AWS S3, Cloudflare, Linear |
-| 📱 **Social** | Discord, Slack, Twitter |
+| Category | Examples |
+|----------|----------|
+| **Filesystem** | File read/write, directory traversal |
+| **Code** | GitHub integration, code search |
+| **Database** | SQLite, PostgreSQL, Redis |
+| **Search** | Web search, document retrieval |
+| **AI Tools** | Image generation, TTS, STT |
 
 ### Skill Servers (27 presets)
 
-Pre-configured skill execution environments for web automation, data analysis, system administration, code review, and more.
+Independent skill execution environments covering web automation, data analysis, system management, code review, and more.
 
 ### Expert Library (15 presets)
 
-Ready-to-use expert configurations for common development workflows.
+Pre-configured expert knowledge templates for common development workflows.
 
 ---
 
 ## 🧪 Model Testing
 
-### Testing Dimensions
+### Test Dimensions
 
-| Dimension | What It Tests |
-|-----------|---------------|
-| 💻 **Coding** | Algorithm implementation, data structures |
-| 🧠 **Reasoning** | Logical deduction, multi-step reasoning |
-| 🔢 **Math** | Mathematical computation, proofs |
-| ✍️ **Creative Writing** | Format adherence, creative constraints |
-| 📋 **Instruction Following** | Complex instruction compliance |
-| 🔧 **Tool Use** | API calls, structured output |
-| 🌍 **Multilingual** | Cross-language understanding |
-| 📚 **Context Handling** | Long-context retention, multi-turn |
+| Dimension | Icon | Content |
+|-----------|------|---------|
+| **Coding** | 💻 | Algorithm implementation, data structures |
+| **Reasoning** | 🧠 | Logical reasoning, multi-step deduction |
+| **Math** | 🔢 | Mathematical computation, proofs |
+| **Creative Writing** | ✍️ | Format compliance, creative constraints |
+| **Instruction Following** | 📋 | Complex instruction adherence |
+| **Tool Use** | 🛠️ | API calls, structured output |
+| **Multilingual** | 🌐 | Cross-language understanding |
+| **Context** | 📚 | Long context retention, multi-turn dialogue |
 
 ### Scoring System
 
-- **10-point scale** per dimension, 80 points total
-- Time-based linear scoring: ≤50% of limit = 10 points, linear decay to 2 points at limit
-- **Quick test**: 3-minute limit per question
-- **Standard test**: 12-minute limit per question (harder problems)
-- **Correctness coefficient**: Multi-pattern regex matching with partial credit
-
-### Multimodal Detection
-
-- **Visual**: Sends test image via API, detects image understanding
-- **Audio**: Sends test audio via API, detects audio comprehension
-- Tags: `🖼️ Vision` / `🎵 Audio` / `🔊 Speech`
+- Each dimension: **10 points** (2 questions × 5 points each)
+- **Time-based linear scoring**: ≤50% of time limit = 5 points, linear decay to 2 points at time limit
+- **Correctness coefficient**: multi-regex matching with partial credit
+- **Quick test**: 3 minutes per question
+- **Standard test**: 12 minutes per question, higher difficulty
+- **Multimodal detection**: automatic vision/audio capability tagging
 
 ---
 
@@ -246,17 +236,17 @@ Ready-to-use expert configurations for common development workflows.
 
 | Feature | Description |
 |---------|-------------|
-| **Monaco Engine** | VS Code's editor with full IntelliSense |
+| **Monaco Engine** | VS Code editor, full IntelliSense |
 | **File Tree** | Browse, create, rename, delete files and folders |
 | **Smart Templates** | Auto-fill templates for 14 languages |
 | **Change Highlighting** | Visual markers on modified lines |
-| **Command Bar** | Execute shell commands in workspace |
-| **One-Click Run** | Run any supported file with a button |
+| **Command Bar** | Execute shell commands from the workspace |
+| **One-Click Run** | Run any supported file instantly |
 | **Project Selector** | Choose any directory as workspace root |
 
 ---
 
-## 💻 Supported Languages
+## 📝 Supported Languages
 
 | Language | Extension | Runner |
 |----------|-----------|--------|
@@ -270,7 +260,7 @@ Ready-to-use expert configurations for common development workflows.
 | Java | `.java` | `javac` → `java` |
 | Ruby | `.rb` | `ruby` |
 | Shell | `.sh` | `bash` |
-| HTML | `.html` | Browser open |
+| HTML | `.html` | Browser |
 | CSS | `.css` | — |
 | JSON | `.json` | — |
 | Markdown | `.md` | — |
@@ -285,13 +275,13 @@ Ready-to-use expert configurations for common development workflows.
 |----------|---------|-------------|
 | `PORT` | `3001` | Backend server port |
 
-### Key Pool Behavior
+### API Key Pool
 
 - **Deduplication** — duplicate keys automatically removed
-- **Max concurrency** — 80 concurrent requests per key
+- **Concurrency limit** — max 80 concurrent requests per key
 - **Auto-rotation** — switches to next key when limit reached
-- **Invalid key removal** — 401/403 keys removed from pool
-- **Balance-based ordering** — keys with remaining balance prioritized
+- **Failover** — 401/403 keys automatically removed from pool
+- **Balance sorting** — keys with remaining quota used first
 
 ---
 
@@ -303,15 +293,6 @@ Ready-to-use expert configurations for common development workflows.
 - npm 9+
 - Windows x64
 
-### Commands
-
-```bash
-npm install           # Install dependencies
-npm run build:all     # Build frontend + backend
-npm run dev           # Development mode
-npm run dist          # Package as EXE
-```
-
 ### Tech Stack
 
 | Layer | Technology |
@@ -319,25 +300,33 @@ npm run dist          # Package as EXE
 | Frontend | React 18, TypeScript 5, Vite, Monaco Editor, xterm.js |
 | Backend | Express.js, TypeScript, WebSocket (ws), Node.js |
 | Desktop | Electron 28 |
-| Styling | CSS Variables, Dark/Light Theme |
+| Styling | CSS Variables, dark/light themes |
 | State | React Hooks, localStorage persistence |
+
+### Build Commands
+
+```bash
+npm install           # Install dependencies
+npm run build:all     # Build frontend + backend
+npm run dev           # Development mode
+npx electron-builder --win dir  # Package as EXE
+```
 
 ---
 
 ## 📋 Changelog
 
 ### v1.0.0 (Latest)
-
 - ✅ Multi-model collaborative chat with orchestrator
 - ✅ 17 preset providers with API pool management
-- ✅ Monaco-based code editor with file tree
+- ✅ Monaco editor + file management
 - ✅ 14-language code execution engine
 - ✅ 8-dimension model capability testing (10-point scale)
 - ✅ 28 MCP + 27 Skill + 15 Expert presets
 - ✅ Multimodal detection (Vision / Audio)
-- ✅ Context compression and cache optimization
-- ✅ Dark/Light theme support
-- ✅ Portable and Installer EXE packaging
+- ✅ Context compression & cache optimization
+- ✅ Dark / Light theme toggle
+- ✅ Portable and installer EXE packaging
 
 ---
 
@@ -349,20 +338,27 @@ MIT License © 2025
 
 <div align="center">
 
-**For the Web version → [Mixture-of-Agents](https://github.com/bauerelizabeth07139/Mixture-of-Agents)**
+**Web version → [Mixture-of-Agents](https://github.com/bauerelizabeth07139/Mixture-of-Agents)**
 
 </div>
 
 ---
 ---
 
-<a id="chinese-doc"></a>`n`n# 中文文档
-
-<div align="center">
+<a id="chinese-doc"></a>
 
 # ⚛️ Mixture of Agents — Desktop
 
 ### 基于 Claude Code 架构的多模型智能代理桌面系统
+
+<div align="center">
+
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue?style=for-the-badge)
+![Electron](https://img.shields.io/badge/electron-28-47848f?style=for-the-badge)
+![Node](https://img.shields.io/badge/node.js-20+-339933?style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge)
+![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 
 </div>
 
@@ -374,7 +370,7 @@ MIT License © 2025
 
 - [核心特性](#-核心特性)
 - [快速开始](#-快速开始)
-- [界面预览](#-界面预览)
+- [截图预览](#-截图预览)
 - [架构说明](#-架构说明)
 - [扩展系统](#-扩展系统)
 - [模型能力测试](#-模型能力测试)
@@ -390,47 +386,48 @@ MIT License © 2025
 ## ✨ 核心特性
 
 ### 🤖 多模型协作对话
-- **宏观调控模型**分析任务，自动分配子代理执行
-- **全局思考强度**：低 / 中 / 高 / 自动（由宏观模型决定子代理思考强度）
+- **宏观调控模型** 分析任务，制定分步计划，分配子代理执行
+- **计划→执行→观察→重规划** 循环 —— 与 Claude Code / Codex 核心一致
+- **全局思考强度**：低 / 中 / 高 / 自动（由宏观模型决定子代理强度）
 - 调控模型和子代理思考强度独立配置
-- **上下文压缩**，长对话自动精简历史
-- 对话历史本地持久化，支持多线程管理
-- DeepSeek 风格的缓存友好消息格式，提高 API 缓存命中率
+- **无记忆验证代理** 检查项目完整性
+- **上下文压缩** —— DeepSeek 风格缓存友好消息格式
+- 本地对话持久化，多线程管理
 
 ### 📝 代码编辑器（集成文件管理）
-- **Monaco Editor** — VS Code 同款编辑器引擎
-- 内置文件树浏览器，支持右键菜单（新建、重命名、删除）
-- **项目目录选择器**，自由选择工作区位置
-- **智能文件创建**，新建文件时自动补全后缀
-- **改动行高亮**，编辑时实时标记修改的行
-- 底部命令栏，直接在工作区执行 shell 命令
-- 一键运行文件，支持 14+ 种语言
+- **Monaco 编辑器** —— 与 VS Code 相同的编辑引擎
+- 内置文件树，右键菜单（新建/重命名/删除）
+- **项目目录选择器** —— 选择任意工作区位置
+- **智能文件创建** —— 自动追加正确的文件扩展名
+- **改动高亮** —— 修改行的实时可视化标记
+- 底部命令栏，支持 shell 命令执行与历史
+- 一键运行，支持 14+ 种语言
 
-### 🔌 模型提供商管理
-- **17 个预设提供商**：OpenAI、DeepSeek、智谱 AI、月之暗面、硅基流动、阶跃星辰、火山引擎、MiniMax、通义千问、百度千帆、讯飞星火、百川智能、零一万物、腾讯混元、小米 MiMo、Anthropic、Local/Ollama
-- 每个提供商最多支持 50 个 API Key，自动轮询和故障转移
-- **API 池并发控制** — 单密钥最大 80 并发
-- 429/401/403 速率限制处理，密钥池自动管理
-- 一键获取模型列表，自动探测模型能力（视觉/音频/多模态）
-- 自定义提供商支持（任意 OpenAI 兼容 API）
+### 🔌 提供商与模型管理
+- **17 个预设提供商**：OpenAI、DeepSeek、智谱AI、Moonshot、SiliconFlow、StepFun、火山引擎、MiniMax、通义千问、百度、讯飞、百川、零一万物、腾讯、MiMo、Anthropic、本地/Ollama
+- 每个提供商最多 50 个 API 密钥，自动轮换与故障转移
+- **API 池并发控制** —— 单密钥最大 80 并发
+- 429/401/403 速率限制自动处理
+- 一键获取模型列表并自动探测能力（视觉/音频/多模态）
+- 自定义提供商支持（任何 OpenAI 兼容 API）
 
 ### 🧪 模型能力测试
-- **快速测试**（~3 分钟）和**标准测试**（~12 分钟）
-- 8 个维度：编码、推理、数学、创意写作、指令遵循、工具使用、多语言、上下文处理
+- **快速测试**（~3 分钟）和 **标准测试**（~12 分钟）
+- 8 个维度：编码、推理、数学、创意写作、指令遵循、工具使用、多语言、上下文
 - **10 分制评分**，线性时间拟合 + 正确系数
-- 自动多模态检测（视觉/音频），通过 API 测试
+- 自动多模态检测（视觉 / 音频）
 
 ### 🧩 扩展系统
-- **28 个 MCP 服务器预设** — 文件系统、GitHub、数据库、搜索、AI 工具等
-- **27 个技能服务器预设** — 独立技能执行环境（stdio / HTTP）
-- **15 个专家库预设** — 预配置技能模板
-- 所有扩展支持一键添加、测试、启用/禁用、删除
+- **28 个 MCP 服务器**预设（文件系统、GitHub、数据库、搜索、AI 工具等）
+- **27 个技能服务器**预设（独立技能执行环境）
+- **15 个专家库**预设（预配置技能模板）
+- 所有扩展：一键添加、测试、启用/禁用、删除
 
-### ⚡ 智能体编排
-- 参考 Claude Code、Codex、Trae 及开源智能体（OpenHands、Cline、OpenSpec）
-- 子代理可使用**不同模型**执行不同任务
-- 任务验证循环 — 调控模型分配子代理检查任务完成情况
-- 自动错误恢复和重试逻辑
+### 🏗 智能代理编排
+- 参考 Claude Code、Codex、Trae、OpenHands、Cline、OpenSpec 设计
+- 子代理可使用 **不同模型** 执行不同任务类型
+- 任务验证循环 —— 调控模型分配无记忆子代理检查完成度
+- 自动错误恢复与重试
 
 ---
 
@@ -438,14 +435,14 @@ MIT License © 2025
 
 ### 方式一：下载便携版（推荐）
 
-1. 前往 [Releases](../../releases) 下载最新版本
+1. 前往 [Releases](../../releases) 下载最新 Windows x64 包
 2. 解压后运行 `Mixture of Agents.exe`
-3. 无需安装任何依赖
+3. 无需安装
 
 ### 方式二：下载安装版
 
 1. 下载 `Mixture of Agents Setup 1.0.0.exe`
-2. 运行安装程序，按提示完成安装
+2. 运行安装程序，按提示操作
 3. 从开始菜单启动
 
 ### 方式三：从源码构建
@@ -455,7 +452,8 @@ git clone https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop.git
 cd Mixture-of-Agents-Desktop
 npm install
 npm run build:all
-npm run dist
+npx electron-builder --win dir
+# EXE 位于 release/win-unpacked/
 ```
 
 ### 开发模式
@@ -466,17 +464,17 @@ npm run dev
 
 ---
 
-## 🖼 界面预览
+## 📸 截图预览
 
 | 对话 | 提供商 | 模型 |
 |:----:|:------:|:----:|
 | 多模型协作对话 | 17+ 预设提供商 | 模型能力总览 |
-| 宏观调控智能调度 | 自动探测模型能力 | 10 分制测试评分 |
+| 调控模型分配子代理 | 自动模型检测 | 10 分制测试评分 |
 
 | 测试 | 编辑器 | 扩展 |
 |:----:|:------:|:----:|
-| 8 维度模型测试 | Monaco 编辑器 + 文件树 | MCP + Skill 服务器 |
-| 快速/标准模式 | 改动行高亮 | 一键配置 |
+| 8 维度模型测试 | Monaco 代码编辑器 | MCP / 技能服务器 |
+| 多模态检测 | 文件树 + 终端 | 专家库 |
 
 ---
 
@@ -484,54 +482,49 @@ npm run dev
 
 ```
 Mixture-of-Agents-Desktop/
-├── frontend/                    # React + TypeScript + Vite
+├── frontend/                     # React + TypeScript + Vite
 │   ├── src/
-│   │   ├── App.tsx              # 主应用（1500+ 行）
-│   │   ├── components/
-│   │   │   ├── Editor.tsx       # Monaco 编辑器 + 文件树 + 终端
-│   │   │   ├── FileManager.tsx  # 文件操作界面
-│   │   │   └── Terminal.tsx     # xterm.js 终端
-│   │   ├── services/api.ts      # 后端 API 客户端
-│   │   └── types.ts             # TypeScript 类型定义
-│   └── dist/                    # 构建产物
+│   │   ├── App.tsx               # 主应用
+│   │   ├── components/           # 聊天、编辑器、文件树、终端、测试、扩展
+│   │   ├── services/api.ts       # API 客户端（支持 SSE）
+│   │   └── types.ts
+│   ├── electron-main.cjs         # Electron 主进程
+│   └── dist/                     # 构建产物
 │
-├── backend/                     # Express.js + TypeScript
+├── backend/                      # Express.js + TypeScript
 │   ├── src/
-│   │   ├── index.ts             # 服务入口
-│   │   ├── providers/
-│   │   │   ├── api-pool.ts      # API 密钥池 & 并发控制
-│   │   │   └── presets.ts       # 17 个提供商预设
-│   │   ├── routes/
-│   │   │   ├── chat.ts          # 对话端点（SSE 流式）
-│   │   │   ├── providers.ts     # 提供商管理
-│   │   │   ├── models.ts        # 模型管理
-│   │   │   ├── testing.ts       # 模型能力测试
-│   │   │   ├── coding.ts        # 代码执行引擎
-│   │   │   ├── projects.ts      # 项目文件操作
-│   │   │   └── extensions.ts    # MCP/Skill 管理
-│   │   └── services/
-│   │       ├── project-manager.ts
-│   │       ├── ws-manager.ts
-│   │       ├── coding-engine.ts
-│   │       └── extensions/
-│   │           ├── extension-manager.ts
-│   │           └── presets.ts   # 28 MCP + 27 Skill + 15 专家
-│   └── public/                  # 静态前端文件
+│   │   ├── index.ts              # 服务入口
+│   │   ├── providers/            # API 池 + 17 个预设
+│   │   ├── routes/               # REST + SSE 端点
+│   │   └── services/             # LLM 客户端、项目服务
+│   ├── public/                   # 静态前端文件
+│   ├── data/                     # 运行时数据
+│   └── dist/                     # 编译后的 TypeScript
 │
-├── electron/                    # Electron 主进程
-├── package.json
+├── package.json                  # Electron 应用配置
+├── electron-builder.yml          # 打包配置
 └── README.md
 ```
 
-### 核心设计原则
+### 编排流程
 
-| 原则 | 描述 |
-|------|------|
-| **调控模式** | 宏观模型分析任务并分配子代理 |
-| **API 池** | 密钥轮询，单密钥最大 80 并发，自动故障转移 |
-| **缓存优化** | DeepSeek 风格格式化，提高 API 缓存命中率 |
-| **上下文压缩** | 自动精简历史，防止上下文溢出 |
-| **实时同步** | 基于 WebSocket 的前后端实时通信 |
+```
+用户消息
+    ↓
+┌─────────────────────────────────────────┐
+│  1. 思考 — 调控模型创建计划              │
+│  2. 执行 — 写入文件、运行命令             │
+│  3. 观察 — 检查错误、验证结果             │
+│  4. 修复 — 有错误则生成修复方案           │
+│  5. 重复（最多 12 轮）                   │
+└─────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────┐
+│  验证 — 无记忆子代理检查项目完整性        │
+└─────────────────────────────────────────┘
+    ↓
+完成 → 自动启动服务器并打开浏览器
+```
 
 ---
 
@@ -539,16 +532,13 @@ Mixture-of-Agents-Desktop/
 
 ### MCP 服务器（28 个预设）
 
-| 类别 | 服务器 |
-|------|--------|
-| 🔧 **工具** | Filesystem、GitHub、Git、Fetch、Everything |
-| 🔍 **搜索** | Brave Search、Exa、Google Maps |
-| 🗄️ **数据库** | PostgreSQL、MySQL、SQLite、Redis |
-| 📊 **数据** | Pandoc、Excel、CSV |
-| 🎨 **创意** | Replicate、Figma、Puppeteer |
-| 🤖 **AI** | OpenAI、Context7 |
-| ☁️ **云服务** | AWS S3、Cloudflare、Linear |
-| 📱 **社交** | Discord、Slack、Twitter |
+| 类别 | 示例 |
+|------|------|
+| **文件系统** | 文件读写、目录遍历 |
+| **代码** | GitHub 集成、代码搜索 |
+| **数据库** | SQLite、PostgreSQL、Redis |
+| **搜索** | 网络搜索、文档检索 |
+| **AI 工具** | 图像生成、TTS、STT |
 
 ### 技能服务器（27 个预设）
 
@@ -556,7 +546,7 @@ Mixture-of-Agents-Desktop/
 
 ### 专家库（15 个预设）
 
-常用开发工作流的即用型专家配置。
+常用开发工作流的即用型专家知识模板。
 
 ---
 
@@ -564,30 +554,25 @@ Mixture-of-Agents-Desktop/
 
 ### 测试维度
 
-| 维度 | 测试内容 |
-|------|----------|
-| 💻 **编码** | 算法实现、数据结构 |
-| 🧠 **推理** | 逻辑推理、多步推理 |
-| 🔢 **数学** | 数学计算、证明 |
-| ✍️ **创意写作** | 格式遵循、创意约束 |
-| 📋 **指令遵循** | 复杂指令遵从 |
-| 🔧 **工具使用** | API 调用、结构化输出 |
-| 🌍 **多语言** | 跨语言理解 |
-| 📚 **上下文处理** | 长上下文保持、多轮对话 |
+| 维度 | 图标 | 内容 |
+|------|------|------|
+| **编码** | 💻 | 算法实现、数据结构 |
+| **推理** | 🧠 | 逻辑推理、多步推导 |
+| **数学** | 🔢 | 数学计算、证明 |
+| **创意写作** | ✍️ | 格式遵循、创意约束 |
+| **指令遵循** | 📋 | 复杂指令遵从 |
+| **工具使用** | 🛠️ | API 调用、结构化输出 |
+| **多语言** | 🌐 | 跨语言理解 |
+| **上下文** | 📚 | 长上下文保持、多轮对话 |
 
 ### 评分系统
 
 - 每个维度 **10 分制**，总分 80 分
-- 线性时间评分：≤50% 时间 = 10 分，线性递减至上限时 2 分
+- **线性时间评分**：≤50% 时间 = 5 分，线性递减至上限时 2 分
+- **正确系数**：多模式正则匹配，支持部分得分
 - **快速测试**：每题上限 3 分钟
 - **标准测试**：每题上限 12 分钟（难度更高）
-- **正确系数**：多模式正则匹配，支持部分得分
-
-### 多模态检测
-
-- **视觉**：通过 API 传入测试图片，检测图像理解能力
-- **音频**：通过 API 传入测试音频，检测音频理解能力
-- 标签显示：`🖼️ 视觉` / `🎵 音频` / `🔊 语音`
+- **多模态检测**：自动视觉/音频能力标签
 
 ---
 
@@ -605,7 +590,7 @@ Mixture-of-Agents-Desktop/
 
 ---
 
-## 💻 支持语言
+## 📝 支持语言
 
 | 语言 | 扩展名 | 运行方式 |
 |------|--------|----------|
@@ -634,13 +619,13 @@ Mixture-of-Agents-Desktop/
 |------|--------|------|
 | `PORT` | `3001` | 后端服务端口 |
 
-### 密钥池行为
+### API 密钥池
 
-- **去重** — 重复密钥自动移除
-- **并发上限** — 单密钥最大 80 并发
-- **自动轮换** — 达到上限自动切换下一个密钥
-- **失效移除** — 401/403 密钥自动从池中移除
-- **余额排序** — 按剩余余额优先使用
+- **去重** —— 重复密钥自动移除
+- **并发上限** —— 单密钥最大 80 并发
+- **自动轮换** —— 达到上限自动切换下一个密钥
+- **故障转移** —— 401/403 密钥自动从池中移除
+- **余额排序** —— 按剩余余额优先使用
 
 ---
 
@@ -652,15 +637,6 @@ Mixture-of-Agents-Desktop/
 - npm 9+
 - Windows x64
 
-### 常用命令
-
-```bash
-npm install           # 安装依赖
-npm run build:all     # 构建前后端
-npm run dev           # 开发模式
-npm run dist          # 打包为 EXE
-```
-
 ### 技术栈
 
 | 层级 | 技术 |
@@ -671,15 +647,23 @@ npm run dist          # 打包为 EXE
 | 样式 | CSS Variables、深色/浅色主题 |
 | 状态 | React Hooks、localStorage 持久化 |
 
+### 构建命令
+
+```bash
+npm install           # 安装依赖
+npm run build:all     # 构建前后端
+npm run dev           # 开发模式
+npx electron-builder --win dir  # 打包为 EXE
+```
+
 ---
 
 ## 📋 更新日志
 
 ### v1.0.0（最新）
-
 - ✅ 多模型协作对话，宏观调控智能调度
 - ✅ 17 个预设提供商，API 池管理
-- ✅ Monaco 编辑器 + 文件树
+- ✅ Monaco 编辑器 + 文件管理
 - ✅ 14 种语言代码执行引擎
 - ✅ 8 维度模型能力测试（10 分制）
 - ✅ 28 MCP + 27 Skill + 15 专家预设
