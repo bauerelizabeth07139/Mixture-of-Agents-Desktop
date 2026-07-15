@@ -795,10 +795,17 @@ export function createChatRoutes(pool: ApiPoolManager) {
       let currentDir = projectDir;
 
 
-      // Determine verification frequency based on thinking strength
-      // high = verify after EVERY step (strict), medium = verify after EVERY step (standard), low = verify only at end
-      const verifyFrequency: 'every_step' | 'end_only' = (orchestratorThinkingMode === 'high') ? 'every_step' : (orchestratorThinkingMode === 'medium' || !orchestratorThinkingMode) ? 'every_step' : 'end_only';
-      const verifyStrictness: 'none' | 'low' | 'medium' | 'high' = (orchestratorThinkingMode === 'high') ? 'low' : 'none';
+      // Determine verification frequency and fix depth based on thinking strength
+      // high: verify every step, verify thinks, fix uses high thinking, reads full file content
+      // medium: verify every step, verify is quick, fix uses original thinking, reads partial file content  
+      // low: verify only at end, verify is quick, fix uses original thinking, reads partial file content
+      const isHighStrict = orchestratorThinkingMode === 'high';
+      const isMediumStrict = orchestratorThinkingMode === 'medium' || !orchestratorThinkingMode;
+      const verifyFrequency: 'every_step' | 'end_only' = (isHighStrict || isMediumStrict) ? 'every_step' : 'end_only';
+      const verifyThinkingEffort: 'none' | 'low' | 'medium' | 'high' = isHighStrict ? 'low' : 'none';
+      const fixThinkingEffort: 'none' | 'low' | 'medium' | 'high' = isHighStrict ? 'high' : isMediumStrict ? (thinkingEffort as any || 'medium') : (thinkingEffort as any || 'none');
+      const fileReadLimit: number = isHighStrict ? 5000 : isMediumStrict ? 3000 : 1500;
+      const verifyMaxTokens: number = isHighStrict ? 2048 : isMediumStrict ? 1024 : 256;
 
       // === PLAN->ACT->OBSERVE->REPLAN LOOP ===
       const MAX_PLAN_ROUNDS = 8;
@@ -859,27 +866,34 @@ export function createChatRoutes(pool: ApiPoolManager) {
         // Verify after each step if high/medium strictness
         if (verifyFrequency === 'every_step' && filesWritten.length > 0) {
           try {
-            sendEvent('status', { status: 'verifying', round: planRound, description: 'Step verification...' });
+            sendEvent('status', { status: 'verifying', round: planRound, description: isHighStrict ? 'Deep step verification...' : 'Quick step verification...' });
             const projectFiles: string[] = [];
             for (const wp of filesWritten.map(f => f.path)) {
-              try { const c = fs.readFileSync(wp, 'utf-8'); projectFiles.push(path.basename(wp) + ' (' + c.length + 'b)'); } catch {}
+              try { 
+                const c = fs.readFileSync(wp, 'utf-8'); 
+                const contentPreview = isHighStrict ? c.substring(0, fileReadLimit) : c.substring(0, fileReadLimit);
+                projectFiles.push('--- FILE: ' + path.basename(wp) + ' (' + c.length + ' bytes) ---\n' + contentPreview);
+              } catch {}
             }
-            const verifyPrompt = 'Check if this project is complete. Files: ' + projectFiles.join(', ') + '. Task: ' + (message || 'unknown') + '. Reply JSON: {"passed":true/false,"issues":[]}';
+            const verifyChecklist = isHighStrict 
+              ? 'CHECK CAREFULLY:\n1. Do ALL HTML files reference ONLY files that exist?\n2. Are there any missing CSS/JS files?\n3. Does the project contain ALL ' + (message || 'requested') + '?\n4. Are files complete (no placeholders, no TODOs, no truncated code)?\n5. Would this project actually work if opened in a browser?'
+              : 'Quick check: Are all referenced files present? Is the project complete?';
+            const verifyPrompt = 'You are a ' + (isHighStrict ? 'STRICT' : 'quick') + ' verification agent. Check if this project is complete.\n\nOriginal task: ' + (message || 'unknown') + '\n\nFiles:\n' + projectFiles.join('\n\n') + '\n\n' + verifyChecklist + '\n\nReply JSON: {"passed":true/false,"issues":[]}';
             const vResolved = resolveModel(pool, modelId);
             if (vResolved) {
               const vResp = await chatWithKeyRotation(pool, vResolved, [
-                { role: 'system', content: 'You are a quick verification agent. Reply only with JSON {"passed":bool,"issues":[]}. Check if all files exist and reference each other correctly.' },
+                { role: 'system', content: isHighStrict ? 'You are a STRICT verification agent. Read each file carefully. Check references, completeness, and functionality. Reply only with JSON {"passed":bool,"issues":[]}.' : 'Quick verification. Reply JSON {"passed":bool,"issues":[]}.' },
                 { role: 'user', content: verifyPrompt },
-              ], { thinkingEffort: verifyStrictness as any, temperature: 0.1, maxTokens: 256 });
+              ], { thinkingEffort: verifyThinkingEffort as any, temperature: 0.1, maxTokens: verifyMaxTokens });
               let vResult: any;
               try { vResult = JSON.parse(vResp.response.content); } catch { vResult = { passed: true }; }
-              sendEvent('verification_result', { round: planRound, passed: vResult.passed, issues: vResult.issues || [] });
+              sendEvent('verification_result', { round: planRound, passed: vResult.passed, issues: vResult.issues || [], strictness: isHighStrict ? 'high' : 'medium' });
               if (!vResult.passed && vResult.issues?.length > 0) {
-                sendEvent('status', { status: 'fixing_verification', issues: vResult.issues });
-                const fixCtx = 'VERIFICATION FAILED:\n' + vResult.issues.join('\n') + '\nFix all issues now.';
+                sendEvent('status', { status: 'fixing_verification', issues: vResult.issues, strictness: isHighStrict ? 'deep_fix' : 'quick_fix' });
+                const fixCtx = (isHighStrict ? 'STRICT VERIFICATION FAILED. You MUST fix every issue:\n' : 'Verification issues:\n') + vResult.issues.join('\n') + '\n\n' + (isHighStrict ? 'Fix ALL issues thoroughly. Generate complete corrected files. Do NOT leave any issues unfixed.' : 'Fix these issues.');
                 const fixMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: fixCtx }];
                 try {
-                  const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMsgs, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
+                  const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMsgs, { thinkingEffort: fixThinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
                   sendEvent('fix_response', { attempt: totalRetries + 1, content: fixResp.content });
                   planContent = fixResp.content;
                   continue;
@@ -922,7 +936,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         for (const wp of writtenPaths) {
           try {
             const content = fs.readFileSync(wp, 'utf-8');
-            projectFiles.push('--- FILE: ' + path.basename(wp) + ' (' + content.length + ' bytes) ---\n' + content.substring(0, 3000));
+            projectFiles.push('--- FILE: ' + path.basename(wp) + ' (' + content.length + ' bytes) ---\n' + content.substring(0, fileReadLimit));
           } catch {}
         }
         
@@ -943,7 +957,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
           const verifyResp = await chatWithKeyRotation(pool, verifyResolved, [
             { role: 'system', content: 'You are a verification agent. Check if the generated project is complete and correct. Reply only with JSON.' },
             { role: 'user', content: verifyPrompt },
-          ], { thinkingEffort: verifyStrictness as any, temperature: 0.1, maxTokens: 1024 });
+          ], { thinkingEffort: verifyThinkingEffort as any, temperature: 0.1, maxTokens: verifyMaxTokens });
           
           let verification: any;
           try { verification = JSON.parse(verifyResp.response.content); } catch { verification = { passed: true, issues: [] }; }
@@ -956,7 +970,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
             const fixContext = 'VERIFICATION FAILED. Issues found:\n' + verification.issues.join('\n') + '\n\nMissing files: ' + (verification.missing_files || []).join(', ') + '\n\nFix ALL issues now. Generate the missing files and correct any problems.';
             const fixMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: fixContext }];
             try {
-              const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMsgs, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
+              const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMsgs, { thinkingEffort: fixThinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
               sendEvent('fix_response', { attempt: totalRetries + 1, content: fixResp.content });
               // Write any new files from fix response
               const fixBlocks = extractCodeBlocks(fixResp.content);
