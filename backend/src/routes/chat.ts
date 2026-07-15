@@ -612,10 +612,15 @@ export function createChatRoutes(pool: ApiPoolManager) {
       // Resolve model - use agentModelMap for specific task types if available
       let resolved = resolveModel(pool, modelId);
       if (agentModelMap && Object.keys(agentModelMap).length > 0) {
-        // Try to find a model from agentModelMap for the 'general' task type
-        const generalModel = agentModelMap['general'];
-        if (generalModel) {
-          const mapped = resolveModel(pool, generalModel);
+        const preferredKeys = ['general', 'chat', 'code', 'reasoning'];
+        let chosen = '';
+        for (const k of preferredKeys) {
+          const v = agentModelMap[k];
+          if (v === '__follow__') { chosen = modelId || ''; break; }
+          if (v && v !== '') { chosen = v; break; }
+        }
+        if (chosen) {
+          const mapped = resolveModel(pool, chosen);
           if (mapped) resolved = mapped;
         }
       }
@@ -630,6 +635,19 @@ export function createChatRoutes(pool: ApiPoolManager) {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'system', content: 'Working directory: ' + projectDir + '\r\nPlatform: ' + process.platform + '\r\nNode.js: ' + process.version },
       ];
+
+            // Add agentModelMap info to system context
+      if (agentModelMap && Object.keys(agentModelMap).length > 0) {
+        const entries = Object.entries(agentModelMap);
+        const explicitMap = entries.filter(([_, v]) => v && v !== '');
+        const hasAutoDecision = entries.some(([_, v]) => !v);
+        const mapInfo = explicitMap.map(([k, v]) => `${k}: ${v === '__follow__' ? resolved.model.modelId : v}`).join(', ');
+        const parts: string[] = [];
+        if (mapInfo) parts.push('Explicit sub-agent model assignments: ' + mapInfo + '.');
+        if (hasAutoDecision) parts.push('For unassigned sub-task types, you (the orchestrator) must decide the best available model before dispatching the sub-agent.');
+        parts.push('Planning thinking intensity is bound to strictness: higher strictness means stricter verification before passing a step.');
+        messages.push({ role: 'system', content: parts.join(' ') });
+      }
 
       const compressedHistory = compressHistory(history || []);
       for (const msg of compressedHistory) messages.push({ role: msg.role, content: msg.content });

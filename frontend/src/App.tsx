@@ -306,15 +306,17 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
         <div className="settings-section">
           <div className="settings-section-title">🤖 子代理模型分配</div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>为不同任务类型指定专用模型，未指定的使用全局模型</div>
-          {['code', 'reasoning', 'chat', 'general'].map(taskType => (
+          <button className="btn btn-sm" style={{ marginBottom: 8 }} onClick={() => setAgentModelMap({})}>恢复默认（全部让全局模型决定）</button>
+          {['code', 'reasoning', 'chat', 'general', 'vision', 'tts', 'stt', 'image'].map(taskType => (
             <div key={taskType} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span style={{ fontSize: 12, minWidth: 60, color: 'var(--text-secondary)' }}>
-                {taskType === 'code' ? '💻 代码' : taskType === 'reasoning' ? '🧠 推理' : taskType === 'chat' ? '💬 对话' : '📋 通用'}
+                {taskType === 'code' ? '💻 代码' : taskType === 'reasoning' ? '🧠 推理' : taskType === 'chat' ? '💬 对话' : taskType === 'general' ? '📋 通用' : taskType === 'vision' ? '👁 视觉' : taskType === 'tts' ? '🔊 TTS' : taskType === 'stt' ? '🎤 STT' : '🎨 图像生成'}
               </span>
               <select value={agentModelMap[taskType] || ''} onChange={e => setAgentModelMap({ ...agentModelMap, [taskType]: e.target.value })}
                 style={{ flex: 1, fontSize: 11 }}>
-                <option value="">跟随全局模型</option>
-                {providers.flatMap(p => p.models.filter(m => m.type === 'llm').map(m => (
+                <option value="">🤖 让全局模型决定（默认）</option>
+                <option value="__follow__">📌 跟随当前全局模型</option>
+                {providers.flatMap(p => p.models.filter(m => { const t = m.type as string; return t === 'llm' || (taskType === 'vision' && (((m.capabilities?.visionScore || 0) > 0) || !!m.capabilities?.multimodal)) || (taskType === 'tts' && (t === 'tts' || t === 'llm')) || (taskType === 'stt' && (t === 'stt' || t === 'llm')) || (taskType === 'image' && (t === 'image' || t === 'llm')); }).map(m => (
                   <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name}</option>
                 )))}
               </select>
@@ -856,7 +858,7 @@ function ExtensionsPanel() {
       showFeedback('success', presetName + ' 安装成功！');
       await loadAll();
     } catch (err: any) {
-      showFeedback('error', '安装失败: ' + (err?.message || '未知错误'));
+      showFeedback('error', err?.name === 'AbortError' ? '已中止' : '安装失败: ' + (err?.message || '未知错误'));
     } finally {
       setInstalling(null);
     }
@@ -1133,8 +1135,11 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [inputVal, setInputVal] = useState('');
   const [sending, setSending] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const pendingRef = useRef<string>('');
   const [modelId, setModelId] = useState('');
-  const [agentModelMap, setAgentModelMap] = useState<Record<string, string>>(() => { try { return JSON.parse(localStorage.getItem('moa-agent-models') || '{}'); } catch { return {}; } });
+  const defaultAgentModelMap: Record<string, string> = {};
+  const [agentModelMap, setAgentModelMap] = useState<Record<string, string>>(() => { try { const saved = localStorage.getItem('moa-agent-models'); if (saved) { const parsed = JSON.parse(saved); return { ...defaultAgentModelMap, ...parsed }; } return defaultAgentModelMap; } catch { return defaultAgentModelMap; } });
   const [orchThinking, setOrchThinking] = useState<'auto'|'low'|'medium'|'high'>('medium');
   const [agentThinking, setAgentThinking] = useState<'auto'|'low'|'medium'|'high'>('auto');
   const [ratio, setRatio] = useState(0.5);
@@ -1240,7 +1245,9 @@ export default function App() {
 
   const handleSend = useCallback(async (overrideText?: string) => {
     const task = overrideText || inputVal.trim();
-    if ((!task && attachments.length === 0) || sending) return;
+    if (sending && !task && attachments.length === 0) { if (abortRef.current) { try { abortRef.current.abort(); } catch {} } return; }
+    if (!task && attachments.length === 0) return;
+    if (sending) { pendingRef.current = task; return; }
 
     // Auto-create thread if none active
     if (!activeThreadId) {
@@ -1281,7 +1288,9 @@ export default function App() {
       const assistantId = (Date.now()+1).toString();
       setMessages(prev => [...prev, { id: assistantId, role: 'orchestrator', content: '⏳ 正在连接...', time: new Date().toLocaleTimeString('zh-CN'), _streaming: true }]);
 
-      const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, threadId: activeThreadId, projectPath: projectPath || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, agentModelMap, history: chatHistory }) });
+      const controller = new AbortController();
+      abortRef.current = controller;
+      const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, threadId: activeThreadId, projectPath: projectPath || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, agentModelMap, history: chatHistory }), signal: controller.signal });
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -1331,8 +1340,10 @@ export default function App() {
         }));
       }
     } catch (err: any) {
+      if (err && err.name === 'AbortError') { setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'system', content: '已中止当前任务', time: new Date().toLocaleTimeString('zh-CN') }]); } else {
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'error', content: err.message || '请求失败，请检查API配置', time: new Date().toLocaleTimeString('zh-CN') }]);
-    } finally { setSending(false); }
+      }
+    } finally { abortRef.current = null; setSending(false); const pending = pendingRef.current; if (pending) { pendingRef.current = ''; setTimeout(() => setInputVal(pending), 0); } }
   }, [inputVal, attachments, modelId, orchThinking, agentThinking, ratio, providers, selectedModelSupportsVision, findVlmModel, sending]);
 
   // --- Thread management ---
@@ -1472,7 +1483,11 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
                 <div className="prompt-actions">
                   <button className="prompt-btn" onClick={() => fileInputRef.current?.click()} style={{ fontSize:18, fontWeight:700, color:'var(--accent)' }} title="上传文件">＋</button>
                   <button className="prompt-btn" onClick={() => setInputVal("")} style={{ fontSize:16, fontWeight:700 }} title="清空输入">✕</button>
-                  <button className="prompt-btn send" onClick={() => handleSend()} disabled={(!inputVal.trim() && attachments.length===0) || sending}>➤</button>
+                  {sending && !inputVal.trim() && attachments.length===0 ? (
+                    <button className="prompt-btn send" title="中止" onClick={() => handleSend()} style={{ background: "var(--error)" }}>■</button>
+                  ) : (
+                    <button className="prompt-btn send" title="发送" onClick={() => handleSend()} disabled={(!inputVal.trim() && attachments.length===0)}>➤</button>
+                  )}
                 </div>
               </div>
               <div className="prompt-meta">
