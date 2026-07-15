@@ -873,6 +873,70 @@ export function createChatRoutes(pool: ApiPoolManager) {
       }
       // === END PLAN LOOP ===
 
+      // === STATELESS VERIFICATION SUB-AGENT ===
+      // A fresh, memoryless agent checks the generated project for completeness
+      try {
+        sendEvent('status', { status: 'verifying', description: 'Verification agent checking project...' });
+        
+        // 1. Read all generated files
+        const projectFiles: string[] = [];
+        const writtenPaths = filesWritten.map(f => f.path);
+        for (const wp of writtenPaths) {
+          try {
+            const content = fs.readFileSync(wp, 'utf-8');
+            projectFiles.push('--- FILE: ' + path.basename(wp) + ' (' + content.length + ' bytes) ---\n' + content.substring(0, 3000));
+          } catch {}
+        }
+        
+        // 2. Build verification prompt for stateless sub-agent
+        const verifyPrompt = 'You are a VERIFICATION AGENT. You have NO memory of previous steps. You ONLY see the files below and must check if they form a COMPLETE, WORKING project.\n\n' +
+          'Original task: ' + (message || 'unknown') + '\n\n' +
+          'Generated files:\n' + projectFiles.join('\n\n') + '\n\n' +
+          'CHECKLIST:\n' +
+          '1. Do ALL HTML files reference ONLY files that exist in the project?\n' +
+          '2. Are there any missing referenced files (CSS, JS, images, fonts)?\n' +
+          '3. Does the project contain ALL components the user requested?\n' +
+          '4. Are the files complete (not truncated, no placeholders)?\n\n' +
+          'Reply with JSON: {"passed": true/false, "issues": ["list of issues"], "missing_files": ["list of files that should exist but dont"]}';
+        
+        // 3. Call LLM for verification (stateless - no history)
+        const verifyResolved = resolveModel(pool, modelId);
+        if (verifyResolved) {
+          const verifyResp = await chatWithKeyRotation(pool, verifyResolved, [
+            { role: 'system', content: 'You are a verification agent. Check if the generated project is complete and correct. Reply only with JSON.' },
+            { role: 'user', content: verifyPrompt },
+          ], { thinkingEffort: 'none' as any, temperature: 0.1, maxTokens: 1024 });
+          
+          let verification: any;
+          try { verification = JSON.parse(verifyResp.response.content); } catch { verification = { passed: true, issues: [] }; }
+          
+          sendEvent('verification_result', { passed: verification.passed, issues: verification.issues || [] });
+          
+          // 4. If verification failed, try to fix
+          if (!verification.passed && verification.issues && verification.issues.length > 0) {
+            sendEvent('status', { status: 'fixing_verification', issues: verification.issues });
+            const fixContext = 'VERIFICATION FAILED. Issues found:\n' + verification.issues.join('\n') + '\n\nMissing files: ' + (verification.missing_files || []).join(', ') + '\n\nFix ALL issues now. Generate the missing files and correct any problems.';
+            const fixMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: fixContext }];
+            try {
+              const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMsgs, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
+              sendEvent('fix_response', { attempt: totalRetries + 1, content: fixResp.content });
+              // Write any new files from fix response
+              const fixBlocks = extractCodeBlocks(fixResp.content);
+              const fixWritten = writeCodeBlocks(fixBlocks, projectDir);
+              filesWritten.push(...fixWritten);
+              for (const f of fixWritten) {
+                sendEvent('file_written', { path: f.path, size: f.size, name: path.basename(f.path) });
+              }
+            } catch (fixErr: any) {
+              console.error('[Chat] Verification fix failed:', fixErr.message);
+            }
+          }
+        }
+      } catch (verifyErr: any) {
+        console.error('[Chat] Verification sub-agent error:', verifyErr.message);
+      }
+      // === END VERIFICATION ===
+
       // Auto-install
       const autoResults = autoInstallDeps(projectDir);
       if (autoResults.length > 0) {
