@@ -1,4 +1,4 @@
-﻿// Orchestrator and sub-agent prompt templates v3
+// Orchestrator and sub-agent prompt templates v3
 // Thinking level maps to strictness: high=strict, medium=standard, low=relaxed
 
 export const ORCHESTRATOR_SYSTEM_PROMPT = `You are the macro orchestrator of a multi-model agent system (inspired by Claude Code / Codex). You coordinate specialized sub-agents to complete tasks thoroughly.
@@ -203,4 +203,20 @@ Subtask: "${subtask}"
 Result: "${result}"
 
 Reply with JSON: {"passed": true/false, "issues": [], "suggestion": ""}`;
+}
+/**
+ * Build cache-friendly message array following DeepSeek prefix caching strategy.
+ * Order: stable system prompt (1st) -> environment context (2nd) -> variable task (last).
+ * Maximizes prefix cache hits across calls.
+ */
+export function buildCacheFriendlyMessages(
+  systemPrompt: string,
+  envContext: string,
+  taskMessages: Array<{ role: string; content: string }>,
+): Array<{ role: string; content: string }> {
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'system', content: envContext },
+    ...taskMessages,
+  ];
 }

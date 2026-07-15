@@ -150,21 +150,30 @@ interface CommandResult {
 
 function compressHistory(history: Array<{ role: string; content: string }>): Array<{ role: string; content: string }> {
   if (!history || history.length === 0) return [];
-  if (history.length <= RECENT_MESSAGE_LIMIT) return history;
-  const oldMessages = history.slice(0, history.length - RECENT_MESSAGE_LIMIT);
-  const recentMessages = history.slice(history.length - RECENT_MESSAGE_LIMIT);
-  const summaryLines: string[] = [];
-  for (const msg of oldMessages) {
+  const recent = history.slice(-RECENT_MESSAGE_LIMIT);
+  const older = history.slice(0, history.length - RECENT_MESSAGE_LIMIT);
+  if (older.length === 0) return recent;
+  // Claude Code / DeepSeek context strategy: keep only decision-relevant context
+  const summaryParts: string[] = [];
+  for (const msg of older) {
     if (msg.role === 'system') continue;
     const text = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-    const truncated = text.length > SUMMARY_MAX_CHARS ? text.slice(0, SUMMARY_MAX_CHARS) + '...' : text;
-    const label = msg.role === 'user' ? 'User' : 'Assistant';
-    summaryLines.push('[' + label + ']: ' + truncated);
+    if (msg.role === 'user') {
+      const trimmed = text.length > 300 ? text.slice(0, 300) + '...[truncated]' : text;
+      summaryParts.push('[User]: ' + trimmed);
+    } else {
+      // Strip code blocks, keep prose decisions only
+      const withoutCode = text.replace(/```[\s\S]*?```/g, '[code block]').trim();
+      if (withoutCode.length > 20) {
+        const trimmed = withoutCode.length > 200 ? withoutCode.slice(0, 200) + '...' : withoutCode;
+        summaryParts.push('[Assistant]: ' + trimmed);
+      }
+    }
   }
-  const summaryBlock = summaryLines.length > 0
-    ? [{ role: 'system' as const, content: '[Earlier conversation summary]\r\n' + summaryLines.join('\r\n') }]
+  const summaryBlock = summaryParts.length > 0
+    ? [{ role: 'system' as const, content: '[Earlier conversation summary - decision context only]\n' + summaryParts.join('\n') }]
     : [];
-  return [...summaryBlock, ...recentMessages];
+  return [...summaryBlock, ...recent];
 }
 
 function getProjectDir(threadId?: string, projectPath?: string): string {
@@ -341,7 +350,7 @@ function collectCommands(blocks: ExtractedCodeBlock[], dollarCommands: string[])
 }
 
 // ============================================================
-// Command execution â€?ONE BY ONE like Claude Code
+// Command execution ï¿½?ONE BY ONE like Claude Code
 // ============================================================
 
 function getCmdTimeout(cmd: string): number {
@@ -425,7 +434,7 @@ function runCommandsSequentially(
       if (fs.existsSync(resolved)) currentCwd = resolved;
     }
 
-    // Stop on failure â€?error recovery loop will handle retries
+    // Stop on failure ï¿½?error recovery loop will handle retries
     if (result.exitCode !== 0) break;
     
     // Brief pause after server start to let it initialize

@@ -4,7 +4,7 @@ import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient, QuotaExhaustedError } from '../services/llm-client';
 import { ModelCapabilityScorer } from '../models/capability-scorer';
 import { CodingEngine } from '../services/coding-engine';
-import { ORCHESTRATOR_SYSTEM_PROMPT, SUBAGENT_SYSTEM_PROMPT, CODING_SUBAGENT_PROMPT, buildThinkingPrefix, buildDecompositionPrompt, buildFailureEvalPrompt, buildAggregationPrompt } from './prompts';
+import { ORCHESTRATOR_SYSTEM_PROMPT, SUBAGENT_SYSTEM_PROMPT, CODING_SUBAGENT_PROMPT, VERIFICATION_PROMPT, buildThinkingPrefix, buildDecompositionPrompt, buildFailureEvalPrompt, buildAggregationPrompt, buildVerificationPrompt } from './prompts';
 import os from 'os';
 import { ExtensionManager } from '../services/extensions/extension-manager';
 import path from 'path';
@@ -57,6 +57,8 @@ export class Orchestrator {
         if (this.abortController.signal.aborted) break;
         await this.executeSubtask(st);
       }
+      // Verification pass: spawn verification sub-agents to check each completed task
+      await this.verifyAllSubtasks(subtasks);
       const result = await this.aggregateResults();
       this.project.orchestratorState.finalResult = result;
       this.project.orchestratorState.status = 'completed';
@@ -64,6 +66,44 @@ export class Orchestrator {
     } catch (e: any) {
       this.project.orchestratorState.status = 'failed';
       this.emit('error', { message: e.message, projectId: this.project.id });
+    }
+  }
+
+  /** Verification pass: check each completed subtask against its description, spawn fix sub-agents if needed */
+  private async verifyAllSubtasks(subtasks: Array<{description: string; taskType: string; priority: number}>): Promise<void> {
+    const tasks = this.project.orchestratorState.tasks;
+    const completedTasks = tasks.filter(t => t.status === 'completed');
+    if (completedTasks.length === 0) return;
+    this.emit('orchestrator_update', { status: 'verifying', count: completedTasks.length });
+    for (const task of completedTasks) {
+      if (this.abortController?.signal.aborted) break;
+      const subtask = subtasks.find(s => s.description === task.description) || subtasks[0];
+      try {
+        const verifyPrompt = buildVerificationPrompt(task.description, task.result || '');
+        const m = this.getOrchestratorModel();
+        if (!m) continue;
+        const resp = await LLMClient.chatCompletion(m.provider, m.apiKey, {
+          messages: [
+            { role: 'system', content: VERIFICATION_PROMPT },
+            { role: 'user', content: verifyPrompt },
+          ],
+          model: this.getModelIdForAgent(m.model.id),
+          temperature: 0.1, maxTokens: 1024,
+        });
+        let verification: any;
+        try { verification = JSON.parse(resp.content); } catch { verification = { passed: true }; }
+        if (!verification.passed && verification.issues?.length > 0) {
+          this.addIssue(task.agentId || '', task.description, 'Verification failed: ' + verification.issues.join('; '), 'warning');
+          this.emit('orchestrator_update', { status: 'fixing', task: task.description, issues: verification.issues });
+          await this.executeSubtask({
+            description: task.description + ' [FIX: ' + (verification.suggestion || verification.issues.join(', ')) + ']',
+            taskType: subtask.taskType,
+            priority: subtask.priority,
+          });
+        }
+      } catch (e: any) {
+        console.error('[Orchestrator] Verification error:', task.description, e.message);
+      }
     }
   }
 

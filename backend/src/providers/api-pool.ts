@@ -1,5 +1,5 @@
-ï»¿// ============================================================
-// API Pool Manager - Dedup, eviction, balance sort, concurrency limit
+// ============================================================
+// API Pool Manager - Dedup, exhausted-keys-to-end, concurrency limit (max 80/key)
 // ============================================================
 
 import { Provider, ApiKeyEntry, Model } from '../types';
@@ -24,7 +24,7 @@ export class ApiPoolManager {
   // Track active concurrent requests per key
   private keyConcurrency: Map<string, number> = new Map();
 
-  // â”€â”€ Provider management â”€â”€
+  // ©¤©¤ Provider management ©¤©¤
 
   addProvider(provider: Provider): boolean {
     if (this.providers.has(provider.id)) {
@@ -48,7 +48,7 @@ export class ApiPoolManager {
     return Array.from(this.providers.values());
   }
 
-  // â”€â”€ Key management â”€â”€
+  // ©¤©¤ Key management ©¤©¤
 
   /** Add API key with dedup: skip if same key value already exists in this provider */
   addApiKey(providerId: string, key: string): ApiKeyEntry | null {
@@ -144,19 +144,17 @@ export class ApiPoolManager {
     return this.keyConcurrency.get(keyId) || 0;
   }
 
-  /** Clean up keys with remainingQuota=0 (balance depleted) */
+  /** Mark exhausted keys inactive (sorted to end by getNextApiKey, not removed) */
   private cleanupExhaustedKeys(providerId: string): void {
     const provider = this.providers.get(providerId);
     if (!provider) return;
-    const before = provider.apiKeys.length;
-    provider.apiKeys = provider.apiKeys.filter(k => {
+    // Only mark inactive if ALL keys are exhausted -> deactivate provider
+    for (const k of provider.apiKeys) {
       if (k.remainingQuota === 0 && k.isActive) {
         k.isActive = false;
-        return false; // remove
       }
-      return true;
-    });
-    if (provider.apiKeys.length === 0 && before > 0) {
+    }
+    if (!provider.apiKeys.some(k => k.isActive)) {
       this.deactivateProvider(providerId);
     }
   }
@@ -215,7 +213,7 @@ export class ApiPoolManager {
     if (provider) { for (const k of provider.apiKeys) k.isActive = false; }
   }
 
-  // â”€â”€ Stats â”€â”€
+  // ©¤©¤ Stats ©¤©¤
 
   getKeyCount(providerId: string): number {
     return this.providers.get(providerId)?.apiKeys.length || 0;
@@ -235,7 +233,7 @@ export class ApiPoolManager {
 
   getPoolCount(): number { return this.providers.size; }
 
-  // â”€â”€ Model lookups â”€â”€
+  // ©¤©¤ Model lookups ©¤©¤
 
   getAvailableModels(type?: Model['type']): Model[] {
     const models: Model[] = [];
@@ -266,7 +264,7 @@ export class ApiPoolManager {
     return null;
   }
 
-  // â”€â”€ Persistence â”€â”€
+  // ©¤©¤ Persistence ©¤©¤
 
   exportState(): Provider[] { return Array.from(this.providers.values()); }
 

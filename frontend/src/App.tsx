@@ -288,7 +288,7 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
           <div className="settings-section-title">子代理 思考强度（=严格程度）</div>
         <div style={{ display: "flex", gap: 6 }}>
           {["auto", "low", "medium", "high"].map(m => (
-            <button key={m} className={`btn btn-sm ${agentThinking} === m ? "btn-primary" : ""}`}
+            <button key={m} className={`btn btn-sm ${agentThinking === m ? "btn-primary" : ""}}`}
               onClick={() => setAgentThinking(m as any)} style={{ flex: 1 }}>
               {m === "auto" ? "自动" : m === "low" ? "低 (宽松)" : m === "medium" ? "中 (标准)" : "高 (严格)"}
             </button>
