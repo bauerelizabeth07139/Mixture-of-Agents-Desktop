@@ -305,25 +305,34 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
       <div className="settings-section">
         <div className="settings-section">
           <div className="settings-section-title">🤖 子代理模型分配</div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>为不同任务类型指定专用模型，未指定的使用全局模型</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>为不同任务类型指定专用模型。默认"🤖 让全局模型决定"由宏观调控模型根据任务自动选择子代理模型</div>
           <button className="btn btn-sm" style={{ marginBottom: 8 }} onClick={() => setAgentModelMap({})}>恢复默认（全部让全局模型决定）</button>
-          {['code', 'reasoning', 'chat', 'general', 'vision', 'tts', 'stt', 'image'].map(taskType => (
-            <div key={taskType} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 12, minWidth: 60, color: 'var(--text-secondary)' }}>
-                {taskType === 'code' ? '💻 代码' : taskType === 'reasoning' ? '🧠 推理' : taskType === 'chat' ? '💬 对话' : taskType === 'general' ? '📋 通用' : taskType === 'vision' ? '👁 视觉' : taskType === 'tts' ? '🔊 TTS' : taskType === 'stt' ? '🎤 STT' : '🎨 图像生成'}
+          {[
+            { key: 'code', label: '💻 代码', types: ['llm'] },
+            { key: 'reasoning', label: '🧠 推理', types: ['llm'] },
+            { key: 'chat', label: '💬 对话', types: ['llm'] },
+            { key: 'general', label: '📋 通用', types: ['llm'] },
+            { key: 'vision', label: '👁 视觉', types: ['llm'] },
+            { key: 'tts', label: '🔊 TTS', types: ['tts', 'llm'] },
+            { key: 'stt', label: '🎤 STT', types: ['stt', 'llm'] },
+            { key: 'image', label: '🎨 图像生成', types: ['image', 'llm'] },
+          ].map(cfg => (
+            <div key={cfg.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 12, minWidth: 80, color: 'var(--text-secondary)' }}>
+                {cfg.label}
               </span>
-              <select value={agentModelMap[taskType] || ''} onChange={e => setAgentModelMap({ ...agentModelMap, [taskType]: e.target.value })}
+              <select value={agentModelMap[cfg.key] || ''} onChange={e => setAgentModelMap({ ...agentModelMap, [cfg.key]: e.target.value })}
                 style={{ flex: 1, fontSize: 11 }}>
-                <option value="">🤖 让全局模型决定（默认）</option>
-                <option value="__follow__">📌 跟随当前全局模型</option>
-                {providers.flatMap(p => p.models.filter(m => { const t = m.type as string; return t === 'llm' || (taskType === 'vision' && (((m.capabilities?.visionScore || 0) > 0) || !!m.capabilities?.multimodal)) || (taskType === 'tts' && (t === 'tts' || t === 'llm')) || (taskType === 'stt' && (t === 'stt' || t === 'llm')) || (taskType === 'image' && (t === 'image' || t === 'llm')); }).map(m => (
-                  <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name}</option>
+                <option value="">🤖 让全局模型决定</option>
+                <option value="__follow__">📌 跟随全局模型</option>
+                {providers.flatMap(p => p.models.filter(m => cfg.types.includes(m.type) || (cfg.key === 'vision' && m.capabilities?.visionScore > 0) || (cfg.key === 'vision' && m.capabilities?.multimodal)).map(m => (
+                  <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name} {m.type !== 'llm' ? `(${m.type})` : ''}</option>
                 )))}
               </select>
             </div>
           ))}
         </div>
-          <div className="settings-section-title">系统状态</div>
+          <div className="settings-section-title">系统状态</div><div className="settings-section-title">系统状态</div>
           <div className="settings-row"><label>提供商</label><span>{providers.length}</span></div>
         <div className="settings-row"><label>已配置模型</label><span>{allModels.length}</span></div>
         <div className="settings-row"><label>API Keys</label><span>{totalKeys}</span></div>
@@ -439,7 +448,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                       color: k.isActive ? 'var(--success)' : 'var(--error)',
                       border: `1px solid ${k.isActive ? 'var(--success)' : 'var(--error)'}`
                     }}>
-                      {k.isActive ? '✅' : '❌'} {k.key.slice(0, 8)}...
+                      {k.isActive ? '✅' : '❌'} {k.key.slice(0, 8)}... {(k as any).concurrentRequests > 0 ? '(' + (k as any).concurrentRequests + '/80)' : ''}
                     </span>
                   ))}
                 </div>

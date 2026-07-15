@@ -1,37 +1,54 @@
-ï»¿import { Provider, Model, ApiKeyEntry } from '../types';
+// ============================================================
+// API Pool Manager - Dedup, exhausted-keys-to-end, concurrency limit (max 80/key)
+// ============================================================
 
-export interface PoolStats {
-  providerId: string; providerName: string; url: string;
-  totalKeys: number; activeKeys: number; isActive: boolean;
-}
+import { Provider, ApiKeyEntry, Model } from '../types';
+import { v4 as uuid } from 'uuid';
 
 const MAX_KEYS_PER_POOL = 50;
 const MAX_POOLS = 25;
 const MAX_CONCURRENT_PER_KEY = 80;
 const EVICT_STATUS_CODES = new Set([401, 402, 403]);
 
+export interface PoolStats {
+  providerId: string;
+  providerName: string;
+  url: string;
+  totalKeys: number;
+  activeKeys: number;
+  isActive: boolean;
+}
+
 export class ApiPoolManager {
-  private providers = new Map<string, Provider>();
-  private keyConcurrency = new Map<string, number>();
+  private providers: Map<string, Provider> = new Map();
+  // Track active concurrent requests per key
+  private keyConcurrency: Map<string, number> = new Map();
 
-  // â”€â”€ CRUD â”€â”€
+  // ©¤©¤ Provider management ©¤©¤
 
-  addProvider(p: Provider): Provider {
-    if (this.providers.size >= MAX_POOLS) throw new Error('Max 25 pools');
-    this.providers.set(p.id, p);
-    return p;
-  }
-
-  getProvider(id: string): Provider | undefined { return this.providers.get(id); }
-  getAllProviders(): Provider[] { return Array.from(this.providers.values()); }
-
-  removeProvider(id: string): boolean {
-    const p = this.providers.get(id);
-    if (!p) return false;
-    for (const k of p.apiKeys) this.keyConcurrency.delete(k.id);
-    this.providers.delete(id);
+  addProvider(provider: Provider): boolean {
+    if (this.providers.has(provider.id)) {
+      this.providers.set(provider.id, provider);
+      return true;
+    }
+    if (this.providers.size >= MAX_POOLS) return false;
+    this.providers.set(provider.id, provider);
     return true;
   }
+
+  removeProvider(providerId: string): void {
+    this.providers.delete(providerId);
+  }
+
+  getProvider(providerId: string): Provider | undefined {
+    return this.providers.get(providerId);
+  }
+
+  getAllProviders(): Provider[] {
+    return Array.from(this.providers.values());
+  }
+
+  // ©¤©¤ Key management ©¤©¤
 
   /** Add API key with dedup: skip if same key value already exists in this provider */
   addApiKey(providerId: string, key: string): ApiKeyEntry | null {
@@ -44,9 +61,13 @@ export class ApiPoolManager {
     if (existing) return existing;
 
     const entry: ApiKeyEntry = {
-      id: `key-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      key, isActive: true, remainingQuota: 1,
-      failureCount: 0, lastChecked: new Date().toISOString(),
+      id: uuid(),
+      key,
+      isActive: true,
+      remainingQuota: null,
+      lastChecked: null,
+      failureCount: 0,
+      concurrentRequests: 0,
     };
     provider.apiKeys.push(entry);
     return entry;
@@ -65,35 +86,44 @@ export class ApiPoolManager {
 
   /**
    * Get next available API key:
-   * 1. Filter out inactive keys
-   * 2. Sort: exhausted (quota=0) to end, then by concurrency ASC, then failureCount ASC
-   * 3. Pick first key under concurrency limit (80)
-   * Same URL can use different keys in parallel via concurrency rotation.
+   * 1. Filter out inactive and exhausted keys
+   * 2. Filter out keys at concurrency limit (80)
+   * 3. Sort by: active concurrency ASC, then failureCount ASC
+   * This ensures load balancing across keys and prefers healthy keys.
    */
   getNextApiKey(providerId: string): ApiKeyEntry | null {
     const provider = this.providers.get(providerId);
     if (!provider || provider.apiKeys.length === 0) return null;
 
+    // Clean up exhausted keys first (balance depleted = remove)
+    this.cleanupExhaustedKeys(providerId);
+
+    // Sort: keys with remainingQuota=0 go to end, then by concurrency, then failures
     const sorted = [...provider.apiKeys]
       .filter(k => k.isActive)
       .sort((a, b) => {
+        // Exhausted (remainingQuota=0) keys go last
         const aExhausted = a.remainingQuota === 0 ? 1 : 0;
         const bExhausted = b.remainingQuota === 0 ? 1 : 0;
         if (aExhausted !== bExhausted) return aExhausted - bExhausted;
 
-        const aConc = this.keyConcurrency.get(a.id) || 0;
-        const bConc = this.keyConcurrency.get(b.id) || 0;
+        // Then sort by concurrency (lower = better)
+        const aConc = a.concurrentRequests || 0;
+        const bConc = b.concurrentRequests || 0;
         if (aConc !== bConc) return aConc - bConc;
 
+        // Then sort by failure count (lower = better)
         return a.failureCount - b.failureCount;
       });
 
+    // Find first key not at concurrency limit
     for (const key of sorted) {
-      if ((this.keyConcurrency.get(key.id) || 0) < MAX_CONCURRENT_PER_KEY) {
+      if ((key.concurrentRequests || 0) < MAX_CONCURRENT_PER_KEY) {
         return key;
       }
     }
 
+    // All keys at concurrency limit - return the one with lowest concurrency anyway
     return sorted[0] || null;
   }
 
@@ -114,10 +144,25 @@ export class ApiPoolManager {
     return this.keyConcurrency.get(keyId) || 0;
   }
 
+  /** Mark exhausted keys inactive (sorted to end by getNextApiKey, not removed) */
+  private cleanupExhaustedKeys(providerId: string): void {
+    const provider = this.providers.get(providerId);
+    if (!provider) return;
+    // Only mark inactive if ALL keys are exhausted -> deactivate provider
+    for (const k of provider.apiKeys) {
+      if (k.remainingQuota === 0 && k.isActive) {
+        k.isActive = false;
+      }
+    }
+    if (!provider.apiKeys.some(k => k.isActive)) {
+      this.deactivateProvider(providerId);
+    }
+  }
+
   /**
    * Report a failed request.
-   * - 401/402/403: immediate removal (auth/quota failure)
-   * - 429 (rate limit): mark quota=0, sorted to end (not removed)
+   * - 401/402/403: immediate removal (auth/quota)
+   * - 429 (rate limit): rotate to end, don't remove
    * - Other: increment failure count, deactivate after 3
    */
   markKeyFailed(providerId: string, keyId: string, statusCode?: number): 'exhausted' | 'provider_exhausted' | 'evicted' {
@@ -129,16 +174,19 @@ export class ApiPoolManager {
 
     key.lastChecked = new Date().toISOString();
 
+    // Auth/quota failures -> immediate removal
     if (statusCode !== undefined && EVICT_STATUS_CODES.has(statusCode)) {
       this.removeExhaustedKey(providerId, keyId);
       return provider.apiKeys.some(k => k.isActive) ? 'exhausted' : 'provider_exhausted';
     }
 
+    // Rate limit -> mark quota as 0, will be sorted to end
     if (statusCode === 429) {
       key.remainingQuota = 0;
       return provider.apiKeys.some(k => k.isActive) ? 'exhausted' : 'provider_exhausted';
     }
 
+    // Other failures -> increment count
     key.failureCount++;
     if (key.failureCount >= 3) {
       key.isActive = false;
@@ -148,7 +196,7 @@ export class ApiPoolManager {
     return 'evicted';
   }
 
-  /** Remove exhausted key immediately (used for 401/402/403) */
+  /** Remove exhausted key immediately */
   removeExhaustedKey(providerId: string, keyId: string): void {
     const provider = this.providers.get(providerId);
     if (!provider) return;
@@ -160,20 +208,12 @@ export class ApiPoolManager {
     if (provider.apiKeys.length === 0) this.deactivateProvider(providerId);
   }
 
-  /** Reset a key's quota (e.g. after cooldown) */
-  resetKeyQuota(providerId: string, keyId: string): void {
-    const provider = this.providers.get(providerId);
-    if (!provider) return;
-    const key = provider.apiKeys.find(k => k.id === keyId);
-    if (key) { key.remainingQuota = 1; key.isActive = true; key.failureCount = 0; }
-  }
-
   deactivateProvider(providerId: string): void {
     const provider = this.providers.get(providerId);
     if (provider) { for (const k of provider.apiKeys) k.isActive = false; }
   }
 
-  // â”€â”€ Stats â”€â”€
+  // ©¤©¤ Stats ©¤©¤
 
   getKeyCount(providerId: string): number {
     return this.providers.get(providerId)?.apiKeys.length || 0;
@@ -193,7 +233,7 @@ export class ApiPoolManager {
 
   getPoolCount(): number { return this.providers.size; }
 
-  // â”€â”€ Model lookups â”€â”€
+  // ©¤©¤ Model lookups ©¤©¤
 
   getAvailableModels(type?: Model['type']): Model[] {
     const models: Model[] = [];
@@ -218,18 +258,3 @@ export class ApiPoolManager {
     for (const provider of this.providers.values()) {
       const model = provider.models.find(m => m.id === modelId);
       if (!model) continue;
-      const key = this.getNextApiKey(provider.id);
-      if (key) return { provider, model, apiKey: key };
-    }
-    return null;
-  }
-
-  // â”€â”€ Persistence â”€â”€
-
-  exportState(): Provider[] { return Array.from(this.providers.values()); }
-
-  importState(providers: Provider[]): void {
-    this.providers.clear();
-    for (const p of providers) this.providers.set(p.id, p);
-  }
-}
