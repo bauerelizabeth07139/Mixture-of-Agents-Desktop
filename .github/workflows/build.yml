@@ -90,24 +90,31 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.0
-          name: Mixture of Agents Desktop v1.1.0
-          body: |
-            ## Mixture of Agents Desktop
+          tag_name: v1.2.0
+          name: Mixture of Agents Desktop v1.2.0
+        body: |
+          ## ⚛️ Mixture of Agents Desktop v1.2.0
 
-            ### 使用方法
-            1. 下载 `Mixture-of-Agents-Windows-x64.zip`
-            2. 解压到任意目录
-            3. 双击 `Mixture of Agents.exe` 运行
+          ### 🚀 What's New in v1.2.0
+          - Plan → Act → Observe → Replan orchestration (up to 12 rounds)
+          - Stateless verification sub-agents
+          - 8-dimension model testing (10-point scale)
+          - 17 providers with API pool (80 concurrent/key)
+          - 28 MCP + 27 Skill + 15 Expert extensions
+          - Monaco editor + 14-language execution
+          - Multimodal detection (Vision/Audio)
+          - Context compression (DeepSeek-style)
+          - Dark/Light theme toggle
+          - Improved game generation & encoding fix
 
-            ### 功能
-            - 多模型协同 (17家提供商预设)
-            - 模型自动分类 (LLM/VLM/TTS/Image/Video/STT)
-            - 宏观调控模型 + 子代理分配
-            - 成本/效率滑块控制
-            - 代码编辑器 + 终端 + 环境检测
-            - MCP/Skill 扩展
-            - 自动化编程引擎
+          ### 📦 Installation
+          1. Download `Mixture-of-Agents-Windows-x64.zip`
+          2. Extract to any directory
+          3. Run `Mixture of Agents.exe`
+
+          ### 🔗 Links
+          - [Web Version](https://github.com/bauerelizabeth07139/Mixture-of-Agents)
+          - [Documentation](https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop#readme)
           files: Mixture-of-Agents-Windows-x64.zip
           draft: false
           prerelease: false
