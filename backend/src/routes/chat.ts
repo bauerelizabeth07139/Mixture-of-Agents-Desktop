@@ -541,6 +541,82 @@ async function chatWithKeyRotation(
   throw lastError || new Error('All API keys exhausted');
 }
 
+/** Streaming version of chatWithKeyRotation - yields tokens via callback */
+async function streamChatWithKeyRotation(
+  pool: ApiPoolManager,
+  initial: ResolvedModel,
+  messages: Array<{ role: string; content: any }>,
+  onToken: (type: 'token' | 'reasoning', content: string) => void,
+  opts: { temperature?: number; maxTokens?: number; thinkingEffort?: 'none' | 'low' | 'medium' | 'high' } = {},
+): Promise<{ response: { content: string; reasoningContent?: string; model: string; usage: any; latencyMs: number }; provider: Provider; model: Model; apiKey: ApiKeyEntry }> {
+  let currentProvider = initial.provider;
+  let currentModel = initial.model;
+  let currentKey = initial.apiKey;
+  const maxAttempts = 10;
+  let lastError: any = null;
+  const startTime = Date.now();
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    pool.acquireKey(currentKey.id);
+    try {
+      let fullContent = '';
+      let fullReasoning = '';
+      let finalUsage: any = null;
+
+      for await (const chunk of LLMClient.streamChatCompletion(currentProvider, currentKey, {
+        messages,
+        model: currentModel.modelId,
+        temperature: opts.temperature ?? 0.7,
+        maxTokens: opts.maxTokens ?? 16384,
+        thinkingEffort: opts.thinkingEffort,
+      })) {
+        if (chunk.type === 'token') {
+          fullContent += chunk.content;
+          onToken('token', chunk.content);
+        } else if (chunk.type === 'reasoning') {
+          fullReasoning += chunk.content;
+          onToken('reasoning', chunk.content);
+        } else if (chunk.type === 'done') {
+          finalUsage = chunk.usage;
+        }
+      }
+
+      pool.releaseKey(currentKey.id);
+      return {
+        response: {
+          content: fullContent,
+          reasoningContent: fullReasoning,
+          model: currentModel.modelId,
+          usage: finalUsage ? {
+            promptTokens: finalUsage.prompt_tokens || 0,
+            completionTokens: finalUsage.completion_tokens || 0,
+            totalTokens: finalUsage.total_tokens || 0,
+          } : { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          latencyMs: Date.now() - startTime,
+        },
+        provider: currentProvider,
+        model: currentModel,
+        apiKey: currentKey,
+      };
+    } catch (err: any) {
+      pool.releaseKey(currentKey.id);
+      lastError = err;
+      const statusCode = err.response?.status || (err.message?.match(/HTTP (\d+)/)?.[1] ? parseInt(err.message.match(/HTTP (\d+)/)[1]) : undefined);
+      if (statusCode && [401, 402, 403, 429].includes(statusCode)) {
+        pool.markKeyFailed(currentProvider.id, currentKey.id, statusCode);
+        const nextKey = pool.getNextApiKey(currentProvider.id);
+        if (nextKey) { currentKey = nextKey; continue; }
+        const nextResolved = resolveModel(pool);
+        if (nextResolved) { currentProvider = nextResolved.provider; currentModel = nextResolved.model; currentKey = nextResolved.apiKey; continue; }
+        break;
+      }
+      throw err;
+    }
+  }
+  throw lastError || new Error('All API keys exhausted');
+}
+
+
 // ============================================================
 // Route factory
 // ============================================================
@@ -683,11 +759,25 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       // Step 1: LLM call
       sendEvent('status', { status: 'calling_llm' });
-      const { response: initialResp, provider: usedProvider, model: usedModel } = await chatWithKeyRotation(
-        pool, resolved, messages, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens },
+      // Stream tokens in real-time
+      let streamedContent = '';
+      let streamedReasoning = '';
+      const { response: initialResp, provider: usedProvider, model: usedModel } = await streamChatWithKeyRotation(
+        pool, resolved, messages,
+        (type: string, token: string) => {
+          if (type === 'token') {
+            streamedContent += token;
+            sendEvent('stream_token', { content: token, type: 'content' });
+          } else if (type === 'reasoning') {
+            streamedReasoning += token;
+            sendEvent('stream_token', { content: token, type: 'reasoning' });
+          }
+        },
+        { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens },
       );
 
-      let llmContent = initialResp.content;
+      let llmContent = initialResp.content || streamedContent;
+      if (initialResp.reasoningContent) streamedReasoning = initialResp.reasoningContent;
       sendEvent('llm_response', { content: llmContent, model: usedModel.name, provider: usedProvider.name, latencyMs: initialResp.latencyMs, usage: initialResp.usage });
 
       const filesWritten: FileWritten[] = [];
@@ -831,6 +921,9 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
   return r;
 }
+
+
+
 
 
 

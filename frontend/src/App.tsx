@@ -237,7 +237,7 @@ interface ChatMsg {
   content: string; time: string; model?: string; agentName?: string;
   visionModel?: string;
   attachments?: Array<{type:'image'|'text'|'file', name: string, data: string, preview?: string, size?: number}>;
-  codeExecution?: Array<{lang: string; filename?: string; stdout: string; stderr: string; exitCode: number}>; thinkingMode?: string; serveUrl?: string;
+  codeExecution?: Array<{lang: string; filename?: string; stdout: string; stderr: string; exitCode: number}>; thinkingMode?: string; serveUrl?: string; _streamingContent?: string;
   tools?: Array<{ name: string; status: string; output?: string; icon: string }>;
   agents?: Array<{ name: string; status: string; task: string; model: string }>;
 }
@@ -1319,7 +1319,9 @@ export default function App() {
               if (evt === 'status') {
                 const msg = d.status === 'thinking' ? '🧠 思索中... (' + (d.model||'') + ')' : d.status === 'calling_llm' ? '⚡ 调用模型...' : d.status === 'executing' ? '▶️ 执行命令 (' + d.commandCount + '个)...' : d.status === 'fixing' ? '🔧 修复错误 (尝试' + d.attempt + ')...' : '⏳ ' + d.status;
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: msg } : m));
-              } else if (evt === 'llm_response') {
+              } else if (evt === 'stream_token') {
+                  setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: (m._streamingContent || '') + d.content, _streamingContent: (m._streamingContent || '') + d.content } : m));
+                } else if (evt === 'llm_response') {
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: d.content, model: d.model } : m));
               } else if (evt === 'file_written') {
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: m.content + '\n📝 ' + d.name + ' (' + d.size + ')' } : m));
