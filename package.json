@@ -11,7 +11,7 @@
     "build:frontend": "cd frontend && npx vite build",
     "build:all": "npm run build:backend && npm run build:frontend",
     "pack": "npm run build:all && electron-builder --dir",
-    "dist": "npm run build:all && electron-builder",
+    "dist": "npm run build:all && electron-builder --win portable",
     "start": "electron ."
   },
   "dependencies": {
