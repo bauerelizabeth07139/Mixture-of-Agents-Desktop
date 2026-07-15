@@ -1,4 +1,4 @@
-﻿export type ModelCapability = 'code' | 'agent' | 'chat' | 'multimodal' | 'reasoning' | 'fast';
+export type ModelCapability = 'code' | 'agent' | 'chat' | 'multimodal' | 'reasoning' | 'fast';
 
 export interface ModelCapabilityProfile {
   code: number; agent: number; chat: number; context: number; speed: number; multimodal: boolean;
@@ -23,7 +23,7 @@ export interface Provider {
 
 export interface ApiKeyEntry {
   id: string; key: string; isActive: boolean; remainingQuota: number | null;
-  lastChecked: string | null; failureCount: number;
+  lastChecked: string | null; failureCount: number; concurrentRequests?: number;
 }
 
 export interface ProviderPreset {

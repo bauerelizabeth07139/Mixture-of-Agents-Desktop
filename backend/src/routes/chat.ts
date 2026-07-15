@@ -1,4 +1,4 @@
-﻿import { v4 as uuid } from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
@@ -341,7 +341,7 @@ function collectCommands(blocks: ExtractedCodeBlock[], dollarCommands: string[])
 }
 
 // ============================================================
-// Command execution 鈥?ONE BY ONE like Claude Code
+// Command execution �?ONE BY ONE like Claude Code
 // ============================================================
 
 function getCmdTimeout(cmd: string): number {
@@ -425,7 +425,7 @@ function runCommandsSequentially(
       if (fs.existsSync(resolved)) currentCwd = resolved;
     }
 
-    // Stop on failure 鈥?error recovery loop will handle retries
+    // Stop on failure �?error recovery loop will handle retries
     if (result.exitCode !== 0) break;
     
     // Brief pause after server start to let it initialize
@@ -503,6 +503,7 @@ async function chatWithKeyRotation(
   const maxAttempts = 10;
   let lastError: any = null;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    pool.acquireKey(currentKey.id);
     try {
       const resp = await LLMClient.chatCompletion(currentProvider, currentKey, {
         messages,
@@ -511,11 +512,13 @@ async function chatWithKeyRotation(
         maxTokens: opts.maxTokens ?? 16384,
         thinkingEffort: opts.thinkingEffort,
       });
+      pool.releaseKey(currentKey.id);
       return { response: resp, provider: currentProvider, model: currentModel, apiKey: currentKey };
     } catch (err: any) {
+      pool.releaseKey(currentKey.id);
       lastError = err;
       const statusCode = err.response?.status;
-      if (statusCode && [401, 402, 403].includes(statusCode)) {
+      if (statusCode && [401, 402, 403, 429].includes(statusCode)) {
         pool.markKeyFailed(currentProvider.id, currentKey.id, statusCode);
         const nextKey = pool.getNextApiKey(currentProvider.id);
         if (nextKey) { currentKey = nextKey; continue; }
@@ -557,7 +560,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
     }
   });
 
-﻿  r.post('/', async (req: Request, res: Response) => {
+  r.post('/', async (req: Request, res: Response) => {
     // SSE streaming
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -778,7 +781,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
     } catch (err: any) {
       console.error('[Chat] Error:', err.message);
       const statusCode = err.response?.status;
-      if (statusCode && [401, 402, 403].includes(statusCode)) {
+      if (statusCode && [401, 402, 403, 429].includes(statusCode)) {
         sendEvent('error', { error: 'API authentication/quota error: ' + err.message });
       } else {
         sendEvent('error', { error: err.message });
