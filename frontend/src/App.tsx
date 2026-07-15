@@ -58,7 +58,7 @@ function CostEfficiencySlider({ value, onChange }: { value: number; onChange: (v
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
-        <span>? ËÙ¶È (0)</span><span>?? Æ½ºâ (0.5)</span><span>?? ÖÊÁ¿ (1)</span>
+        <span>âš¡ é€Ÿåº¦ (0)</span><span>âš–ï¸ å¹³è¡¡ (0.5)</span><span>ğŸ§  è´¨é‡ (1)</span>
       </div>
       <div className="slider-container">
         <input type="range" className="slider" min={0} max={1} step={0.01} value={value} onChange={e => handleSlider(parseFloat(e.target.value))} />
@@ -78,9 +78,9 @@ function ToolCard({ tool }: { tool: { name: string; status: string; output?: str
         <span className="tool-icon">{tool.icon}</span>
         <span className="tool-name">{tool.name}</span>
         <span className={`tool-status ${tool.status}`}>
-          {tool.status === 'running' ? '?' : tool.status === 'success' ? '?' : '?'}
+          {tool.status === 'running' ? 'â³' : tool.status === 'success' ? 'âœ…' : 'âŒ'}
         </span>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>{expanded ? '¨‹' : '?'}</span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>{expanded ? 'â–¼' : 'â–¶'}</span>
       </div>
       {expanded && tool.output && (
         <div className="tool-card-body">{tool.output}</div>
@@ -100,16 +100,16 @@ function AttachmentPreview({ attachments, onRemove }: { attachments: Array<{type
             <img src={a.preview} alt={a.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
           ) : a.type === 'text' ? (
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', maxWidth: 180, maxHeight: 60, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'pre-wrap' }}>
-              ?? {a.name}
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{a.data.length} ×Ö·û</div>
+              ğŸ“„ {a.name}
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{a.data.length} å­—ç¬¦</div>
             </div>
           ) : (
             <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-              ?? {a.name}
+              ğŸ“„ {a.name}
               {a.size != null && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{(a.size / 1024).toFixed(1)} KB</div>}
             </div>
           )}
-          <button onClick={() => onRemove(i)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--error)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>?</button>
+          <button onClick={() => onRemove(i)} style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--error)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>âœ•</button>
         </div>
       ))}
     </div>
@@ -121,9 +121,9 @@ function DragOverlay() {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', pointerEvents: 'none' }}>
       <div style={{ border: '3px dashed var(--accent)', borderRadius: 24, padding: '60px 80px', background: 'rgba(30,30,30,0.9)', textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>??</div>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>ğŸ“„</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}></div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>Ö§³Ö´úÂëÎÄ¼ş¡¢Í¼Æ¬¡¢PDFµÈ¸ñÊ½</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8 }}>æ”¯æŒä»£ç æ–‡ä»¶ã€å›¾ç‰‡ã€PDFç­‰æ ¼å¼</div>
       </div>
     </div>
   );
@@ -131,8 +131,8 @@ function DragOverlay() {
 // ---
 function ChatMessage({ msg }: { msg: ChatMsg }) {
   const roleClass = msg.role === 'user' ? 'user' : msg.role === 'orchestrator' ? 'orchestrator' : msg.role === 'error' ? 'error' : 'system';
-  const roleIcon = msg.role === 'user' ? '??' : msg.role === 'orchestrator' ? '??' : msg.role === 'error' ? '??' : msg.role === 'agent' ? '??' : '??';
-  const roleName = msg.role === 'user' ? 'ÓÃ»§' : msg.role === 'orchestrator' ? 'ºê¹Ûµ÷¿Ø' : msg.role === 'error' ? '´íÎó' : msg.role === 'agent' ? (msg.agentName || '×Ó´úÀí') : 'ÏµÍ³';
+  const roleIcon = msg.role === 'user' ? 'ğŸ‘¤' : msg.role === 'orchestrator' ? 'ğŸ§ ' : msg.role === 'error' ? 'âš ï¸' : msg.role === 'agent' ? 'ğŸ¤–' : 'âš™ï¸';
+  const roleName = msg.role === 'user' ? 'ç”¨æˆ·' : msg.role === 'orchestrator' ? 'å®è§‚è°ƒæ§' : msg.role === 'error' ? 'é”™è¯¯' : msg.role === 'agent' ? (msg.agentName || 'å­ä»£ç†') : 'ç³»ç»Ÿ';
   return (
     <div className="message">
       <div className={`message-avatar ${roleClass}`}>{roleIcon}</div>
@@ -140,10 +140,10 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
         <div className="message-header">
           <span className="message-name">{roleName}</span>
           {msg.model && <span className="message-model">{msg.model}</span>}
-          {msg.thinkingMode && <span className="message-model" style={{ background: 'var(--info-bg)', color: 'var(--info)', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>†¾æ½{msg.thinkingMode}</span>}
+          {msg.thinkingMode && <span className="message-model" style={{ background: 'var(--info-bg)', color: 'var(--info)', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>å–šå¨¼{msg.thinkingMode}</span>}
           {msg.visionModel && (
             <span className="message-model" style={{ background: 'var(--warning)', color: '#000', fontSize: 10, padding: '1px 6px', borderRadius: 4 }}>
-              ??? ÊÓ¾õ:  {msg.visionModel}
+              ğŸ–¼ï¸ è§†è§‰:  {msg.visionModel}
             </span>
           )}
           <span className="message-time">{msg.time}</span>
@@ -155,7 +155,7 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
                 <img key={i} src={a.preview} alt={a.name} style={{ maxWidth: 200, maxHeight: 150, borderRadius: 6, border: '1px solid var(--border)' }} />
               ) : (
                 <div key={i} style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface)', padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border)' }}>
-                  {a.type === 'text' ? '??' : '??'} {a.name}
+                  {a.type === 'text' ? 'ğŸ“„' : 'ğŸ“'} {a.name}
                 </div>
               )
             ))}
@@ -170,9 +170,9 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
         {msg.codeExecution && msg.codeExecution.map((ex, i) => (
           <div key={i} style={{ marginTop: 8, background: 'var(--bg-tertiary)', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
             <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>{ex.lang === 'python' || ex.lang === 'py' ? '??' : ex.lang === 'javascript' || ex.lang === 'js' || ex.lang === 'node' ? '?' : '??'}</span>
+              <span>{ex.lang === 'python' || ex.lang === 'py' ? 'ğŸ' : ex.lang === 'javascript' || ex.lang === 'js' || ex.lang === 'node' ? 'âš¡' : 'ğŸ’»'}</span>
               <span>{ex.filename || ex.lang}</span>
-              <span style={{ marginLeft: 'auto', color: ex.exitCode === 0 ? 'var(--success)' : 'var(--error)' }}>{ex.exitCode === 0 ? '?' : '?(exit ' + ex.exitCode + ')'}</span>
+              <span style={{ marginLeft: 'auto', color: ex.exitCode === 0 ? 'var(--success)' : 'var(--error)' }}>{ex.exitCode === 0 ? 'âœ…' : 'âŒ(exit ' + ex.exitCode + ')'}</span>
             </div>
             {ex.stdout && <pre style={{ padding: '8px 12px', fontSize: 12, fontFamily: 'var(--font-mono)', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--text-primary)', maxHeight: 300, overflow: 'auto' }}>{ex.stdout}</pre>}
             {ex.stderr && <pre style={{ padding: '8px 12px', fontSize: 12, fontFamily: 'var(--font-mono)', margin: 0, whiteSpace: 'pre-wrap', color: 'var(--error)', maxHeight: 200, overflow: 'auto', background: 'var(--error-bg)' }}>{ex.stderr}</pre>}
@@ -184,7 +184,7 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s' }}
               onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(108,92,231,0.4)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-            >?? ´ò¿ªÍøÒ³</a>
+            >ğŸŒ æ‰“å¼€ç½‘é¡µ</a>
           </div>
         )}
         {msg.tools && msg.tools.map((t, i) => <ToolCard key={i} tool={t} />)}
@@ -207,24 +207,24 @@ function ChatMessage({ msg }: { msg: ChatMsg }) {
 function WelcomeScreen({ onQuickStart }: { onQuickStart: (task: string) => void }) {
   return (
     <div className="welcome-screen">
-        <div className="welcome-logo">??</div>
+        <div className="welcome-logo">âš›ï¸</div>
       <div className="welcome-title">Mixture of Agents</div>
-        <div className="welcome-subtitle">»ùÓÚ Claude Code ¼Ü¹¹µÄ¶àÄ£ĞÍÖÇÄÜ´úÀíÏµÍ³</div>
+        <div className="welcome-subtitle">åŸºäº Claude Code æ¶æ„çš„å¤šæ¨¡å‹æ™ºèƒ½ä»£ç†ç³»ç»Ÿ</div>
       <div className="welcome-cards">
-        <div className="welcome-card" onClick={() => onQuickStart('´´½¨Ò»¸ö Express.js REST API')}>
-          <div className="welcome-card-icon">??</div>
-          <div className="welcome-card-title">Web API ÏîÄ¿</div>
-          <div className="welcome-card-desc">´´½¨Ò»¸öÍêÕûµÄ REST API ÏîÄ¿£¬°üº¬ CRUD ²Ù×÷ºÍÊı¾İ¿â¼¯³É</div>
+        <div className="welcome-card" onClick={() => onQuickStart('åˆ›å»ºä¸€ä¸ª Express.js REST API')}>
+          <div className="welcome-card-icon">ğŸŒ</div>
+          <div className="welcome-card-title">Web API é¡¹ç›®</div>
+          <div className="welcome-card-desc">åˆ›å»ºä¸€ä¸ªå®Œæ•´çš„ REST API é¡¹ç›®ï¼ŒåŒ…å« CRUD æ“ä½œå’Œæ•°æ®åº“é›†æˆ</div>
         </div>
-        <div className="welcome-card" onClick={() => onQuickStart('Êı¾İ·ÖÎö£º·ÖÎöCSVÊı¾İ²¢Éú³É¿ÉÊÓ»¯±¨±í')}>
-          <div className="welcome-card-icon">??</div>
-          <div className="welcome-card-title">Êı¾İ·ÖÎö</div>
-          <div className="welcome-card-desc">·ÖÎöCSVÊı¾İ²¢Éú³É¿ÉÊÓ»¯±¨±í£¬°üº¬Í³¼Æ·ÖÎöºÍÍ¼±íÕ¹Ê¾</div>
+        <div className="welcome-card" onClick={() => onQuickStart('æ•°æ®åˆ†æï¼šåˆ†æCSVæ•°æ®å¹¶ç”Ÿæˆå¯è§†åŒ–æŠ¥è¡¨')}>
+          <div className="welcome-card-icon">ğŸ“Š</div>
+          <div className="welcome-card-title">æ•°æ®åˆ†æ</div>
+          <div className="welcome-card-desc">åˆ†æCSVæ•°æ®å¹¶ç”Ÿæˆå¯è§†åŒ–æŠ¥è¡¨ï¼ŒåŒ…å«ç»Ÿè®¡åˆ†æå’Œå›¾è¡¨å±•ç¤º</div>
         </div>
-        <div className="welcome-card" onClick={() => onQuickStart('´´½¨Ò»¸ö»úÆ÷Ñ§Ï°Ä£ĞÍÑµÁ·ºÍÔ¤²â·şÎñ')}>
-          <div className="welcome-card-icon">??</div>
-          <div className="welcome-card-title">»úÆ÷Ñ§Ï°</div>
-          <div className="welcome-card-desc">¹¹½¨»úÆ÷Ñ§Ï°Ä£ĞÍÑµÁ·ºÍÔ¤²â·şÎñ£¬Ö§³Ö¶àÖÖËã·¨</div>
+        <div className="welcome-card" onClick={() => onQuickStart('åˆ›å»ºä¸€ä¸ªæœºå™¨å­¦ä¹ æ¨¡å‹è®­ç»ƒå’Œé¢„æµ‹æœåŠ¡')}>
+          <div className="welcome-card-icon">ğŸ§ª</div>
+          <div className="welcome-card-title">æœºå™¨å­¦ä¹ </div>
+          <div className="welcome-card-desc">æ„å»ºæœºå™¨å­¦ä¹ æ¨¡å‹è®­ç»ƒå’Œé¢„æµ‹æœåŠ¡ï¼Œæ”¯æŒå¤šç§ç®—æ³•</div>
         </div>
       </div>
     </div>
@@ -257,63 +257,63 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
   return (
     <div className="settings-drawer">
       <div className="settings-drawer-header">
-          <h3>?? Ä£ĞÍÉèÖÃ</h3>
-        <button className="btn btn-sm btn-icon" onClick={onClose}>?</button>
+          <h3>ğŸ¯ æ¨¡å‹è®¾ç½®</h3>
+        <button className="btn btn-sm btn-icon" onClick={onClose}>âœ•</button>
       </div>
       <div className="settings-section">
-          <div className="settings-section-title">Ñ¡ÔñÄ£ĞÍ</div>
+          <div className="settings-section-title">é€‰æ‹©æ¨¡å‹</div>
         <select value={modelId} onChange={e => setModelId(e.target.value)}>
-            <option value="">ÇëÑ¡ÔñÄ£ĞÍ...</option>
+            <option value="">è¯·é€‰æ‹©æ¨¡å‹...</option>
           {allModels.map(m => <option key={m.id} value={m.id}>{m.pIcon} {m.pName} - {m.name}</option>)}
         </select>
       </div>
       {modelId && getModelNote(providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || '') && (
         <div className="settings-section">
-          <div className="settings-section-title">Ä£ĞÍËµÃ÷</div>
+          <div className="settings-section-title">æ¨¡å‹è¯´æ˜</div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{getModelNote(providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || '')}</div>
         </div>
       )}
       <div className="settings-section">
-          <div className="settings-section-title">ºê¹Ûµ÷¿ØÄ£ĞÍ Ë¼¿¼Ç¿¶È£¨=ÑÏ¸ñ³Ì¶È£©</div>
+          <div className="settings-section-title">å®è§‚è°ƒæ§æ¨¡å‹ æ€è€ƒå¼ºåº¦ å­ä»£ç†åˆ†é…</div>
         <div style={{ display: "flex", gap: 6 }}>
           {["auto", "low", "medium", "high"].map(m => (
             <button key={m} className={`btn btn-sm ${orchThinking === m ? "btn-primary" : ""}`}
               onClick={() => setOrchThinking(m as any)} style={{ flex: 1 }}>
-              {m === "auto" ? "×Ô¶¯" : m === "low" ? "µÍ (¿íËÉ)" : m === "medium" ? "ÖĞ (±ê×¼)" : "¸ß (ÑÏ¸ñ)"}
+              {m === "auto" ? "è‡ªåŠ¨" : m === "low" ? "ä½" : m === "medium" ? "ä¸­" : "é«˜"}
             </button>
           ))}
         </div>
       </div>
       <div className="settings-section">
-          <div className="settings-section-title">×Ó´úÀí Ë¼¿¼Ç¿¶È£¨=ÑÏ¸ñ³Ì¶È£©</div>
+          <div className="settings-section-title">å­ä»£ç† æ€è€ƒå¼ºåº¦</div>
         <div style={{ display: "flex", gap: 6 }}>
           {["auto", "low", "medium", "high"].map(m => (
-            <button key={m} className={`btn btn-sm ${agentThinking === m ? "btn-primary" : ""}}`}
+            <button key={m} className={`btn btn-sm ${agentThinking} === m ? "btn-primary" : ""}`}
               onClick={() => setAgentThinking(m as any)} style={{ flex: 1 }}>
-              {m === "auto" ? "×Ô¶¯" : m === "low" ? "µÍ (¿íËÉ)" : m === "medium" ? "ÖĞ (±ê×¼)" : "¸ß (ÑÏ¸ñ)"}
+              {m === "auto" ? "è‡ªåŠ¨" : m === "low" ? "ä½" : m === "medium" ? "ä¸­" : "é«˜"}
             </button>
           ))}
         </div>
         <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
-              {agentThinking === "auto" ? "ÓÉºê¹Û´óÄ£ĞÍ¸ù¾İÈÎÎñ¸´ÔÓ¶È×Ô¶¯¾ö¶¨×Ó´úÀíµÄÑÏ¸ñ³Ì¶È" : `×Ó´úÀíÊ¹ÓÃ ${agentThinking} Ë¼¿¼Ç¿¶È`}
+              {agentThinking === "auto" ? "ç”±å®è§‚å¤§æ¨¡å‹æ ¹æ®ä»»åŠ¡å¤æ‚åº¦è‡ªåŠ¨å†³å®šå­ä»£ç†çš„æ€è€ƒå¼ºåº¦" : `å­ä»£ç†ä½¿ç”¨ ${agentThinking} æ€è€ƒå¼ºåº¦`}
         </div>
       </div>
       <div className="settings-section">
-          <div className="settings-section-title">ÖÊÁ¿ / ËÙ¶È ±ÈÀı</div>
+          <div className="settings-section-title">è´¨é‡ / é€Ÿåº¦ æ¯”ä¾‹</div>
         <CostEfficiencySlider value={ratio} onChange={setRatio} />
       </div>
       <div className="settings-section">
         <div className="settings-section">
-          <div className="settings-section-title">?? ×Ó´úÀíÄ£ĞÍ·ÖÅä</div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>Îª²»Í¬ÈÎÎñÀàĞÍÖ¸¶¨×¨ÓÃÄ£ĞÍ£¬Î´Ö¸¶¨µÄÊ¹ÓÃÈ«¾ÖÄ£ĞÍ</div>
+          <div className="settings-section-title">ğŸ¤– å­ä»£ç†æ¨¡å‹åˆ†é…</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>ä¸ºä¸åŒä»»åŠ¡ç±»å‹æŒ‡å®šä¸“ç”¨æ¨¡å‹ï¼ŒæœªæŒ‡å®šçš„ä½¿ç”¨å…¨å±€æ¨¡å‹</div>
           {['code', 'reasoning', 'chat', 'general'].map(taskType => (
             <div key={taskType} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span style={{ fontSize: 12, minWidth: 60, color: 'var(--text-secondary)' }}>
-                {taskType === 'code' ? '?? ´úÂë' : taskType === 'reasoning' ? '?? ÍÆÀí' : taskType === 'chat' ? '?? ¶Ô»°' : '?? Í¨ÓÃ'}
+                {taskType === 'code' ? 'ğŸ’» ä»£ç ' : taskType === 'reasoning' ? 'ğŸ§  æ¨ç†' : taskType === 'chat' ? 'ğŸ’¬ å¯¹è¯' : 'ğŸ“‹ é€šç”¨'}
               </span>
               <select value={agentModelMap[taskType] || ''} onChange={e => setAgentModelMap({ ...agentModelMap, [taskType]: e.target.value })}
                 style={{ flex: 1, fontSize: 11 }}>
-                <option value="">¸úËæÈ«¾ÖÄ£ĞÍ</option>
+                <option value="">è·Ÿéšå…¨å±€æ¨¡å‹</option>
                 {providers.flatMap(p => p.models.filter(m => m.type === 'llm').map(m => (
                   <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name}</option>
                 )))}
@@ -321,9 +321,9 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
             </div>
           ))}
         </div>
-          <div className="settings-section-title">ÏµÍ³×´Ì¬</div>
-          <div className="settings-row"><label>Ìá¹©ÉÌ</label><span>{providers.length}</span></div>
-        <div className="settings-row"><label>ÒÑÅäÖÃÄ£ĞÍ</label><span>{allModels.length}</span></div>
+          <div className="settings-section-title">ç³»ç»ŸçŠ¶æ€</div>
+          <div className="settings-row"><label>æä¾›å•†</label><span>{providers.length}</span></div>
+        <div className="settings-row"><label>å·²é…ç½®æ¨¡å‹</label><span>{allModels.length}</span></div>
         <div className="settings-row"><label>API Keys</label><span>{totalKeys}</span></div>
       </div>
     </div>
@@ -358,7 +358,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
 
   return (
     <div className="tab-panel">
-      <h3 style={{ marginBottom: 16, fontSize: 15 }}>Ô¤ÉèÌá¹©ÉÌ</h3>
+      <h3 style={{ marginBottom: 16, fontSize: 15 }}>é¢„è®¾æä¾›å•†</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8, marginBottom: 24 }}>
         {presets.map(p => {
           const added = providers.some(pr => pr.name === p.name);
@@ -367,37 +367,37 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
               onClick={() => !added && addPreset(p.id)}>
               <div className="card-title">{p.icon} {p.name}</div>
               <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{p.description}</div>
-              {added && <span className="badge badge-success" style={{ marginTop: 6 }}>ÒÑÌí¼Ó</span>}
+              {added && <span className="badge badge-success" style={{ marginTop: 6 }}>å·²æ·»åŠ </span>}
             </div>
           );
         })}
       </div>
-      <h3 style={{ marginBottom: 12, fontSize: 15 }}>×Ô¶¨ÒåÌá¹©ÉÌ</h3>
+      <h3 style={{ marginBottom: 12, fontSize: 15 }}>è‡ªå®šä¹‰æä¾›å•†</h3>
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        <input placeholder="Ìá¹©ÉÌÃû³Æ" value={customName} onChange={e => setCustomName(e.target.value)} style={{ flex: 1 }} />
+        <input placeholder="æä¾›å•†åç§°" value={customName} onChange={e => setCustomName(e.target.value)} style={{ flex: 1 }} />
         <input placeholder="Base URL" value={customUrl} onChange={e => setCustomUrl(e.target.value)} style={{ flex: 2 }} />
-        <button className="btn btn-primary" onClick={addCustom}>Ìí¼Ó</button>
+        <button className="btn btn-primary" onClick={addCustom}>æ·»åŠ </button>
       </div>
       {providers.length > 0 && (
         <>
-          <h3 style={{ marginBottom: 12, fontSize: 15 }}>ÒÑÓĞÌá¹©ÉÌ</h3>
+          <h3 style={{ marginBottom: 12, fontSize: 15 }}>å·²æœ‰æä¾›å•†</h3>
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <select value={selProv} onChange={e => setSelProv(e.target.value)} style={{ flex: 1 }}>
-              <option value="">Ñ¡ÔñÌá¹©ÉÌ</option>
-              {providers.map(p => <option key={p.id} value={p.id}>{p.icon || '??'} {p.name}</option>)}
+              <option value="">é€‰æ‹©æä¾›å•†</option>
+              {providers.map(p => <option key={p.id} value={p.id}>{p.icon || 'ğŸ”Œ'} {p.name}</option>)}
             </select>
             {!showMultiKey ? (
               <>
                 <input placeholder="API Key" value={newKey} onChange={e => setNewKey(e.target.value)} type="password" style={{ flex: 2 }} />
-                <button className="btn btn-primary" onClick={addKey}>Ìí¼ÓÃÜÔ¿</button>
+                <button className="btn btn-primary" onClick={addKey}>æ·»åŠ å¯†é’¥</button>
               </>
             ) : (
               <>
-                <textarea placeholder="Ã¿ĞĞÒ»¸ö API Key" value={multiKeyInput} onChange={e => setMultiKeyInput(e.target.value)}
+                <textarea placeholder="æ¯è¡Œä¸€ä¸ª API Key" value={multiKeyInput} onChange={e => setMultiKeyInput(e.target.value)}
                   style={{ flex: 2, minHeight: 60, fontFamily: 'var(--font-mono)', fontSize: 11 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <button className="btn btn-primary btn-sm" onClick={addMultiKeys}>Ìí¼Ó</button>
-                  <button className="btn btn-sm" onClick={() => { setShowMultiKey(false); setMultiKeyInput(''); }}>È¡Ïû</button>
+                  <button className="btn btn-primary btn-sm" onClick={addMultiKeys}>æ·»åŠ </button>
+                  <button className="btn btn-sm" onClick={() => { setShowMultiKey(false); setMultiKeyInput(''); }}>å–æ¶ˆ</button>
                 </div>
               </>
             )}
@@ -408,7 +408,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
               if (!prov) return null;
               const activeKeys = prov.apiKeys.filter(k => k.isActive).length;
               const poolLimit = 50;
-              return <span>{activeKeys}/{prov.apiKeys.length} ¸ö»îÔ¾ÃÜÔ¿£¬³ØÉÏÏŞ {poolLimit}</span>;
+              return <span>{activeKeys}/{prov.apiKeys.length} ä¸ªæ´»è·ƒå¯†é’¥ï¼Œæ± ä¸Šé™ {poolLimit}</span>;
             })()}
           </div>
           {providers.map(p => {
@@ -417,14 +417,14 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
             return (
               <div key={p.id} className="card">
                 <div className="card-title">
-                  {p.icon || '??'} {p.name}
-                  <span className="badge badge-info" style={{ marginLeft: 8 }}>{p.models.length} Ä£ĞÍ</span>
-                  <span className="badge badge-success" style={{ marginLeft: 4 }}>{p.apiKeys.length}/{poolLimit} ¸öÃÜÔ¿</span>
+                  {p.icon || 'ğŸ”‘'} {p.name}
+                  <span className="badge badge-info" style={{ marginLeft: 8 }}>{p.models.length} æ¨¡å‹</span>
+                  <span className="badge badge-success" style={{ marginLeft: 4 }}>{p.apiKeys.length}/{poolLimit} ä¸ªå¯†é’¥</span>
                   <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>{p.type}</span>
-                  <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-muted)' }}>({activeKeys} ¸ö»îÔ¾, {p.apiKeys.length - activeKeys} ¸ö½ûÓÃ)</span>
+                  <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text-muted)' }}>({activeKeys} ä¸ªæ´»è·ƒ, {p.apiKeys.length - activeKeys} ä¸ªç¦ç”¨)</span>
                   {p.apiKeys.length > 0 && (
                     <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={() => fetchModels(p.id)} disabled={fetching === p.id}>
-                      {fetching === p.id ? 'Ë¢ĞÂÖĞ..' : 'Ë¢ĞÂÄ£ĞÍ'}
+                      {fetching === p.id ? 'åˆ·æ–°ä¸­..' : 'åˆ·æ–°æ¨¡å‹'}
                     </button>
                   )}
                 </div>
@@ -437,7 +437,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                       color: k.isActive ? 'var(--success)' : 'var(--error)',
                       border: `1px solid ${k.isActive ? 'var(--success)' : 'var(--error)'}`
                     }}>
-                      {k.isActive ? '?' : '?'} {k.key.slice(0, 8)}...
+                      {k.isActive ? 'âœ…' : 'âŒ'} {k.key.slice(0, 8)}...
                     </span>
                   ))}
                 </div>
@@ -446,7 +446,7 @@ function ProviderPanel({ providers, onRefresh }: { providers: Provider[]; onRefr
                     <span>{m.name}</span>
                     <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : 'badge-success'}`}>{m.type}</span>
                     {(m.capabilities as any).visionScore > 0 && <span className="badge badge-purple" style={{fontSize:9}}>{(m.capabilities as any).visionScore}/10</span>}
-                    {(m.type === "tts" || m.type === "stt") && <span className="badge badge-accent" style={{fontSize:9}}>??? ÓïÒô</span>}{(m.capabilities as any).audioScore > 0 && <span className="badge badge-orange" style={{fontSize:9}}>?? ÒôÆµ {(m.capabilities as any).audioScore}/10</span>}
+                    {(m.type === "tts" || m.type === "stt") && <span className="badge badge-accent" style={{fontSize:9}}>ğŸ—£ï¸ è¯­éŸ³</span>}{(m.capabilities as any).audioScore > 0 && <span className="badge badge-orange" style={{fontSize:9}}>ğŸ”Š éŸ³é¢‘ {(m.capabilities as any).audioScore}/10</span>}
                   </div>
                 ))}
               </div>
@@ -465,30 +465,30 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
   const model = allModels.find(m => m.id === selected);
   return (
     <div className="tab-panel">
-      <h3 style={{ marginBottom: 16, fontSize: 15 }}>Ñ¡ÔñÄ£ĞÍ</h3>
+      <h3 style={{ marginBottom: 16, fontSize: 15 }}>é€‰æ‹©æ¨¡å‹</h3>
       <select value={selected} onChange={e => setSelected(e.target.value)} style={{ marginBottom: 16 }}>
-        <option value="">Ñ¡ÔñÄ£ĞÍ</option>
+        <option value="">é€‰æ‹©æ¨¡å‹</option>
         {allModels.map(m => <option key={m.id} value={m.id}>{m.providerIcon} {m.providerName} - {m.name}</option>)}
       </select>
       {model && (
         <div className="card">
           <div className="card-title">{model.providerIcon} {model.name}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>{model.providerName} {model.type}</div>
-          <CapabilityBar label="´úÂë" value={model.capabilities.code} color="var(--accent)" />
+          <CapabilityBar label="ä»£ç " value={model.capabilities.code} color="var(--accent)" />
           <CapabilityBar label="Agent" value={model.capabilities.agent} color="var(--info)" />
-          <CapabilityBar label="ÁÄÌì" value={model.capabilities.chat} color="var(--success)" />
-          <CapabilityBar label="ÉÏÏÂÎÄ³¤¶È" value={model.capabilities.context} color="var(--warning)" />
-          <CapabilityBar label="ËÙ¶È" value={model.capabilities.speed} color="#ff6b9d" />
-          <CapabilityBar label="ÊÓ¾õ" value={(model.capabilities as any).visionScore || 0} color="#b388ff" />
-          <CapabilityBar label="ÒôÆµ" value={(model.capabilities as any).audioScore || 0} color="#ff9800" />
+          <CapabilityBar label="èŠå¤©" value={model.capabilities.chat} color="var(--success)" />
+          <CapabilityBar label="ä¸Šä¸‹æ–‡é•¿åº¦" value={model.capabilities.context} color="var(--warning)" />
+          <CapabilityBar label="é€Ÿåº¦" value={model.capabilities.speed} color="#ff6b9d" />
+          <CapabilityBar label="è§†è§‰" value={(model.capabilities as any).visionScore || 0} color="#b388ff" />
+          <CapabilityBar label="éŸ³é¢‘" value={(model.capabilities as any).audioScore || 0} color="#ff9800" />
           <div style={{ marginTop: 12, fontSize: 12, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             {(model.capabilities as any).visionScore > 0 && <span className="badge badge-purple">{(model.capabilities as any).visionScore}/10</span>}
-            {(model.type === 'tts' || model.type === 'stt') && <span className="badge badge-accent" style={{fontSize:9}}>ÓïÒô</span>}
+            {(model.type === 'tts' || model.type === 'stt') && <span className="badge badge-accent" style={{fontSize:9}}>è¯­éŸ³</span>}
             {getModelNote(model.name) && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{getModelNote(model.name)}</span>}
           </div>
         </div>
       )}
-      <h3 style={{ marginTop: 24, marginBottom: 12, fontSize: 15 }}>È«²¿Ä£ĞÍ</h3>
+      <h3 style={{ marginTop: 24, marginBottom: 12, fontSize: 15 }}>å…¨éƒ¨æ¨¡å‹</h3>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
         {allModels.map(m => (
           <div key={m.id} className="card" style={{ padding: 10, cursor: 'pointer' }} onClick={() => setSelected(m.id)}>
@@ -498,12 +498,12 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
               <span className={`badge ${m.type === 'llm' ? 'badge-info' : m.type === 'tts' ? 'badge-accent' : m.type === 'image' ? 'badge-warning' : m.type === 'video' ? 'badge-error' : m.type === '3d' ? 'badge-warning' : m.type === 'stt' ? 'badge-accent' : 'badge-success'}`}>{m.type}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, fontSize: 10, flexWrap: 'wrap' }}>
-              {(m.capabilities as any).visionScore > 0 && <span className="badge badge-purple" style={{fontSize:9}}>??? ÊÓ¾õ</span>}
-              {(m.type === 'tts' || m.type === 'stt') && <span className="badge badge-accent" style={{fontSize:9}}>ÓïÒô</span>}
-              <span style={{ color: 'var(--text-muted)' }}>´úÂë {m.capabilities.code}</span>
+              {(m.capabilities as any).visionScore > 0 && <span className="badge badge-purple" style={{fontSize:9}}>ğŸ–¼ï¸ è§†è§‰</span>}
+              {(m.type === 'tts' || m.type === 'stt') && <span className="badge badge-accent" style={{fontSize:9}}>è¯­éŸ³</span>}
+              <span style={{ color: 'var(--text-muted)' }}>ä»£ç  {m.capabilities.code}</span>
               <span style={{ color: 'var(--text-muted)' }}>Agent {m.capabilities.agent}</span>
               <span style={{ color: 'var(--text-muted)' }}>{m.capabilities.chat}</span>
-              {(m.capabilities as any).visionScore > 0 && <span style={{ color: '#b388ff' }}>ÊÓ¾õ {(m.capabilities as any).visionScore}</span>}
+              {(m.capabilities as any).visionScore > 0 && <span style={{ color: '#b388ff' }}>è§†è§‰ {(m.capabilities as any).visionScore}</span>}
             </div>
           </div>
         ))}
@@ -513,64 +513,64 @@ function ModelPanel({ providers }: { providers: Provider[] }) {
 }
 // ...
 function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefresh: () => void }) {
-  // ²âÊÔÃû³ÆÖĞÓ¢ÎÄÓ³Éä
+  // æµ‹è¯•åç§°ä¸­è‹±æ–‡æ˜ å°„
   const TEST_NAME_CN: Record<string, string> = {
-    'Python Function': 'Pythonº¯Êı',
-    'Bug Detection': 'Bug¼ì²â',
-    'Data Structure': 'Êı¾İ½á¹¹',
-    'Math Calculation': 'ÊıÑ§¼ÆËã',
-    'Logic Puzzle': 'Âß¼­ÃÕÌâ',
-    'Multi-step Reasoning': '¶à²½ÍÆÀí',
-    'Format Following': '¸ñÊ½×ñÑ­',
-    'Multi-turn Context': '¶àÂÖÉÏÏÂÎÄ',
-    'Complex Instruction': '¸´ÔÓÖ¸Áî',
-    'Simple Q&A Speed': '¼òµ¥ÎÊ´ğËÙ¶È',
-    'Vision Description': 'ÊÓ¾õÃèÊö',
-    'Echo Test': '»ØÉù²âÊÔ',
-    'Quick Code': '¿ìËÙ´úÂë',
-    'Quick Math': '¿ìËÙÊıÑ§',
-    'Quick Format': '¿ìËÙ¸ñÊ½',
-    'Quick Speed': '¿ìËÙËÙ¶È',
+    'Python Function': 'Pythonå‡½æ•°',
+    'Bug Detection': 'Bugæ£€æµ‹',
+    'Data Structure': 'æ•°æ®ç»“æ„',
+    'Math Calculation': 'æ•°å­¦è®¡ç®—',
+    'Logic Puzzle': 'é€»è¾‘è°œé¢˜',
+    'Multi-step Reasoning': 'å¤šæ­¥æ¨ç†',
+    'Format Following': 'æ ¼å¼éµå¾ª',
+    'Multi-turn Context': 'å¤šè½®ä¸Šä¸‹æ–‡',
+    'Complex Instruction': 'å¤æ‚æŒ‡ä»¤',
+    'Simple Q&A Speed': 'ç®€å•é—®ç­”é€Ÿåº¦',
+    'Vision Description': 'è§†è§‰æè¿°',
+    'Echo Test': 'å›å£°æµ‹è¯•',
+    'Quick Code': 'å¿«é€Ÿä»£ç ',
+    'Quick Math': 'å¿«é€Ÿæ•°å­¦',
+    'Quick Format': 'å¿«é€Ÿæ ¼å¼',
+    'Quick Speed': 'å¿«é€Ÿé€Ÿåº¦',
   };
   const cn = (name: string) => TEST_NAME_CN[name] || name;
   const DETAIL_CN: Record<string, string> = {
-    'Correct FizzBuzz': 'FizzBuzzÕıÈ·',
-    'Partial': '²¿·ÖÕıÈ·',
-    'Did not follow format': 'Î´×ñÑ­¸ñÊ½',
-    'Perfect compliance': 'ÍêÃÀ×ñÑ­',
-    'Close': '½Ó½ü',
-    'Off target': 'Æ«ÀëÄ¿±ê',
-    'Fast': '¿ìËÙ',
-    'Slow': '»ºÂı',
-    'Incorrect': '²»ÕıÈ·',
-    'Found the edge case bug': '·¢ÏÖ±ß½çÇé¿öbug',
-    'Did not find the real bug': 'Î´·¢ÏÖÕæÊµbug',
-    'All correct': 'È«²¿ÕıÈ·',
-    'Correct deduction': 'ÍÆÀíÕıÈ·',
-    'Exact format match': '¸ñÊ½ÍêÈ«Æ¥Åä',
-    'Word count correct': '×ÖÊıÕıÈ·',
-    'Maintained context': '±£³ÖÉÏÏÂÎÄ',
-    'Good instruction following': 'Á¼ºÃµÄÖ¸Áî×ñÑ­',
-    'Fast response': '¿ìËÙÏìÓ¦',
-    'Correct echo': '»ØÉùÕıÈ·',
-    'No extra content': 'ÎŞ¶îÍâÄÚÈİ',
-    'Fast and correct': '¿ìËÙÇÒÕıÈ·',
-    'Good description': 'ÃèÊöÁ¼ºÃ',
-    'Minimal description': 'ÃèÊö¼òÂÔ',
-    'Weak or no description': 'ÃèÊöÈõ»òÎŞ',
-    'Good heap implementation': 'ÊµÏÖÁ¼ºÃ',
-    'Partial implementation': '²¿·ÖÊµÏÖ',
-    'Incorrect implementation': 'ÊµÏÖ²»ÕıÈ·',
-    'Found multi-step reasoning': '·¢ÏÖ¶à²½ÍÆÀí',
-    'Partial reasoning': '²¿·ÖÍÆÀí',
-    'Good context maintenance': 'ÉÏÏÂÎÄÎ¬»¤Á¼ºÃ',
-    'Partial context maintained': '²¿·ÖÉÏÏÂÎÄ±£³Ö',
-    'Context lost': 'ÉÏÏÂÎÄ¶ªÊ§',
-    'Strong instruction following': 'Ç¿Ö¸Áî×ñÑ­',
-    'Partial instruction following': '²¿·ÖÖ¸Áî×ñÑ­',
-    'Audio capability detected': '¼ì²âµ½ÒôÆµÄÜÁ¦',
-    'Limited audio capability': 'ÓĞÏŞÒôÆµÄÜÁ¦',
-    'No audio support': '²»Ö§³ÖÒôÆµ',
+    'Correct FizzBuzz': 'FizzBuzzæ­£ç¡®',
+    'Partial': 'éƒ¨åˆ†æ­£ç¡®',
+    'Did not follow format': 'æœªéµå¾ªæ ¼å¼',
+    'Perfect compliance': 'å®Œç¾éµå¾ª',
+    'Close': 'æ¥è¿‘',
+    'Off target': 'åç¦»ç›®æ ‡',
+    'Fast': 'å¿«é€Ÿ',
+    'Slow': 'ç¼“æ…¢',
+    'Incorrect': 'ä¸æ­£ç¡®',
+    'Found the edge case bug': 'å‘ç°è¾¹ç•Œæƒ…å†µbug',
+    'Did not find the real bug': 'æœªå‘ç°çœŸå®bug',
+    'All correct': 'å…¨éƒ¨æ­£ç¡®',
+    'Correct deduction': 'æ¨ç†æ­£ç¡®',
+    'Exact format match': 'æ ¼å¼å®Œå…¨åŒ¹é…',
+    'Word count correct': 'å­—æ•°æ­£ç¡®',
+    'Maintained context': 'ä¿æŒä¸Šä¸‹æ–‡',
+    'Good instruction following': 'è‰¯å¥½çš„æŒ‡ä»¤éµå¾ª',
+    'Fast response': 'å¿«é€Ÿå“åº”',
+    'Correct echo': 'å›å£°æ­£ç¡®',
+    'No extra content': 'æ— é¢å¤–å†…å®¹',
+    'Fast and correct': 'å¿«é€Ÿä¸”æ­£ç¡®',
+    'Good description': 'æè¿°è‰¯å¥½',
+    'Minimal description': 'æè¿°ç®€ç•¥',
+    'Weak or no description': 'æè¿°å¼±æˆ–æ— ',
+    'Good heap implementation': 'å®ç°è‰¯å¥½',
+    'Partial implementation': 'éƒ¨åˆ†å®ç°',
+    'Incorrect implementation': 'å®ç°ä¸æ­£ç¡®',
+    'Found multi-step reasoning': 'å‘ç°å¤šæ­¥æ¨ç†',
+    'Partial reasoning': 'éƒ¨åˆ†æ¨ç†',
+    'Good context maintenance': 'ä¸Šä¸‹æ–‡ç»´æŠ¤è‰¯å¥½',
+    'Partial context maintained': 'éƒ¨åˆ†ä¸Šä¸‹æ–‡ä¿æŒ',
+    'Context lost': 'ä¸Šä¸‹æ–‡ä¸¢å¤±',
+    'Strong instruction following': 'å¼ºæŒ‡ä»¤éµå¾ª',
+    'Partial instruction following': 'éƒ¨åˆ†æŒ‡ä»¤éµå¾ª',
+    'Audio capability detected': 'æ£€æµ‹åˆ°éŸ³é¢‘èƒ½åŠ›',
+    'Limited audio capability': 'æœ‰é™éŸ³é¢‘èƒ½åŠ›',
+    'No audio support': 'ä¸æ”¯æŒéŸ³é¢‘',
   };
   const cnDetail = (d: string) => DETAIL_CN[d] || d;
 
@@ -593,7 +593,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
   const estimateLabel = (ms?: number | null) => {
     if (!ms) return '';
     const sec = Math.round(ms / 1000);
-    return sec > 60 ? Math.round(sec / 60) + '·ÖÖÓ' : sec + 'Ãë';
+    return sec > 60 ? Math.round(sec / 60) + 'åˆ†é’Ÿ' : sec + 'ç§’';
   };
   const exceedsAny = (reportsArr: any[]) => reportsArr.some((rr: any) => rr.exceedsEstimated);
   const runTest = async () => {
@@ -601,32 +601,32 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
     try {
       if (scope === 'single') {
         const model = allModels.find(m => m.id === selectedModel);
-        if (!model) { alert('ÇëÑ¡ÔñÄ£ĞÍ'); setTesting(false); return; }
+        if (!model) { alert('è¯·é€‰æ‹©æ¨¡å‹'); setTesting(false); return; }
         setProgress({ current: 1, total: 1, label: model.modelId });
         const r = testMode === 'quick' ? await api.runQuickTest(model.provId, model.id) : await api.runFullTest(model.provId, model.id);
         setReports(r.reports || []);
-        if (r.estimatedMs) setProgress(p => ({ ...p, label: 'Ô¤¼Æ: ' + estimateLabel(r.estimatedMs) }));
-        if (exceedsAny(r.reports || [])) alert('×¢Òâ£º²¿·ÖÄ£ĞÍ³¬³öÔ¤ÆÚ£¬Ïê¼û²âÊÔ±¨');
-        setLastResult('µ¥Ä£ĞÍ²âÊÔÍê³É');
-        setProgress({ current: 1, total: 1, label: 'ÒÑÍê³É' });
+        if (r.estimatedMs) setProgress(p => ({ ...p, label: 'é¢„è®¡: ' + estimateLabel(r.estimatedMs) }));
+        if (exceedsAny(r.reports || [])) alert('æ³¨æ„ï¼šéƒ¨åˆ†æ¨¡å‹è¶…å‡ºé¢„æœŸï¼Œè¯¦è§æµ‹è¯•æŠ¥');
+        setLastResult('å•æ¨¡å‹æµ‹è¯•å®Œæˆ');
+        setProgress({ current: 1, total: 1, label: 'å·²å®Œæˆ' });
       } else if (scope === 'provider') {
-        if (!selectedProvider) { alert('ÇëÑ¡ÔñÌá¹©ÉÌ'); setTesting(false); return; }
-        setProgress({ current: 0, total: providerModels.length || 1, label: 'Ìá¹©ÉÌ²âÊÔÖĞ...' });
+        if (!selectedProvider) { alert('è¯·é€‰æ‹©æä¾›å•†'); setTesting(false); return; }
+        setProgress({ current: 0, total: providerModels.length || 1, label: 'æä¾›å•†æµ‹è¯•ä¸­...' });
         const r = await api.runProviderTest(selectedProvider, testMode === 'quick');
         setReports(r.reports || []);
-        if (r.estimatedMs) setProgress(p => ({ ...p, label: 'Ô¤¼Æ: ' + estimateLabel(r.estimatedMs) }));
-        setLastResult('Ìá¹©ÉÌ ' + (r.providerName || '') + ' ²âÊÔÍê³É£¬¹² ' + (r.reports?.length || 0) + ' ¸ö±¨');
-        setProgress({ current: providerModels.length || 1, total: providerModels.length || 1, label: 'ÒÑÍê³É' });
+        if (r.estimatedMs) setProgress(p => ({ ...p, label: 'é¢„è®¡: ' + estimateLabel(r.estimatedMs) }));
+        setLastResult('æä¾›å•† ' + (r.providerName || '') + ' æµ‹è¯•å®Œæˆï¼Œå…± ' + (r.reports?.length || 0) + ' ä¸ªæŠ¥');
+        setProgress({ current: providerModels.length || 1, total: providerModels.length || 1, label: 'å·²å®Œæˆ' });
       } else {
         const totalCount = allModels.length || 1;
-        setProgress({ current: 0, total: totalCount, label: 'È«²¿²âÊÔÖĞ...' });
+        setProgress({ current: 0, total: totalCount, label: 'å…¨éƒ¨æµ‹è¯•ä¸­...' });
         const r = await api.runAllTest(testMode === 'quick');
         setReports(r.reports || []);
-        if (r.estimatedMs) setProgress(p => ({ ...p, label: 'Ô¤¼Æ: ' + estimateLabel(r.estimatedMs) }));
-        setLastResult('È«²¿²âÊÔÍê³É£¬¹² ' + (r.reports?.length || 0) + ' ¸ö±¨');
-        setProgress({ current: totalCount, total: totalCount, label: 'ÒÑÍê³É' });
+        if (r.estimatedMs) setProgress(p => ({ ...p, label: 'é¢„è®¡: ' + estimateLabel(r.estimatedMs) }));
+        setLastResult('å…¨éƒ¨æµ‹è¯•å®Œæˆï¼Œå…± ' + (r.reports?.length || 0) + ' ä¸ªæŠ¥');
+        setProgress({ current: totalCount, total: totalCount, label: 'å·²å®Œæˆ' });
       }
-    } catch (e: any) { alert('²âÊÔ³ö´í: ' + e.message); }
+    } catch (e: any) { alert('æµ‹è¯•å‡ºé”™: ' + e.message); }
     await onRefresh();
     setTesting(false);
   };
@@ -652,50 +652,50 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
 
   const SortHeader = ({ col, children }: { col: string; children: React.ReactNode }) => (
     <th onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', padding: '6px 8px', fontSize: 11, textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-        {children} {sortBy === col ? (sortDir === 'asc' ? ' ¡ø' : ' ¨‹') : ''}
+        {children} {sortBy === col ? (sortDir === 'asc' ? ' â–²' : ' â–¼') : ''}
     </th>
   );
 
   return (
     <div className="tab-panel">
-      <h3 style={{ marginBottom: 16, fontSize: 15 }}>Ä£ĞÍ²âÊÔ</h3>
+      <h3 style={{ marginBottom: 16, fontSize: 15 }}>æ¨¡å‹æµ‹è¯•</h3>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <button onClick={() => setTestMode('quick')} style={{ flex: 1, padding: '12px 16px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: testMode === 'quick' ? 'var(--accent)' : 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 600 }}>
-          ¿ìËÙ²âÊÔ ~3 ·ÖÖÓ<span style={{ fontSize: 10, opacity: 0.7 }}>~3 ·ÖÖÓ</span>
+          å¿«é€Ÿæµ‹è¯• ~3 åˆ†é’Ÿ<span style={{ fontSize: 10, opacity: 0.7 }}>~3 åˆ†é’Ÿ</span>
         </button>
         <button onClick={() => setTestMode('full')} style={{ flex: 1, padding: '12px 16px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: testMode === 'full' ? 'var(--accent)' : 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--text-primary)', fontWeight: 600 }}>
-          ±ê×¼²âÊÔ ~12 ·ÖÖÓ<span style={{ fontSize: 10, opacity: 0.7 }}>~12 ·ÖÖÓ</span>
+          æ ‡å‡†æµ‹è¯• ~12 åˆ†é’Ÿ<span style={{ fontSize: 10, opacity: 0.7 }}>~12 åˆ†é’Ÿ</span>
         </button>
       </div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-        {[{ k: 'single', l: 'µ¥Ä£ĞÍ' }, { k: 'provider', l: 'Ìá¹©ÉÌ²âÊÔ' }, { k: 'all', l: 'È«²¿²âÊÔ' }].map(s => (
+        {[{ k: 'single', l: 'å•æ¨¡å‹' }, { k: 'provider', l: 'æä¾›å•†æµ‹è¯•' }, { k: 'all', l: 'å…¨éƒ¨æµ‹è¯•' }].map(s => (
           <button key={s.k} className={`btn btn-sm ${scope === s.k ? 'btn-primary' : ''}`} onClick={() => setScope(s.k as any)}>{s.l}</button>
         ))}
       </div>
       {scope === 'single' && (
         <select value={selectedModel} onChange={e => setSelectedModel(e.target.value)} style={{ marginBottom: 12, width: '100%' }}>
-            <option value="">Ñ¡ÔñÄ£ĞÍ</option>
+            <option value="">é€‰æ‹©æ¨¡å‹</option>
           {allModels.map(m => <option key={m.id} value={m.id}>{m.pIcon} {m.pName} - {m.modelId}</option>)}
         </select>
       )}
       {scope === 'provider' && (
         <select value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)} style={{ marginBottom: 12, width: '100%' }}>
-            <option value="">Ñ¡ÔñÌá¹©ÉÌ</option>
+            <option value="">é€‰æ‹©æä¾›å•†</option>
             {providers.map(p => <option key={p.id} value={p.id}>{p.icon} {p.name} ({p.models.filter(m => m.type === 'llm').length})</option>)}
         </select>
       )}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <button className="btn btn-primary" onClick={runTest} disabled={testing} style={{ flex: 1 }}>
-          {testing ? '²âÊÔÖĞ..' : '¿ªÊ¼²âÊÔ'}
+          {testing ? 'æµ‹è¯•ä¸­..' : 'å¼€å§‹æµ‹è¯•'}
         </button>
         <button className="btn btn-primary" onClick={() => { setScope('all'); setTimeout(() => runTest(), 100); }} disabled={testing} style={{ background: 'var(--info)' }}>
-          {testing ? '²âÊÔÖĞ..' : '²âÊÔÈ«²¿Ä£ĞÍ'}
+          {testing ? 'æµ‹è¯•ä¸­..' : 'æµ‹è¯•å…¨éƒ¨æ¨¡å‹'}
         </button>
       </div>
       {testing && progress.total > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
-            <span>{progress.label || 'æ‘îƒˆé¦›ç¨‰?..'}</span>
+            <span>{progress.label || 'åŠ è½½ä¸­...'}</span>
             <span>{progress.current}/{progress.total}</span>
           </div>
           <div className="progress-bar"><div className="progress-fill" style={{ width: Math.max(5, Math.round((progress.current / Math.max(1, progress.total)) * 100)) + '%' }} /></div>
@@ -707,15 +707,15 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                <SortHeader col="modelName">Ä£ĞÍÃû³Æ</SortHeader>
-                <th style={{ padding: '6px 8px', fontSize: 11, textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Ìá¹©ÉÌ</th>
-                <SortHeader col="code">´úÂë</SortHeader>
+                <SortHeader col="modelName">æ¨¡å‹åç§°</SortHeader>
+                <th style={{ padding: '6px 8px', fontSize: 11, textAlign: 'left', borderBottom: '1px solid var(--border)' }}>æä¾›å•†</th>
+                <SortHeader col="code">ä»£ç </SortHeader>
                 <SortHeader col="agent">Agent</SortHeader>
-                <SortHeader col="chat">ÁÄÌì</SortHeader>
-                <SortHeader col="vision">ÊÓ¾õ</SortHeader><SortHeader col="audio">ÒôÆµ</SortHeader>
-                <SortHeader col="speed">ËÙ¶È</SortHeader>
-                <SortHeader col="overallScore">·Ö</SortHeader>
-                <th style={{ padding: '6px 8px', fontSize: 11, textAlign: 'left', borderBottom: '1px solid var(--border)' }}>²Ù×÷</th>
+                <SortHeader col="chat">èŠå¤©</SortHeader>
+                <SortHeader col="vision">è§†è§‰</SortHeader><SortHeader col="audio">éŸ³é¢‘</SortHeader>
+                <SortHeader col="speed">é€Ÿåº¦</SortHeader>
+                <SortHeader col="overallScore">åˆ†</SortHeader>
+                <th style={{ padding: '6px 8px', fontSize: 11, textAlign: 'left', borderBottom: '1px solid var(--border)' }}>æ“ä½œ</th>
               </tr>
             </thead>
             <tbody>
@@ -753,7 +753,7 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
                         <div style={{ width: ((r.capabilities?.visionScore || 0) * 10) + '%', height: '100%', background: '#b388ff', borderRadius: 3 }} />
                       </div>
                       <span>{(r.capabilities?.visionScore || 0).toFixed(1)}/10</span>
-                        {(r.capabilities?.visionScore || 0) > 0 && <span style={{ fontSize: 9 }}>???</span>}
+                        {(r.capabilities?.visionScore || 0) > 0 && <span style={{ fontSize: 9 }}>ğŸ–¼ï¸</span>}
                     </div>
                   </td>
                   <td style={{ padding: '8px' }}>
@@ -779,15 +779,15 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
           <div className="card-title">
             {r.modelName}
             <span className="badge badge-info" style={{ marginLeft: 8 }}>{r.providerName}</span>
-            {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-purple" style={{marginLeft:4}}>??? ÊÓ¾õ</span>}
+            {(r.capabilities?.visionScore || 0) > 0 && <span className="badge badge-purple" style={{marginLeft:4}}>ğŸ–¼ï¸ è§†è§‰</span>}
             <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>{r.overallScore?.toFixed(1)}/10</span>
           </div>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
-            {r.metrics?.passRate != null && <span>Í¨¹ıÂÊ {r.metrics.passRate}%</span>}
-            {r.metrics?.avgLatencyMs != null && <span>Æ½¾ùÑÓ³Ù {r.metrics.avgLatencyMs}ms</span>}
-            {r.metrics?.codeAvg != null && <span>´úÂë {r.metrics.codeAvg}</span>}
-            {r.metrics?.reasonAvg != null && <span>ÍÆÀí {r.metrics.reasonAvg}</span>}
-            {r.metrics?.chatAvg != null && <span>ÁÄÌì {r.metrics.chatAvg}</span>}
+            {r.metrics?.passRate != null && <span>é€šè¿‡ç‡ {r.metrics.passRate}%</span>}
+            {r.metrics?.avgLatencyMs != null && <span>å¹³å‡å»¶è¿Ÿ {r.metrics.avgLatencyMs}ms</span>}
+            {r.metrics?.codeAvg != null && <span>ä»£ç  {r.metrics.codeAvg}</span>}
+            {r.metrics?.reasonAvg != null && <span>æ¨ç† {r.metrics.reasonAvg}</span>}
+            {r.metrics?.chatAvg != null && <span>èŠå¤© {r.metrics.chatAvg}</span>}
           </div>
           {r.results?.map((t: any, j: number) => (
             <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 12 }}>
@@ -803,14 +803,14 @@ function TestingPanel({ providers, onRefresh }: { providers: Provider[]; onRefre
           )}
           {r.capabilities && (
             <div style={{ marginTop: 8 }}>
-              <CapabilityBar label="´úÂë" value={r.capabilities.code} color="var(--accent)" />
+              <CapabilityBar label="ä»£ç " value={r.capabilities.code} color="var(--accent)" />
               <CapabilityBar label="Agent" value={r.capabilities.agent} color="var(--info)" />
-              <CapabilityBar label="¶Ô»°" value={r.capabilities.chat} color="var(--success)" />
-              <CapabilityBar label="ÊÓ¾õ" value={r.capabilities.visionScore || 0} color="#b388ff" /><CapabilityBar label="ÒôÆµ" value={r.capabilities.audioScore || 0} color="#ff9800" />
-              <CapabilityBar label="ËÙ¶È" value={r.capabilities.speed || 0} color="#ff6b9d" />
+              <CapabilityBar label="å¯¹è¯" value={r.capabilities.chat} color="var(--success)" />
+              <CapabilityBar label="è§†è§‰" value={r.capabilities.visionScore || 0} color="#b388ff" /><CapabilityBar label="éŸ³é¢‘" value={r.capabilities.audioScore || 0} color="#ff9800" />
+              <CapabilityBar label="é€Ÿåº¦" value={r.capabilities.speed || 0} color="#ff6b9d" />
             </div>
           )}
-          {r.error && <div style={{ color: 'var(--error)', fontSize: 12, marginTop: 6 }}>´íÎó: {r.error}</div>}
+          {r.error && <div style={{ color: 'var(--error)', fontSize: 12, marginTop: 6 }}>é”™è¯¯: {r.error}</div>}
         </div>
       ))}
     </div>
@@ -825,13 +825,13 @@ function ExtensionsPanel() {
   const [skillPresets, setSkillPresets] = useState<any[]>([]);
   const [showAddMcp, setShowAddMcp] = useState(false);
   const [showAddSkill, setShowAddSkill] = useState(false);
-  const [customMcp, setCustomMcp] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: 'Í¨ÓÃ', icon: '??' });
-  const [customSkill, setCustomSkill] = useState({ name: '', description: '', content: '', category: 'Í¨ÓÃ', icon: '??' });
+  const [customMcp, setCustomMcp] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: 'é€šç”¨', icon: 'ğŸ”Œ' });
+  const [customSkill, setCustomSkill] = useState({ name: '', description: '', content: '', category: 'é€šç”¨', icon: 'ğŸ”Œ' });
   const [editingSkill, setEditingSkill] = useState<any>(null);
   const [skillServers, setSkillServers] = useState<any[]>([]);
   const [skillServerPresets, setSkillServerPresets] = useState<any[]>([]);
   const [showAddSkillServer, setShowAddSkillServer] = useState(false);
-  const [customSkillServer, setCustomSkillServer] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: 'Í¨ÓÃ', icon: '??' });
+  const [customSkillServer, setCustomSkillServer] = useState({ name: '', description: '', transport: 'stdio' as string, command: '', args: '', url: '', category: 'é€šç”¨', icon: 'ğŸ”Œ' });
   const [feedback, setFeedback] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [installing, setInstalling] = useState<string | null>(null);
 
@@ -853,10 +853,10 @@ function ExtensionsPanel() {
       if (type === 'mcp') await api.addMcpFromPreset(presetId);
       else if (type === 'skill-server') await api.addSkillServerFromPreset(presetId);
       else await api.addSkillFromPreset(presetId);
-      showFeedback('success', presetName + ' °²×°³É¹¦£¡');
+      showFeedback('success', presetName + ' å®‰è£…æˆåŠŸï¼');
       await loadAll();
     } catch (err: any) {
-      showFeedback('error', '°²×°Ê§°Ü: ' + (err?.message || 'Î´Öª´íÎó'));
+      showFeedback('error', 'å®‰è£…å¤±è´¥: ' + (err?.message || 'æœªçŸ¥é”™è¯¯'));
     } finally {
       setInstalling(null);
     }
@@ -871,49 +871,49 @@ function ExtensionsPanel() {
           background: feedback.type === 'success' ? 'var(--success, #22c55e)' : 'var(--error, #ef4444)',
           color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
         }}>
-          {feedback.type === 'success' ? '?' : '?'} {feedback.message}
+          {feedback.type === 'success' ? 'âœ…' : 'âŒ'} {feedback.message}
         </div>
       )}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, borderBottom: '1px solid var(--border)' }}>
-        <button className={`btn ${subTab === 'mcp' ? 'btn-primary' : ''}`} onClick={() => setSubTab('mcp')} style={{ borderRadius: '6px 6px 0 0' }}>MCP ·şÎñÆ÷</button>
-        <button className={`btn ${subTab === 'skill-servers' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skill-servers')} style={{ borderRadius: '6px 6px 0 0' }}>Skill ·şÎñÆ÷</button>
-        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>×¨¼Ò¿â</button>
+        <button className={`btn ${subTab === 'mcp' ? 'btn-primary' : ''}`} onClick={() => setSubTab('mcp')} style={{ borderRadius: '6px 6px 0 0' }}>MCP æœåŠ¡å™¨</button>
+        <button className={`btn ${subTab === 'skill-servers' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skill-servers')} style={{ borderRadius: '6px 6px 0 0' }}>Skill æœåŠ¡å™¨</button>
+        <button className={`btn ${subTab === 'skills' ? 'btn-primary' : ''}`} onClick={() => setSubTab('skills')} style={{ borderRadius: '6px 6px 0 0' }}>ä¸“å®¶åº“</button>
       </div>
 
       {subTab === 'mcp' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>MCP ·şÎñÆ÷</h3>
+            <h3 style={{ fontSize: 15 }}>MCP æœåŠ¡å™¨</h3>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowAddMcp(!showAddMcp)}>+ Ìí¼Ó×Ô¶¨Òå</button>
-              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>Ë¢ĞÂ</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowAddMcp(!showAddMcp)}>+ æ·»åŠ è‡ªå®šä¹‰</button>
+              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>åˆ·æ–°</button>
             </div>
           </div>
           {showAddMcp && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input placeholder="·şÎñÆ÷Ãû³Æ" value={customMcp.name} onChange={e => setCustomMcp({...customMcp, name: e.target.value})} />
-                <input placeholder="Í¼±ê" value={customMcp.icon} onChange={e => setCustomMcp({...customMcp, icon: e.target.value})} />
+                <input placeholder="æœåŠ¡å™¨åç§°" value={customMcp.name} onChange={e => setCustomMcp({...customMcp, name: e.target.value})} />
+                <input placeholder="å›¾æ ‡" value={customMcp.icon} onChange={e => setCustomMcp({...customMcp, icon: e.target.value})} />
               </div>
-              <input placeholder="ÃèÊö" value={customMcp.description} onChange={e => setCustomMcp({...customMcp, description: e.target.value})} style={{ marginBottom: 8 }} />
+              <input placeholder="æè¿°" value={customMcp.description} onChange={e => setCustomMcp({...customMcp, description: e.target.value})} style={{ marginBottom: 8 }} />
               <select value={customMcp.transport} onChange={e => setCustomMcp({...customMcp, transport: e.target.value})} style={{ marginBottom: 8 }}>
                 <option value="stdio">stdio</option><option value="sse">SSE</option><option value="streamable-http">HTTP</option>
               </select>
               {customMcp.transport === 'stdio' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginBottom: 8 }}>
-                  <input placeholder="ÃüÁî" value={customMcp.command} onChange={e => setCustomMcp({...customMcp, command: e.target.value})} />
-                  <input placeholder="²ÎÊı (¿Õ¸ñ·Ö¸ô)" value={customMcp.args} onChange={e => setCustomMcp({...customMcp, args: e.target.value})} />
+                  <input placeholder="å‘½ä»¤" value={customMcp.command} onChange={e => setCustomMcp({...customMcp, command: e.target.value})} />
+                  <input placeholder="å‚æ•° (ç©ºæ ¼åˆ†éš”)" value={customMcp.args} onChange={e => setCustomMcp({...customMcp, args: e.target.value})} />
                 </div>
               ) : (
                 <input placeholder="URL" value={customMcp.url} onChange={e => setCustomMcp({...customMcp, url: e.target.value})} style={{ marginBottom: 8 }} />
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="btn btn-sm" onClick={() => setShowAddMcp(false)}>È¡Ïû</button>
-                <button className="btn btn-primary btn-sm" onClick={async () => { if (customMcp.name) { await api.addMcpCustom({ name: customMcp.name, description: customMcp.description, transport: customMcp.transport, command: customMcp.command || undefined, args: customMcp.args ? customMcp.args.split(' ').filter(Boolean) : undefined, url: customMcp.url || undefined, enabled: true, category: customMcp.category, icon: customMcp.icon }); setShowAddMcp(false); loadAll(); } }}>Ìí¼Ó</button>
+                <button className="btn btn-sm" onClick={() => setShowAddMcp(false)}>å–æ¶ˆ</button>
+                <button className="btn btn-primary btn-sm" onClick={async () => { if (customMcp.name) { await api.addMcpCustom({ name: customMcp.name, description: customMcp.description, transport: customMcp.transport, command: customMcp.command || undefined, args: customMcp.args ? customMcp.args.split(' ').filter(Boolean) : undefined, url: customMcp.url || undefined, enabled: true, category: customMcp.category, icon: customMcp.icon }); setShowAddMcp(false); loadAll(); } }}>æ·»åŠ </button>
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>Ô¤Éè MCP ·şÎñÆ÷</h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>é¢„è®¾ MCP æœåŠ¡å™¨</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {mcpPresets.map((p: any) => {
               const added = mcpServers.some((s: any) => s.name === p.name);
@@ -924,11 +924,11 @@ function ExtensionsPanel() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
                     <span className="badge badge-info">{p.transport}</span>
                     {added ? (
-                      <span className="badge badge-success">ÒÑ°²×°</span>
+                      <span className="badge badge-success">å·²å®‰è£…</span>
                     ) : (
                       <button className="btn btn-primary btn-sm" disabled={installing === p.id}
                         onClick={() => handleInstallPreset('mcp', p.id, p.name)}>
-                        {installing === p.id ? '°²×°ÖĞ...' : '°²×°'}
+                        {installing === p.id ? 'å®‰è£…ä¸­...' : 'å®‰è£…'}
                       </button>
                     )}
                   </div>
@@ -938,7 +938,7 @@ function ExtensionsPanel() {
           </div>
           {mcpServers.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>ÒÑ°²×°µÄ MCP ·şÎñÆ÷</h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>å·²å®‰è£…çš„ MCP æœåŠ¡å™¨</h4>
               {mcpServers.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5, display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 18 }}>{s.icon}</span>
@@ -946,11 +946,11 @@ function ExtensionsPanel() {
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{s.transport === 'stdio' ? s.command + ' ' + (s.args || []).join(' ') : s.url}</div>
                   </div>
-                  <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? 'ÆôÓÃ' : '½ûÓÃ'}</span>
-                  {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '²âÊÔÍ¨¹ı' : '²âÊÔÎ´Í¨¹ı'}</span>}
-                  <button className="btn btn-sm" onClick={async () => { await api.updateMcp(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '½ûÓÃ' : 'ÆôÓÃ'}</button>
-                  <button className="btn btn-sm" onClick={async () => { await api.removeMcp(s.id); loadAll(); }} style={{ color: "var(--error)" }}>É¾³ı</button>
-                  <button className="btn btn-sm" onClick={async () => { await api.testMcp(s.id); loadAll(); }}>²âÊÔ</button>
+                  <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? 'å¯ç”¨' : 'ç¦ç”¨'}</span>
+                  {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? 'æµ‹è¯•é€šè¿‡' : 'æµ‹è¯•æœªé€šè¿‡'}</span>}
+                  <button className="btn btn-sm" onClick={async () => { await api.updateMcp(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? 'ç¦ç”¨' : 'å¯ç”¨'}</button>
+                  <button className="btn btn-sm" onClick={async () => { await api.removeMcp(s.id); loadAll(); }} style={{ color: "var(--error)" }}>åˆ é™¤</button>
+                  <button className="btn btn-sm" onClick={async () => { await api.testMcp(s.id); loadAll(); }}>æµ‹è¯•</button>
                 </div>
               ))}
             </>
@@ -961,37 +961,37 @@ function ExtensionsPanel() {
       {subTab === 'skill-servers' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>Skill ·şÎñÆ÷</h3>
+            <h3 style={{ fontSize: 15 }}>Skill æœåŠ¡å™¨</h3>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkillServer(!showAddSkillServer)}>+ Ìí¼Ó×Ô¶¨Òå</button>
-              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>Ë¢ĞÂ</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkillServer(!showAddSkillServer)}>+ æ·»åŠ è‡ªå®šä¹‰</button>
+              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>åˆ·æ–°</button>
             </div>
           </div>
           {showAddSkillServer && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input placeholder="·şÎñÆ÷Ãû³Æ" value={customSkillServer.name} onChange={e => setCustomSkillServer({...customSkillServer, name: e.target.value})} />
-                <input placeholder="Í¼±ê" value={customSkillServer.icon} onChange={e => setCustomSkillServer({...customSkillServer, icon: e.target.value})} />
+                <input placeholder="æœåŠ¡å™¨åç§°" value={customSkillServer.name} onChange={e => setCustomSkillServer({...customSkillServer, name: e.target.value})} />
+                <input placeholder="å›¾æ ‡" value={customSkillServer.icon} onChange={e => setCustomSkillServer({...customSkillServer, icon: e.target.value})} />
               </div>
-              <input placeholder="ÃèÊö" value={customSkillServer.description} onChange={e => setCustomSkillServer({...customSkillServer, description: e.target.value})} style={{ marginBottom: 8 }} />
+              <input placeholder="æè¿°" value={customSkillServer.description} onChange={e => setCustomSkillServer({...customSkillServer, description: e.target.value})} style={{ marginBottom: 8 }} />
               <select value={customSkillServer.transport} onChange={e => setCustomSkillServer({...customSkillServer, transport: e.target.value})} style={{ marginBottom: 8 }}>
                 <option value="stdio">stdio</option><option value="sse">SSE</option><option value="streamable-http">HTTP</option>
               </select>
               {customSkillServer.transport === 'stdio' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8, marginBottom: 8 }}>
-                  <input placeholder="ÃüÁî" value={customSkillServer.command} onChange={e => setCustomSkillServer({...customSkillServer, command: e.target.value})} />
-                  <input placeholder="²ÎÊı (¿Õ¸ñ·Ö¸ô)" value={customSkillServer.args} onChange={e => setCustomSkillServer({...customSkillServer, args: e.target.value})} />
+                  <input placeholder="å‘½ä»¤" value={customSkillServer.command} onChange={e => setCustomSkillServer({...customSkillServer, command: e.target.value})} />
+                  <input placeholder="å‚æ•° (ç©ºæ ¼åˆ†éš”)" value={customSkillServer.args} onChange={e => setCustomSkillServer({...customSkillServer, args: e.target.value})} />
                 </div>
               ) : (
                 <input placeholder="URL" value={customSkillServer.url} onChange={e => setCustomSkillServer({...customSkillServer, url: e.target.value})} style={{ marginBottom: 8 }} />
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="btn btn-sm" onClick={() => setShowAddSkillServer(false)}>È¡Ïû</button>
-                <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkillServer.name) { await api.addSkillServerCustom({ name: customSkillServer.name, description: customSkillServer.description, transport: customSkillServer.transport, command: customSkillServer.command || undefined, args: customSkillServer.args ? customSkillServer.args.split(' ').filter(Boolean) : undefined, url: customSkillServer.url || undefined, enabled: true, category: customSkillServer.category, icon: customSkillServer.icon }); setShowAddSkillServer(false); loadAll(); } }}>Ìí¼Ó</button>
+                <button className="btn btn-sm" onClick={() => setShowAddSkillServer(false)}>å–æ¶ˆ</button>
+                <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkillServer.name) { await api.addSkillServerCustom({ name: customSkillServer.name, description: customSkillServer.description, transport: customSkillServer.transport, command: customSkillServer.command || undefined, args: customSkillServer.args ? customSkillServer.args.split(' ').filter(Boolean) : undefined, url: customSkillServer.url || undefined, enabled: true, category: customSkillServer.category, icon: customSkillServer.icon }); setShowAddSkillServer(false); loadAll(); } }}>æ·»åŠ </button>
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>Ô¤Éè Skill ·şÎñÆ÷</h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>é¢„è®¾ Skill æœåŠ¡å™¨</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillServerPresets.map((p: any) => {
               const added = skillServers.some((s: any) => s.name === p.name);
@@ -1002,11 +1002,11 @@ function ExtensionsPanel() {
                   <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2 }}>{p.category} {p.npmPackage || p.transport}</div>
                   <div style={{ marginTop: 6 }}>
                     {added ? (
-                      <span className="badge badge-success">ÒÑ°²×°</span>
+                      <span className="badge badge-success">å·²å®‰è£…</span>
                     ) : (
                       <button className="btn btn-primary btn-sm" disabled={installing === p.id}
                         onClick={() => handleInstallPreset('skill-server', p.id, p.name)}>
-                        {installing === p.id ? '°²×°ÖĞ...' : '°²×°'}
+                        {installing === p.id ? 'å®‰è£…ä¸­...' : 'å®‰è£…'}
                       </button>
                     )}
                   </div>
@@ -1016,7 +1016,7 @@ function ExtensionsPanel() {
           </div>
           {skillServers.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>ÒÑ°²×°µÄ Skill ·şÎñÆ÷</h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>å·²å®‰è£…çš„ Skill æœåŠ¡å™¨</h4>
               {skillServers.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1026,11 +1026,11 @@ function ExtensionsPanel() {
                       <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{s.description}</div>
                       <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>{s.transport}{s.command ? ' ' + s.command : ''}{s.url ? ' ' + s.url : ''}</div>
                     </div>
-                    <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? 'ÆôÓÃ' : '½ûÓÃ'}</span>
-                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '²âÊÔÍ¨¹ı' : '²âÊÔÎ´Í¨¹ı'}</span>}
-                    <button className="btn btn-sm" onClick={async () => { await api.updateSkillServer(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '½ûÓÃ' : 'ÆôÓÃ'}</button>
-                    <button className="btn btn-sm" onClick={async () => { await api.removeSkillServer(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>É¾³ı</button>
-                    <button className="btn btn-sm" onClick={async () => { await api.testSkillServer(s.id); loadAll(); }}>²âÊÔ</button>
+                    <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? 'å¯ç”¨' : 'ç¦ç”¨'}</span>
+                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? 'æµ‹è¯•é€šè¿‡' : 'æµ‹è¯•æœªé€šè¿‡'}</span>}
+                    <button className="btn btn-sm" onClick={async () => { await api.updateSkillServer(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? 'ç¦ç”¨' : 'å¯ç”¨'}</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.removeSkillServer(s.id); loadAll(); }} style={{ color: 'var(--error)' }}>åˆ é™¤</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.testSkillServer(s.id); loadAll(); }}>æµ‹è¯•</button>
                   </div>
                 </div>
               ))}
@@ -1042,26 +1042,26 @@ function ExtensionsPanel() {
       {subTab === 'skills' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h3 style={{ fontSize: 15 }}>×¨¼Ò¿â</h3>
+            <h3 style={{ fontSize: 15 }}>ä¸“å®¶åº“</h3>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkill(!showAddSkill)}>+ Ìí¼Ó×Ô¶¨Òå</button>
-              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>Ë¢ĞÂ</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setShowAddSkill(!showAddSkill)}>+ æ·»åŠ è‡ªå®šä¹‰</button>
+              <button className="btn btn-primary btn-sm" onClick={() => loadAll()}>åˆ·æ–°</button>
             </div>
           </div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, padding: '8px 12px', background: 'var(--surface)', borderRadius: 6, border: '1px solid var(--border)' }}>
-            ?? ÒÑÆôÓÃµÄ×¨¼Ò/¼¼ÄÜ»á×Ô¶¯×¢Èëµ½ÁÄÌìµÄÏµÍ³ÌáÊ¾ÖĞ£¬ÎŞĞèÊÖ¶¯²Ù×÷¡£
+            ğŸ’¡ å·²å¯ç”¨çš„ä¸“å®¶/æŠ€èƒ½ä¼šè‡ªåŠ¨æ³¨å…¥åˆ°èŠå¤©çš„ç³»ç»Ÿæç¤ºä¸­ï¼Œæ— éœ€æ‰‹åŠ¨æ“ä½œã€‚
           </div>
           {showAddSkill && (
             <div className="card" style={{ marginBottom: 16, border: '1px solid var(--accent)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-                <input placeholder="¼¼ÄÜÃû³Æ" value={customSkill.name} onChange={e => setCustomSkill({...customSkill, name: e.target.value})} />
-                <input placeholder="Í¼±ê" value={customSkill.icon} onChange={e => setCustomSkill({...customSkill, icon: e.target.value})} />
+                <input placeholder="æŠ€èƒ½åç§°" value={customSkill.name} onChange={e => setCustomSkill({...customSkill, name: e.target.value})} />
+                <input placeholder="å›¾æ ‡" value={customSkill.icon} onChange={e => setCustomSkill({...customSkill, icon: e.target.value})} />
               </div>
-              <input placeholder="ÃèÊö" value={customSkill.description} onChange={e => setCustomSkill({...customSkill, description: e.target.value})} style={{ marginBottom: 8 }} />
-              <textarea placeholder="¼¼ÄÜÄÚÈİ (Markdown)" value={customSkill.content} onChange={e => setCustomSkill({...customSkill, content: e.target.value})} style={{ minHeight: 100, marginBottom: 8 }} />
+              <input placeholder="æè¿°" value={customSkill.description} onChange={e => setCustomSkill({...customSkill, description: e.target.value})} style={{ marginBottom: 8 }} />
+              <textarea placeholder="æŠ€èƒ½å†…å®¹ (Markdown)" value={customSkill.content} onChange={e => setCustomSkill({...customSkill, content: e.target.value})} style={{ minHeight: 100, marginBottom: 8 }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button className="btn btn-sm" onClick={() => setShowAddSkill(false)}>È¡Ïû</button>
-                  <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkill.name && customSkill.content) { await api.addSkillCustom({ name: customSkill.name, description: customSkill.description, content: customSkill.content, source: 'file', enabled: true, category: customSkill.category, icon: customSkill.icon }); setShowAddSkill(false); loadAll(); } }}>Ìí¼Ó</button>
+                  <button className="btn btn-sm" onClick={() => setShowAddSkill(false)}>å–æ¶ˆ</button>
+                  <button className="btn btn-primary btn-sm" onClick={async () => { if (customSkill.name && customSkill.content) { await api.addSkillCustom({ name: customSkill.name, description: customSkill.description, content: customSkill.content, source: 'file', enabled: true, category: customSkill.category, icon: customSkill.icon }); setShowAddSkill(false); loadAll(); } }}>æ·»åŠ </button>
               </div>
             </div>
           )}
@@ -1071,12 +1071,12 @@ function ExtensionsPanel() {
               <input value={editingSkill.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingSkill({...editingSkill, name: e.target.value})} style={{ marginBottom: 8 }} />
               <textarea value={editingSkill.content} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditingSkill({...editingSkill, content: e.target.value})} style={{ minHeight: 120, marginBottom: 8 }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button className="btn btn-sm" onClick={() => setEditingSkill(null)}>È¡Ïû</button>
-                    <button className="btn btn-primary btn-sm" onClick={async () => { await api.updateSkill(editingSkill.id, { content: editingSkill.content || '' }); setEditingSkill(null); loadAll(); }}>±£´æ</button>
+                  <button className="btn btn-sm" onClick={() => setEditingSkill(null)}>å–æ¶ˆ</button>
+                    <button className="btn btn-primary btn-sm" onClick={async () => { await api.updateSkill(editingSkill.id, { content: editingSkill.content || '' }); setEditingSkill(null); loadAll(); }}>ä¿å­˜</button>
               </div>
             </div>
           )}
-          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>Ô¤Éè×¨¼Ò</h4>
+          <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>é¢„è®¾ä¸“å®¶</h4>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 20 }}>
             {skillPresets.map((p: any) => {
               const added = skills.some((s: any) => s.name === p.name);
@@ -1086,11 +1086,11 @@ function ExtensionsPanel() {
                   <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{p.description}</div>
                   <div style={{ marginTop: 6 }}>
                     {added ? (
-                      <span className="badge badge-success">ÒÑ°²×°</span>
+                      <span className="badge badge-success">å·²å®‰è£…</span>
                     ) : (
                       <button className="btn btn-primary btn-sm" disabled={installing === p.id}
                         onClick={() => handleInstallPreset('skill', p.id, p.name)}>
-                        {installing === p.id ? '°²×°ÖĞ...' : '°²×°'}
+                        {installing === p.id ? 'å®‰è£…ä¸­...' : 'å®‰è£…'}
                       </button>
                     )}
                   </div>
@@ -1100,7 +1100,7 @@ function ExtensionsPanel() {
           </div>
           {skills.length > 0 && (
             <>
-              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>ÒÑ°²×°µÄ×¨¼Ò/¼¼ÄÜ</h4>
+              <h4 style={{ fontSize: 12, marginBottom: 8, color: 'var(--text-muted)' }}>å·²å®‰è£…çš„ä¸“å®¶/æŠ€èƒ½</h4>
               {skills.map((s: any) => (
                 <div key={s.id} className="card" style={{ padding: 10, opacity: s.enabled ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1109,11 +1109,11 @@ function ExtensionsPanel() {
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
                       <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{s.description}</div>
                     </div>
-                      <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? 'ÆôÓÃ' : '½ûÓÃ'}</span>
-                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? '²âÊÔÍ¨¹ı' : '²âÊÔÎ´Í¨¹ı'}</span>}
-                    <button className="btn btn-sm" onClick={async () => { await api.updateSkill(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? '½ûÓÃ' : 'ÆôÓÃ'}</button>
-                    <button className="btn btn-sm" onClick={async () => { await api.removeSkill(s.id); loadAll(); }} style={{ color: "var(--error)" }}>É¾³ı</button>
-                    <button className="btn btn-sm" onClick={async () => { await api.testSkill(s.id); loadAll(); }}>²âÊÔ</button>
+                      <span className={`badge ${s.enabled ? 'badge-success' : 'badge-error'}`}>{s.enabled ? 'å¯ç”¨' : 'ç¦ç”¨'}</span>
+                    {s.status && <span className={`badge ${s.status.passed ? 'badge-success' : 'badge-error'}`} style={{ marginLeft: 6 }}>{s.status.passed ? 'æµ‹è¯•é€šè¿‡' : 'æµ‹è¯•æœªé€šè¿‡'}</span>}
+                    <button className="btn btn-sm" onClick={async () => { await api.updateSkill(s.id, { enabled: !s.enabled }); loadAll(); }}>{s.enabled ? 'ç¦ç”¨' : 'å¯ç”¨'}</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.removeSkill(s.id); loadAll(); }} style={{ color: "var(--error)" }}>åˆ é™¤</button>
+                    <button className="btn btn-sm" onClick={async () => { await api.testSkill(s.id); loadAll(); }}>æµ‹è¯•</button>
                   </div>
                 </div>
               ))}
@@ -1164,8 +1164,8 @@ export default function App() {
   const dragCounterRef = useRef(0);
 
   const tabNames: Record<string, string> = {
-    chat: 'ÁÄÌì', providers: 'Ìá¹©ÉÌ', models: 'Ä£ĞÍ', testing: '²âÊÔ',
-    extensions: 'À©Õ¹', editor: '±à¼­Æ÷',
+    chat: 'èŠå¤©', providers: 'æä¾›å•†', models: 'æ¨¡å‹', testing: 'æµ‹è¯•',
+    extensions: 'æ‰©å±•', editor: 'ç¼–è¾‘å™¨',
   };
 
   const loadProviders = useCallback(async () => {
@@ -1261,12 +1261,12 @@ export default function App() {
     if (imageAttachments.length > 0 && !selectedModelSupportsVision()) {
       const vlm = findVlmModel();
       if (vlm) {
-        content = `[${vlm.name} ÊÓ¾õ·ÖÎö£ºÇë¸ù¾İÍ¼Æ¬ÄÚÈİÃèÊö²¢Íê³ÉÒÔÏÂÈÎÎñ:\n${task}`;
+        content = `[${vlm.name} è§†è§‰åˆ†æï¼šè¯·æ ¹æ®å›¾ç‰‡å†…å®¹æè¿°å¹¶å®Œæˆä»¥ä¸‹ä»»åŠ¡:\n${task}`;
       }
     }
     const textAttachments = currentAttachments.filter(a => a.type === 'text');
     if (textAttachments.length > 0) {
-      content += '\n\n' + textAttachments.map(a => `${a.name} ---\n${a.data}\n--- ½áÊø ---`).join('\n\n');
+      content += '\n\n' + textAttachments.map(a => `${a.name} ---\n${a.data}\n--- ç»“æŸ ---`).join('\n\n');
     }
 
     const displayContent = task || (currentAttachments.length > 0 ? currentAttachments.map(a => a.name).join(', ') : '');
@@ -1279,7 +1279,7 @@ export default function App() {
 
       // SSE streaming
       const assistantId = (Date.now()+1).toString();
-      setMessages(prev => [...prev, { id: assistantId, role: 'orchestrator', content: '? ÕıÔÚÁ¬½Ó...', time: new Date().toLocaleTimeString('zh-CN'), _streaming: true }]);
+      setMessages(prev => [...prev, { id: assistantId, role: 'orchestrator', content: 'â³ æ­£åœ¨è¿æ¥...', time: new Date().toLocaleTimeString('zh-CN'), _streaming: true }]);
 
       const res = await fetch("/api/chat", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: content, modelId: modelId || undefined, threadId: activeThreadId, projectPath: projectPath || undefined, orchestratorThinkingMode: orchThinking, agentThinkingMode: agentThinking, costEfficiencyRatio: ratio, agentModelMap, history: chatHistory }) });
       const reader = res.body!.getReader();
@@ -1299,21 +1299,21 @@ export default function App() {
             try {
               const d = JSON.parse(line.slice(6));
               if (evt === 'status') {
-                const msg = d.status === 'thinking' ? '?? Ë¼Ë÷ÖĞ... (' + (d.model||'') + ')' : d.status === 'calling_llm' ? '? µ÷ÓÃÄ£ĞÍ...' : d.status === 'executing' ? '?? Ö´ĞĞÃüÁî (' + d.commandCount + '¸ö)...' : d.status === 'fixing' ? '?? ĞŞ¸´´íÎó (³¢ÊÔ' + d.attempt + ')...' : '? ' + d.status;
+                const msg = d.status === 'thinking' ? 'ğŸ§  æ€ç´¢ä¸­... (' + (d.model||'') + ')' : d.status === 'calling_llm' ? 'âš¡ è°ƒç”¨æ¨¡å‹...' : d.status === 'executing' ? 'â–¶ï¸ æ‰§è¡Œå‘½ä»¤ (' + d.commandCount + 'ä¸ª)...' : d.status === 'fixing' ? 'ğŸ”§ ä¿®å¤é”™è¯¯ (å°è¯•' + d.attempt + ')...' : 'â³ ' + d.status;
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: msg } : m));
               } else if (evt === 'llm_response') {
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: d.content, model: d.model } : m));
               } else if (evt === 'file_written') {
-                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: m.content + '\n?? ' + d.name + ' (' + d.size + ')' } : m));
+                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: m.content + '\nğŸ“ ' + d.name + ' (' + d.size + ')' } : m));
               } else if (evt === 'command_result') {
-                const icon = d.exitCode === 0 ? '?' : '?';
+                const icon = d.exitCode === 0 ? 'âœ…' : 'âŒ';
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: m.content + '\n' + icon + ' ' + d.cmd + (d.exitCode !== 0 ? ' (exit ' + d.exitCode + ')' : '') } : m));
               } else if (evt === 'fix_response') {
-                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: m.content + '\n\n?? ĞŞ¸´ #' + d.attempt + ':\n' + d.content } : m));
+                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: m.content + '\n\nğŸ”§ ä¿®å¤ #' + d.attempt + ':\n' + d.content } : m));
               } else if (evt === 'done') {
                 setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, role: d.role || 'orchestrator', content: d.content || '', model: d.model, codeExecution: d.codeExecution, serveUrl: d.codeExecutionDetail?.serveUrl, _streaming: false } : m));
               } else if (evt === 'error') {
-                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, role: 'error', content: '? ' + d.error, _streaming: false } : m));
+                setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, role: 'error', content: 'âŒ ' + d.error, _streaming: false } : m));
               }
             } catch {}
           }
@@ -1323,7 +1323,7 @@ export default function App() {
       // Auto-name thread
       if (activeThreadId) {
         setThreads(prev => prev.map(t => {
-          if (t.id === activeThreadId && t.title === 'ĞÂ¶Ô»°') {
+          if (t.id === activeThreadId && t.title === 'æ–°å¯¹è¯') {
             const autoTitle = task.slice(0, 25) + (task.length > 25 ? '...' : '');
             return { ...t, title: autoTitle };
           }
@@ -1331,7 +1331,7 @@ export default function App() {
         }));
       }
     } catch (err: any) {
-      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'error', content: err.message || 'ÇëÇóÊ§°Ü£¬Çë¼ì²éAPIÅäÖÃ', time: new Date().toLocaleTimeString('zh-CN') }]);
+      setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'error', content: err.message || 'è¯·æ±‚å¤±è´¥ï¼Œè¯·æ£€æŸ¥APIé…ç½®', time: new Date().toLocaleTimeString('zh-CN') }]);
     } finally { setSending(false); }
   }, [inputVal, attachments, modelId, orchThinking, agentThinking, ratio, providers, selectedModelSupportsVision, findVlmModel, sending]);
 
@@ -1339,7 +1339,7 @@ export default function App() {
   const createNewThread = () => {
     const id = Date.now().toString();
     const now = new Date().toISOString();
-      const thread: ChatThread = { id, title: 'ĞÂ¶Ô»°', messages: [], createdAt: now, updatedAt: now };
+      const thread: ChatThread = { id, title: 'æ–°å¯¹è¯', messages: [], createdAt: now, updatedAt: now };
     setThreads(prev => [thread, ...prev]);
     setActiveThreadId(id);
     setMessages([]);
@@ -1383,31 +1383,31 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
     <div className="app">
       {dragging && (
         <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(56,189,248,0.15)', border:'3px dashed var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
-          <div style={{ fontSize:24, fontWeight:700, color:'var(--accent)' }}>ÍÏ·ÅÎÄ¼şµ½´Ë´¦</div>
+          <div style={{ fontSize:24, fontWeight:700, color:'var(--accent)' }}>æ‹–æ”¾æ–‡ä»¶åˆ°æ­¤å¤„</div>
         </div>
       )}
       <input ref={fileInputRef} type="file" multiple accept="image/*,.txt,.md,.json,.csv,.py,.js,.ts,.tsx,.jsx,.html,.css,.xml,.yaml,.yml" style={{ display:'none' }} onChange={handleFileInput} />
       <div className="sidebar">
-            <div className="sidebar-logo"><span style={{ fontSize:22 }}>??</span><span style={{ fontWeight:700, fontSize:14 }}>Mixture of Agents</span></div>
+            <div className="sidebar-logo"><span style={{ fontSize:22 }}>âš›ï¸</span><span style={{ fontWeight:700, fontSize:14 }}>Mixture of Agents</span></div>
         <div className="sidebar-nav">
           {(['chat','providers','models','testing','extensions','editor'] as const).map(k => (
             <div key={k} className={`sidebar-item ${tab===k?'active':''}`} onClick={() => setTab(k)}>
-              <span>{k==='chat'?'??':k==='providers'?'??':k==='models'?'??':k==='testing'?'??':k==='extensions'?'??':k==='editor'?'??':'??'}</span>
+              <span>{k==='chat'?'ğŸ’¬':k==='providers'?'ğŸ”Œ':k==='models'?'ğŸ¤–':k==='testing'?'ğŸ“Š':k==='extensions'?'ğŸ§©':k==='editor'?'ğŸ“':'ğŸ“'}</span>
               <span>{tabNames[k]}</span>
             </div>
           ))}
         </div>
         <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
           <button onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')} style={{ width: '100%', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', padding: '6px 12px', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'var(--transition)' }}>
-            {theme === 'dark' ? '?? ÉîÉ«Ä£Ê½' : '?? Ç³É«Ä£Ê½'}
+            {theme === 'dark' ? 'ğŸŒ™ æ·±è‰²æ¨¡å¼' : 'â˜€ï¸ æµ…è‰²æ¨¡å¼'}
           </button>
         </div>
         {/* Thread list */}
         <div style={{ flex: 1, overflow: 'auto', padding: '4px 8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, padding: '0 4px' }}>
 
-            <button onClick={createNewThread} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 4, cursor: 'pointer', fontSize: 11, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 3 }} title="ĞÂ½¨¶Ô»°">
-              + ĞÂ½¨¶Ô»°
+            <button onClick={createNewThread} style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 4, cursor: 'pointer', fontSize: 11, padding: '2px 8px', display: 'flex', alignItems: 'center', gap: 3 }} title="æ–°å»ºå¯¹è¯">
+              + æ–°å»ºå¯¹è¯
             </button>
           </div>
           {threads.map(t => (
@@ -1430,13 +1430,13 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               )}
               <span style={{ fontSize: 9, color: 'var(--text-muted)', flexShrink: 0 }}>{t.messages.length}</span>
               <span className="thread-actions" style={{ display: 'none', flexShrink: 0 }}>
-                <span onClick={(e) => { e.stopPropagation(); setEditingThreadTitle(t.id); }} style={{ cursor: 'pointer', fontSize: 12, marginRight: 2 }} title="±à¼­±êÌâ">??</span>
-                <span onClick={(e) => { e.stopPropagation(); deleteThread(t.id); }} style={{ cursor: 'pointer', fontSize: 12 }} title="É¾³ı">?</span>
+                <span onClick={(e) => { e.stopPropagation(); setEditingThreadTitle(t.id); }} style={{ cursor: 'pointer', fontSize: 12, marginRight: 2 }} title="ç¼–è¾‘æ ‡é¢˜">âœï¸</span>
+                <span onClick={(e) => { e.stopPropagation(); deleteThread(t.id); }} style={{ cursor: 'pointer', fontSize: 12 }} title="åˆ é™¤">âŒ</span>
               </span>
             </div>
           ))}
           {threads.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 4px', textAlign: 'center' }}>ÔİÎŞ¶Ô»°£¬µã»÷ÉÏ·½ + °´Å¥ĞÂ½¨</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '8px 4px', textAlign: 'center' }}>æš‚æ— å¯¹è¯ï¼Œç‚¹å‡»ä¸Šæ–¹ + æŒ‰é’®æ–°å»º</div>
           )}
         </div>
       </div>
@@ -1450,7 +1450,7 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
                 {messages.map(m => <div key={m.id} id={'msg-'+m.id}><ChatMessage msg={m} /></div>)}
                 {sending && (
                   <div className="message">
-                    <div className="message-avatar orchestrator">??</div>
+                    <div className="message-avatar orchestrator">ğŸ§ </div>
                     <div className="message-body">
                       <div className="message-header"><span className="message-name"></span><span className="message-time"></span></div>
                       <div style={{ display:'flex', gap:4, padding:'4px 0' }}>
@@ -1467,20 +1467,20 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
               {attachments.length > 0 && <AttachmentPreview attachments={attachments} onRemove={(i) => setAttachments(prev => prev.filter((_, idx) => idx !== i))} />}
               <div className="prompt-wrapper">
                 <textarea ref={inputRef} className="prompt-input" value={inputVal} onChange={e => setInputVal(e.target.value)}
-                  onKeyDown={handleKeyDown} placeholder="ÊäÈëÏûÏ¢..."
+                  onKeyDown={handleKeyDown} placeholder="è¾“å…¥æ¶ˆæ¯..."
                   rows={4} style={{ height: Math.min(200, Math.max(88, inputVal.split('\n').length * 22)) }} />
                 <div className="prompt-actions">
-                  <button className="prompt-btn" onClick={() => fileInputRef.current?.click()} style={{ fontSize:18, fontWeight:700, color:'var(--accent)' }} title="ÉÏ´«ÎÄ¼ş">£«</button>
-                  <button className="prompt-btn" onClick={() => setInputVal("")} style={{ fontSize:16, fontWeight:700 }} title="Çå¿ÕÊäÈë">?</button>
-                  <button className="prompt-btn send" onClick={() => handleSend()} disabled={(!inputVal.trim() && attachments.length===0) || sending}>?</button>
+                  <button className="prompt-btn" onClick={() => fileInputRef.current?.click()} style={{ fontSize:18, fontWeight:700, color:'var(--accent)' }} title="ä¸Šä¼ æ–‡ä»¶">ï¼‹</button>
+                  <button className="prompt-btn" onClick={() => setInputVal("")} style={{ fontSize:16, fontWeight:700 }} title="æ¸…ç©ºè¾“å…¥">âœ•</button>
+                  <button className="prompt-btn send" onClick={() => handleSend()} disabled={(!inputVal.trim() && attachments.length===0) || sending}>â¤</button>
                 </div>
               </div>
               <div className="prompt-meta">
-                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{modelId ? providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || modelId : 'Î´Ñ¡ÔñÄ£ĞÍ'}</span>
-                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{orchThinking==='auto'?'×Ô¶¯':orchThinking==='low'?'µÍ(¿íËÉ)':orchThinking==='medium'?'ÖĞ(±ê×¼)':'¸ß(ÑÏ¸ñ)'} | {agentThinking==='auto'?'×Ô¶¯':agentThinking==='low'?'µÍ(¿íËÉ)':agentThinking==='medium'?'ÖĞ(±ê×¼)':'¸ß(ÑÏ¸ñ)'}</span>
-                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{ratio<=0.2?'? ËÙ¶È':ratio>=0.8?'?? ÖÊÁ¿':'?? Æ½ºâ'} {ratio}</span>
-                <span className="prompt-meta-chip" onClick={openBrowseProject} style={{cursor:'pointer',fontSize:11}} title="ÉèÖÃÏîÄ¿Ä¿Â¼">{projectPath ? '?? ' + projectPath.split(/[\\/]/).pop() : '?? ÏîÄ¿Ä¿Â¼'}</span>
-        <span style={{ marginLeft:'auto' }}>{providers.length} Ìá¹©ÉÌ, {providers.flatMap(p=>p.models).length} Ä£ĞÍ</span>
+                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{modelId ? providers.flatMap(p=>p.models).find(m=>m.id===modelId)?.name || modelId : 'æœªé€‰æ‹©æ¨¡å‹'}</span>
+                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{orchThinking==='auto'?'è‡ªåŠ¨':orchThinking==='low'?'ä½':orchThinking==='medium'?'ä¸­':'é«˜'} | {agentThinking==='auto'?'è‡ªåŠ¨':agentThinking==='low'?'ä½':agentThinking==='medium'?'ä¸­':'é«˜'}</span>
+                <span className="prompt-meta-chip" onClick={() => setSettingsOpen(!settingsOpen)}>{ratio<=0.2?'âš¡ é€Ÿåº¦':ratio>=0.8?'ğŸ§  è´¨é‡':'âš–ï¸ å¹³è¡¡'} {ratio}</span>
+                <span className="prompt-meta-chip" onClick={openBrowseProject} style={{cursor:'pointer',fontSize:11}} title="è®¾ç½®é¡¹ç›®ç›®å½•">{projectPath ? 'ğŸ“ ' + projectPath.split(/[\\/]/).pop() : 'ğŸ“ é¡¹ç›®ç›®å½•'}</span>
+        <span style={{ marginLeft:'auto' }}>{providers.length} æä¾›å•†, {providers.flatMap(p=>p.models).length} æ¨¡å‹</span>
               </div>
             </div>
           </div>
@@ -1505,29 +1505,29 @@ const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setBrowseVisible(false)}>
           <div style={{ width: 480, maxHeight: '70vh', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{'??'} Ñ¡ÔñÏîÄ¿Ä¿Â¼</span>
-              <button onClick={() => setBrowseVisible(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}>{'?'}</button>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{'ğŸ“'} é€‰æ‹©é¡¹ç›®ç›®å½•</span>
+              <button onClick={() => setBrowseVisible(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}>{'âœ•'}</button>
             </div>
-            <div style={{ padding: '6px 16px', fontSize: 11, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', fontFamily: 'monospace' }}>{browsePath || 'Ñ¡Ôñ´ÅÅÌ...'}</div>
+            <div style={{ padding: '6px 16px', fontSize: 11, color: 'var(--text-muted)', borderBottom: '1px solid var(--border)', fontFamily: 'monospace' }}>{browsePath || 'é€‰æ‹©ç£ç›˜...'}</div>
             <div style={{ flex: 1, overflow: 'auto', padding: 8, minHeight: 200 }}>
               {browseLoading ? (
-                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>¼ÓÔØÖĞ...</div>
+                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)' }}>åŠ è½½ä¸­...</div>
               ) : browseEntries.map((e: any) => (
                 <div key={e.path} onClick={() => e.isDir && navBrowse(e.path)}
                   style={{ padding: '5px 12px', cursor: e.isDir ? 'pointer' : 'default', fontSize: 12, borderRadius: 4, display: 'flex', alignItems: 'center', gap: 8, color: e.isDir ? 'var(--text-primary)' : 'var(--text-muted)', opacity: e.isDir ? 1 : 0.5 }}
                   onMouseEnter={ev => { if (e.isDir) ev.currentTarget.style.background = 'var(--bg-hover)'; }}
                   onMouseLeave={ev => { ev.currentTarget.style.background = 'transparent'; }}>
-                  {e.isDir ? '??' : '??'} {e.name}
+                  {e.isDir ? 'ğŸ“' : 'ğŸ“„'} {e.name}
                 </div>
               ))}
               {!browseLoading && browseEntries.length === 0 && (
-                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>¿ÕÄ¿Â¼</div>
+                <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>ç©ºç›®å½•</div>
               )}
             </div>
             <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => { if (browsePath) { const parent = browsePath.replace(/[\\/][^\\/]+[\\/]?$/, ''); navBrowse(parent || ''); } }} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '5px 14px' }}>{'¡û'} ÉÏ¼¶</button>
-              <button onClick={() => setBrowseVisible(false)} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '5px 14px' }}>È¡Ïû</button>
-              <button onClick={() => { setProjectPath(browsePath); localStorage.setItem('moa-chat-project', browsePath); setBrowseVisible(false); }} disabled={!browsePath} style={{ background: browsePath ? 'var(--accent)' : 'var(--bg-tertiary)', border: 'none', color: browsePath ? '#fff' : 'var(--text-muted)', borderRadius: 6, cursor: browsePath ? 'pointer' : 'default', fontSize: 12, padding: '5px 14px', fontWeight: 600 }}>Ñ¡Ôñ´ËÄ¿Â¼</button>
+              <button onClick={() => { if (browsePath) { const parent = browsePath.replace(/[\\/][^\\/]+[\\/]?$/, ''); navBrowse(parent || ''); } }} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '5px 14px' }}>{'â†'} ä¸Šçº§</button>
+              <button onClick={() => setBrowseVisible(false)} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-secondary)', borderRadius: 6, cursor: 'pointer', fontSize: 12, padding: '5px 14px' }}>å–æ¶ˆ</button>
+              <button onClick={() => { setProjectPath(browsePath); localStorage.setItem('moa-chat-project', browsePath); setBrowseVisible(false); }} disabled={!browsePath} style={{ background: browsePath ? 'var(--accent)' : 'var(--bg-tertiary)', border: 'none', color: browsePath ? '#fff' : 'var(--text-muted)', borderRadius: 6, cursor: browsePath ? 'pointer' : 'default', fontSize: 12, padding: '5px 14px', fontWeight: 600 }}>é€‰æ‹©æ­¤ç›®å½•</button>
             </div>
           </div>
         </div>

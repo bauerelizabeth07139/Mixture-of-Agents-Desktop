@@ -1,358 +1,382 @@
-# Mixture of Agents — Desktop
+﻿<div align="center">
 
-**基于 Claude Code 架构的多模型智能代理系统**
+# ⚛️ Mixture of Agents — Desktop
 
-一个功能完整的 AI 桌面开发环境，集成多模型协作对话、代码编辑器、文件管理、终端、MCP/Skill 扩展系统，以及模型能力自动测试。支持 17+ 模型提供商，通过宏观调控模型智能调度子代理完成复杂任务。
+### Intelligent Multi-Model Agent System Built on Claude Code Architecture
 
-![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue)
-![Electron](https://img.shields.io/badge/electron-28-47848f)
-![Node](https://img.shields.io/badge/node.js-20+-339933)
-![License](https://img.shields.io/badge/license-MIT-green)
+### 基于 Claude Code 架构的多模型智能代理桌面系统
 
 ---
 
-## 目录
+![Platform](https://img.shields.io/badge/platform-Windows%20x64-blue?style=for-the-badge)
+![Electron](https://img.shields.io/badge/electron-28-47848f?style=for-the-badge)
+![Node](https://img.shields.io/badge/node.js-20+-339933?style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge)
+![React](https://img.shields.io/badge/React-18-61dafb?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
 
-- [核心特性](#核心特性)
-- [快速开始](#快速开始)
-- [功能详解](#功能详解)
-- [架构说明](#架构说明)
-- [扩展系统](#扩展系统)
-- [模型能力测试](#模型能力测试)
-- [开发指南](#开发指南)
-- [更新日志](#更新日志)
+*A full-featured AI development desktop environment with multi-model collaboration, code editing, file management, terminal, MCP/Skill extension system, and automated model capability testing.*
 
----
+*功能完整的 AI 桌面开发环境，集成多模型协作对话、代码编辑器、文件管理、终端、MCP/Skill 扩展系统，以及模型能力自动测试。*
 
-## 核心特性
+<br/>
 
-### 多模型协作对话
-- **宏观调控模型**智能分析任务，自动分配子代理执行
-- 支持全局思考强度调节（低/中/高/自动），自动模式由宏观模型决定子代理思考强度
-- 调控模型和子代理思考强度独立配置
-- 上下文压缩功能，长对话自动精简历史
-- 对话历史本地持久化，支持多线程管理
+[English](#-features) · [中文](#-核心特性) · [Quick Start / 快速开始](#-quick-start--快速开始) · [Architecture / 架构](#-architecture--架构说明) · [Screenshots / 界面预览](#-screenshots--界面预览)
 
-### 代码编辑器（集成文件管理）
-- **Monaco Editor**（VS Code 同款编辑器引擎）
-- 内置文件树浏览器，支持右键菜单（新建、重命名、删除）
-- 项目目录选择器，自由选择工作区位置
-- 文件类型自动识别，新建文件时自动补全后缀（.py/.js/.ts/.html/.c/.cpp 等）
-- **改动行高亮**：编辑时实时标记修改的行，显示变更行数
-- 底部命令栏：直接在工作区执行 shell 命令，支持命令历史
-- 一键运行文件（支持 Python/JavaScript/TypeScript/C/C++/Go/Rust/Java 等 15+ 语言）
-
-### 模型提供商管理
-- **17+ 预设提供商**：OpenAI、Anthropic、Google、Meta、DeepSeek、小米 MiMo、SiliconFlow、StepFun 等
-- 每个提供商支持最多 50 个 API Key，自动轮询和故障转移
-- 一键获取模型列表，自动探测模型能力（视觉/音频/多模态）
-- 自定义提供商支持（任意 OpenAI 兼容 API）
-
-### 模型能力测试
-- **快速测试**（每维度 2 题，单题上限 3 分钟）和**标准测试**（每维度 2 题，单题上限 12 分钟）
-- 8 个测试维度：编码、推理、数学、创意写作、指令遵循、工具使用、多语言、上下文处理
-- 线性拟合评分：解题时间 50% 内满分，100% 为基准分，正确系数按正则匹配比例
-- 10 分制评分，总分 80 分
-- 自动检测模型多模态能力（视觉/音频），通过 API 测试图片和音频识别
-- 测试结果实时同步到模型能力面板和提供商面板
-
-### 扩展系统
-- **MCP 服务器**：40+ 预设（文件系统、GitHub、数据库、搜索、AI 工具等）
-- **技能服务器**：独立的技能执行环境，支持 stdio 和 HTTP 传输
-- **技能库**：预设常用技能模板，支持自定义技能内容
-- 所有扩展支持一键添加、测试、启用/禁用、删除
-
-### 终端
-- 内置 xterm.js 终端，支持命令历史和目录上下文
-- 与编辑器工作区同步
-
-### 界面特性
-- 深色/浅色主题切换
-- 文件拖放上传（支持图片、文本、代码文件）
-- 多模态支持：图片附件自动识别，无视觉能力的模型自动路由到 VLM
-- 响应式布局
+</div>
 
 ---
 
-## 快速开始
+## 📑 Table of Contents / 目录
 
-### 方式一：下载便携版（推荐）
+| English | 中文 |
+|---------|------|
+| [Features](#-features) | [核心特性](#-核心特性) |
+| [Quick Start](#-quick-start--快速开始) | [快速开始](#-quick-start--快速开始) |
+| [Screenshots](#-screenshots--界面预览) | [界面预览](#-screenshots--界面预览) |
+| [Architecture](#-architecture--架构说明) | [架构说明](#-architecture--架构说明) |
+| [Extension System](#-extension-system--扩展系统) | [扩展系统](#-extension-system--扩展系统) |
+| [Model Testing](#-model-testing--模型能力测试) | [模型能力测试](#-model-testing--模型能力测试) |
+| [Editor](#-code-editor--代码编辑器) | [代码编辑器](#-code-editor--代码编辑器) |
+| [Supported Languages](#-supported-languages--支持语言) | [支持语言](#-supported-languages--支持语言) |
+| [Configuration](#-configuration--配置说明) | [配置说明](#-configuration--配置说明) |
+| [Development](#-development--开发指南) | [开发指南](#-development--开发指南) |
+| [Changelog](#-changelog--更新日志) | [更新日志](#-changelog--更新日志) |
+| [License](#-license) | [许可证](#-license) |
 
-1. 前往 [Releases](../../releases) 下载最新版本
-2. 运行 `Mixture-of-Agents--portable.exe`
-3. 无需安装任何依赖
+---
 
-### 方式二：下载安装版
+## ✨ Features
 
-1. 下载 `Mixture of Agents Setup 1.0.0.exe`
-2. 运行安装程序，按提示完成安装
-3. 从开始菜单启动
+### 🤖 Multi-Model Collaborative Chat
+- **Orchestrator Model** analyzes tasks and dispatches sub-agents with different models
+- **Global thinking intensity** control: Low / Medium / High / Auto (orchestrator decides)
+- Orchestrator and sub-agent thinking strength configured independently
+- **Context compression** — automatically condenses long conversation history for efficiency
+- Local conversation persistence with multi-thread management
+- DeepSeek-style cache-friendly message formatting for improved cache hit rates
 
-### 方式三：从源码构建
+### 📝 Code Editor (Integrated File Management)
+- **Monaco Editor** — the same engine powering VS Code
+- Built-in file tree browser with right-click context menu (New / Rename / Delete)
+- **Project directory selector** — choose any workspace location
+- **Smart file creation** — auto-appends correct file extension (.py / .js / .ts / .html / .c / .cpp etc.)
+- **Change highlighting** — real-time visual markers on modified lines
+- Bottom command bar for shell command execution with history
+- One-click file runner supporting 14+ languages
+
+### 🔌 Model Provider Management
+- **17 preset providers**: OpenAI, DeepSeek, Zhipu AI, Moonshot, SiliconFlow, StepFun, Volcengine, MiniMax, Qwen, Baidu, iFlytek, Baichuan, LingYiwanWu, Tencent, MiMo, Anthropic, Local/Ollama
+- Up to 50 API keys per provider with automatic round-robin and failover
+- **API pool concurrency control** — max 80 concurrent requests per key, automatic key rotation
+- Rate limit handling (429/401/403) with automatic key pool management
+- One-click model list fetch with automatic capability detection (Vision / Audio / Multimodal)
+- Custom provider support (any OpenAI-compatible API)
+
+### 🧪 Model Capability Testing
+- **Quick Test** (~3 min, 2 questions per dimension) and **Standard Test** (~12 min, 2 questions per dimension)
+- 8 testing dimensions: Coding, Reasoning, Math, Creative Writing, Instruction Following, Tool Use, Multilingual, Context Handling
+- **10-point scale** scoring with linear time-based fitting
+- Correctness coefficient via multi-pattern regex matching
+- **Automatic multimodal detection** — tests image and audio recognition via API
+- Results sync in real-time to model capability panels and provider cards
+
+### 🧩 Extension System
+- **28 MCP Server presets** — Filesystem, GitHub, Database, Search, AI tools, and more
+- **27 Skill Server presets** — Independent skill execution environments (stdio / HTTP)
+- **15 Expert/Skill presets** — Pre-configured skill templates with custom content
+- All extensions: one-click add, test, enable/disable, and delete
+
+### ⚡ Agent Orchestration
+- Inspired by Claude Code, Codex, Trae, and open-source agents (OpenHands, Cline, OpenSpec)
+- Sub-agents can use **different models** for different task types
+- Task verification loop — orchestrator assigns sub-agents to check completion status
+- Automatic error recovery and retry logic
+
+---
+
+## 🚀 Quick Start / 快速开始
+
+### Option 1: Download Portable (Recommended / 推荐)
+
+1. Go to [Releases](../../releases) and download the latest portable exe
+2. Run `Mixture-of-Agents--portable.exe`
+3. No installation required — start using immediately
+
+### Option 2: Download Installer
+
+1. Download `Mixture of Agents Setup 1.0.0.exe`
+2. Run the installer and follow the prompts
+3. Launch from the Start Menu
+
+### Option 3: Build from Source / 从源码构建
 
 ```bash
-# 克隆仓库
+# Clone the repository / 克隆仓库
 git clone https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop.git
 cd Mixture-of-Agents-Desktop
 
-# 安装依赖
+# Install dependencies / 安装依赖
 npm install
 
-# 构建前端和后端
+# Build frontend and backend / 构建前端和后端
 npm run build:all
 
-# 打包为 exe
+# Package as EXE / 打包为 EXE
 npm run dist
 ```
 
-### 开发模式
+### Development Mode / 开发模式
 
 ```bash
-# 同时启动后端热重载、前端开发服务器、Electron 窗口
+# Start backend hot-reload, frontend dev server, and Electron window
 npm run dev
 ```
 
 ---
 
-## 功能详解
+## 🖼 Screenshots / 界面预览
 
-### 1. 添加模型提供商
+| Chat / 对话 | Providers / 提供商 | Models / 模型 |
+|:-----------:|:------------------:|:-------------:|
+| *Multi-model collaborative chat with orchestrator* | *17+ preset providers with auto model detection* | *Model capability overview with test scores* |
+| *多模型协作对话，宏观调控智能调度* | *17+ 预设提供商，自动探测模型能力* | *模型能力总览，测试评分可视化* |
 
-1. 打开**提供商**面板
-2. 点击预设提供商卡片（如 OpenAI、DeepSeek、MiMo 等）添加
-3. 输入 API Key（支持批量添加，每行一个）
-4. 点击**获取模型**自动拉取可用模型列表
-5. 系统自动探测模型能力标签（LLM/VLM/视觉/音频/TTS/STT）
-
-### 2. 开始对话
-
-1. 在聊天界面输入消息
-2. 选择使用的模型（顶部设置栏）
-3. 调节思考强度和成本效率滑块
-4. 支持拖放图片和文件作为上下文
-5. 宏观调控模型自动分析任务并调度子代理
-
-### 3. 使用编辑器
-
-1. 点击**编辑器**选项卡
-2. 点击顶部**选择目录**设置工作区
-3. 左侧文件树浏览和管理文件
-4. 点击文件在 Monaco 编辑器中打开
-5. 底部命令栏输入 shell 命令执行
-6. 点击**运行**按钮一键执行当前文件
-
-### 4. 运行代码项目
-
-编辑器支持直接运行以下语言的文件：
-
-| 语言 | 扩展名 | 运行方式 |
-|------|--------|----------|
-| Python | .py | python |
-| JavaScript | .js | node |
-| TypeScript | .ts | npx ts-node |
-| C | .c | gcc 编译后执行 |
-| C++ | .cpp/.cc | g++ 编译后执行 |
-| Go | .go | go run |
-| Rust | .rs | rustc 编译后执行 |
-| Java | .java | javac + java |
-| Ruby | .rb | ruby |
-| PHP | .php | php |
-| Shell | .sh | bash |
-| PowerShell | .ps1 | powershell |
-
-### 5. 模型能力测试
-
-1. 打开**测试**面板
-2. 选择**快速测试**（约 2 分钟/模型）或**标准测试**（约 12 分钟/模型）
-3. 支持单个模型测试、按提供商测试、全部模型测试
-4. 测试结果自动同步到模型能力面板
-5. 同名模型自动绑定为同一模型，共享测试结果
-
-### 6. 扩展管理
-
-1. 打开**扩展**面板
-2. **MCP 服务器**：添加文件系统、GitHub、数据库、搜索等工具
-3. **技能服务器**：添加独立的技能执行环境
-4. **技能**：管理预设和自定义技能内容
-5. 所有扩展支持测试连接和启用/禁用
+| Testing / 测试 | Editor / 编辑器 | Extensions / 扩展 |
+|:---------------:|:---------------:|:-----------------:|
+| *8-dimension model testing with 10-point scoring* | *Monaco Editor with file tree and terminal* | *MCP + Skill servers with one-click setup* |
+| *8 维度模型测试，10 分制评分* | *Monaco 编辑器 + 文件树 + 终端* | *MCP + Skill 服务器，一键配置* |
 
 ---
 
-## 架构说明
+## 🏗 Architecture / 架构说明
 
 ```
 Mixture-of-Agents-Desktop/
-├── backend/                 # Express.js + TypeScript 后端
-│   └── src/
-│       ├── index.ts         # 服务入口（端口 3001）
-│       ├── routes/
-│       │   ├── chat.ts      # 对话 API + 上下文压缩
-│       │   ├── coding.ts    # 代码执行 + 文件管理 + 终端
-│       │   ├── providers.ts # 提供商管理 + API 池
-│       │   ├── testing.ts   # 模型能力测试
-│       │   ├── extensions.ts # MCP/Skill 扩展管理
-│       │   ├── models.ts    # 模型注册表
-│       │   └── projects.ts  # 项目管理
-│       ├── services/
-│       │   ├── coding-engine.ts  # AI 代码生成引擎
-│       │   ├── file-runner.ts    # 多语言文件执行器
-│       │   ├── llm-client.ts     # LLM API 客户端
-│       │   ├── price-fetcher.ts  # 价格查询
-│       │   └── extensions/       # 扩展管理器 + 预设
-│       └── orchestrator/         # 宏观调控 + 子代理调度
-├── frontend/                # React + Vite 前端
-│   └── src/
-│       ├── App.tsx          # 主应用（聊天、面板、设置）
-│       ├── components/
-│       │   ├── Editor.tsx   # 编辑器（集成文件管理 + 命令栏）
-│       │   ├── Terminal.tsx # xterm.js 终端
-│       │   └── Environment.tsx # 环境信息面板
-│       └── services/
-│           └── api.ts       # API 客户端
-├── electron/                # Electron 主进程
-├── release/                 # 打包输出
-│   ├── Mixture-of-Agents--portable.exe  # 便携版
-│   └── Mixture of Agents Setup 1.0.0.exe # 安装版
-└── package.json             # 根配置
+├── frontend/                    # React + TypeScript + Vite
+│   ├── src/
+│   │   ├── App.tsx              # Main application (1500+ lines)
+│   │   ├── components/
+│   │   │   ├── Editor.tsx       # Monaco Editor + File Tree + Terminal
+│   │   │   ├── FileManager.tsx  # File operations UI
+│   │   │   ├── Terminal.tsx     # xterm.js terminal
+│   │   │   └── Environment.tsx  # Environment info panel
+│   │   ├── services/
+│   │   │   └── api.ts           # Backend API client
+│   │   └── types.ts             # TypeScript type definitions
+│   └── dist/                    # Built frontend assets
+│
+├── backend/                     # Express.js + TypeScript
+│   ├── src/
+│   │   ├── index.ts             # Server entry point
+│   │   ├── providers/
+│   │   │   ├── api-pool.ts      # API key pool & concurrency control
+│   │   │   └── presets.ts       # 17 provider presets
+│   │   ├── routes/
+│   │   │   ├── chat.ts          # Chat endpoints (SSE streaming)
+│   │   │   ├── providers.ts     # Provider CRUD
+│   │   │   ├── models.ts        # Model management
+│   │   │   ├── testing.ts       # Model capability testing
+│   │   │   ├── coding.ts        # Code execution engine
+│   │   │   ├── projects.ts      # Project file operations
+│   │   │   └── extensions.ts    # MCP/Skill management
+│   │   └── services/
+│   │       ├── project-manager.ts   # File system operations
+│   │       ├── ws-manager.ts        # WebSocket broadcast
+│   │       ├── coding-engine.ts     # Multi-language code runner
+│   │       └── extensions/
+│   │           ├── extension-manager.ts  # Extension lifecycle
+│   │           └── presets.ts            # 28 MCP + 27 Skill + 15 Expert presets
+│   └── public/                  # Static frontend files
+│
+├── electron/                    # Electron main process
+├── package.json
+└── README.md
 ```
 
----
+### Key Design Principles / 核心设计原则
 
-## 扩展系统
-
-### MCP 服务器预设（40+）
-
-| 分类 | 预设 |
-|------|------|
-| 工具 | Filesystem、GitHub、Fetch、Git、Puppeteer |
-| 搜索 | Brave Search、Exa、Tavily、SearXNG |
-| 数据库 | SQLite、PostgreSQL、MySQL、Redis、MongoDB |
-| 云存储 | AWS S3、Supabase |
-| 监控 | Sentry |
-| 通讯 | Slack、Linear |
-| 测试 | Everything、Playwright |
-| 安全 | npm-audit、Snyk |
-| 部署 | Vercel、Netlify、Terraform |
-| 数据 | CSV、Excel、PDF |
-| AI | LangChain、RAG、Embedding |
-| 媒体 | Image、Video |
-| 通讯 | Email、Telegram、Discord |
-
-### 技能服务器
-
-与 MCP 服务器同级的独立扩展，支持自定义技能执行环境。预设包含代码审查、文档生成、测试生成等常用开发技能。
-
-### 自定义扩展
-
-支持手动添加任意 MCP 服务器或技能，填写名称、传输方式（stdio/SSE/HTTP）、命令或 URL 即可。
+| Principle / 原则 | Description / 描述 |
+|------------------|---------------------|
+| **Orchestrator Pattern / 调控模式** | A macro model analyzes tasks and dispatches sub-agents — similar to Claude Code's agent architecture |
+| **API Pool / API 池** | Round-robin key rotation with concurrency control (max 80/key), automatic failover on 429/401/403 |
+| **Cache Optimization / 缓存优化** | DeepSeek-style message formatting for improved API cache hit rates |
+| **Context Compression / 上下文压缩** | Automatic history condensation to prevent context overflow |
+| **Real-time Sync / 实时同步** | WebSocket-based live updates from backend to frontend |
 
 ---
 
-## 模型能力测试
+## 🧩 Extension System / 扩展系统
 
-### 测试维度
+### MCP Servers (28 presets)
 
-| 维度 | 快速测试 | 标准测试 | 满分 |
-|------|----------|----------|------|
-| 编码 | 2 题 | 2 题 | 10 |
-| 推理 | 2 题 | 2 题 | 10 |
-| 数学 | 2 题 | 2 题 | 10 |
-| 创意写作 | 2 题 | 2 题 | 10 |
-| 指令遵循 | 2 题 | 2 题 | 10 |
-| 工具使用 | 2 题 | 2 题 | 10 |
-| 多语言 | 2 题 | 2 题 | 10 |
-| 上下文处理 | 2 题 | 2 题 | 10 |
-| **总分** | | | **80** |
+| Category / 类别 | Servers |
+|----------------|---------|
+| 🔧 **Tools / 工具** | Filesystem, GitHub, Git, Fetch, Everything |
+| 🔍 **Search / 搜索** | Brave Search, Exa, Google Maps |
+| 🗄️ **Database / 数据库** | PostgreSQL, MySQL, SQLite, Redis |
+| 📊 **Data / 数据** | Pandoc, Excel, CSV |
+| 🎨 **Creative / 创意** | Replicate (Image Gen), Figma, Puppeteer |
+| 🤖 **AI / 人工智能** | OpenAI, Brave Search with AI, Context7 |
+| ☁️ **Cloud / 云服务** | AWS S3, Cloudflare, Linear |
+| 📱 **Social / 社交** | Discord, Slack, Twitter |
+| 🧪 **Testing / 测试** | Everything (MCP feature demo) |
 
-### 评分规则
+### Skill Servers (27 presets)
 
-- 每题满分 5 分，每维度满分 10 分
-- 基础分 2 分（解出即得）
-- 时间系数：解题时间 ≤ 上限 50% → 系数 1.0（满分）；时间 = 上限 → 系数 0.4（基准分）
-- 正确系数：按答案正则匹配比例计算
-- 最终得分 = 基础分 + (满分 - 基础分) × 时间系数 × 正确系数
+Pre-configured skill execution environments for web automation, data analysis, system administration, code review, and more.
 
-### 多模态能力检测
+### Expert Library / 专家库 (15 presets)
 
-- **视觉能力**：向模型发送测试图片，检测是否能正确描述图片内容
-- **音频能力**：向模型发送测试音频，检测是否能正确识别音频内容
-- 检测结果以标签形式显示在提供商面板和模型列表中
+Ready-to-use expert configurations for common development workflows.
 
 ---
 
-## 开发指南
+## 🧪 Model Testing / 模型能力测试
 
-### 环境要求
+### Testing Dimensions / 测试维度
 
-- Node.js 20+
-- npm 10+
-- Windows 10/11 x64
+| Dimension / 维度 | What It Tests / 测试内容 |
+|-----------------|------------------------|
+| 💻 **Coding** | Algorithm implementation, data structures |
+| 🧠 **Reasoning** | Logical deduction, multi-step reasoning |
+| 🔢 **Math** | Mathematical computation, proofs |
+| ✍️ **Creative Writing** | Format adherence, creative constraints |
+| 📋 **Instruction Following** | Complex instruction compliance |
+| 🔧 **Tool Use** | API calls, structured output |
+| 🌍 **Multilingual** | Cross-language understanding |
+| 📚 **Context Handling** | Long-context retention, multi-turn |
 
-### 开发命令
+### Scoring System / 评分系统
+
+- **10-point scale** per dimension, 80 points total
+- Time-based linear scoring: **≤50% of limit = 10 points**, linear decay to **2 points at limit**
+- **Quick test**: 3-minute limit per question
+- **Standard test**: 12-minute limit per question (harder problems)
+- **Correctness coefficient**: Multi-pattern regex matching with partial credit
+
+### Multimodal Detection / 多模态检测
+
+- **Visual**: Sends test image via API, detects image understanding capability
+- **Audio**: Sends test audio via API (MiMo format), detects audio comprehension
+- Tags displayed on model cards: `🖼️ Vision` / `🎵 Audio` / `🔊 Speech`
+- Vision and audio scores shown separately from main capability scores
+
+---
+
+## 📝 Code Editor / 代码编辑器
+
+| Feature / 功能 | Description / 描述 |
+|---------------|---------------------|
+| **Monaco Engine** | VS Code's editor engine with full IntelliSense |
+| **File Tree** | Browse, create, rename, delete files and folders |
+| **Smart Templates** | Auto-fill templates for 14 languages on file creation |
+| **Change Highlighting** | Visual markers on modified lines with change count |
+| **Command Bar** | Execute shell commands directly in the workspace |
+| **One-Click Run** | Run any supported file with a single button |
+| **Project Selector** | Choose any directory as the workspace root |
+
+---
+
+## 💻 Supported Languages / 支持语言
+
+| Language / 语言 | Extension / 扩展名 | Runner / 运行方式 |
+|----------------|--------------------|--------------------|
+| Python | `.py` | `python` |
+| JavaScript | `.js` | `node` |
+| TypeScript | `.ts` | `npx tsx` |
+| C | `.c` | `gcc` → `./a.out` |
+| C++ | `.cpp` | `g++` → `./a.out` |
+| Go | `.go` | `go run` |
+| Rust | `.rs` | `rustc` → `./main` |
+| Java | `.java` | `javac` → `java` |
+| Ruby | `.rb` | `ruby` |
+| Shell | `.sh` | `bash` |
+| HTML | `.html` | Browser open |
+| CSS | `.css` | — |
+| JSON | `.json` | — |
+| Markdown | `.md` | — |
+
+---
+
+## ⚙️ Configuration / 配置说明
+
+### Environment Variables / 环境变量
+
+| Variable / 变量 | Default / 默认值 | Description / 描述 |
+|----------------|-----------------|---------------------|
+| `PORT` | `3001` | Backend server port / 后端服务端口 |
+
+### Key Pool Behavior / 密钥池行为
+
+- **Deduplication** — duplicate keys are automatically removed / 重复密钥自动去重
+- **Max concurrency** — 80 concurrent requests per key / 单密钥最大并发 80
+- **Auto-rotation** — switches to next key when limit reached / 达到上限自动切换
+- **Invalid key removal** — 401/403 keys are removed from pool / 失效密钥自动移除
+- **Balance-based ordering** — keys with remaining balance prioritized / 按余额排序
+
+---
+
+## 🛠 Development / 开发指南
+
+### Prerequisites / 前置条件
+
+- **Node.js** 20+ / Node.js 20+
+- **npm** 9+ / npm 9+
+- **Windows** x64 / Windows x64
+
+### Project Structure / 项目结构
 
 ```bash
-# 开发模式（热重载）
-npm run dev
-
-# 构建后端
-npm run build:backend
-
-# 构建前端
-npm run build:frontend
-
-# 构建全部
-npm run build:all
-
-# 打包便携版 exe
-npm run dist
-
-# 打包目录（不生成 exe）
-npm run pack
+npm install           # Install all dependencies / 安装依赖
+npm run build:all     # Build frontend + backend / 构建前后端
+npm run dev           # Development mode / 开发模式
+npm run dist          # Package as EXE / 打包 EXE
 ```
 
-### API 端点
+### Tech Stack / 技术栈
 
-| 路径 | 方法 | 说明 |
-|------|------|------|
-| /api/chat | POST | 发送对话消息 |
-| /api/providers | GET | 获取所有提供商 |
-| /api/providers/presets | GET | 获取提供商预设 |
-| /api/coding/execute | POST | 执行编码任务 |
-| /api/coding/shell | POST | 执行 shell 命令 |
-| /api/coding/run-file | POST | 运行代码文件 |
-| /api/coding/browse | POST | 浏览文件系统 |
-| /api/testing/:pid/models/:mid/test-quick | POST | 快速测试模型 |
-| /api/testing/:pid/models/:mid/test-full | POST | 标准测试模型 |
-| /api/extensions/mcp | GET | 获取 MCP 服务器列表 |
-| /api/extensions/skills | GET | 获取技能列表 |
-| /api/extensions/skill-servers | GET | 获取技能服务器列表 |
+| Layer / 层 | Technology / 技术 |
+|-----------|-------------------|
+| Frontend / 前端 | React 18, TypeScript 5, Vite, Monaco Editor, xterm.js |
+| Backend / 后端 | Express.js, TypeScript, WebSocket (ws), Node.js |
+| Desktop / 桌面 | Electron 28 |
+| Styling / 样式 | CSS Variables, Dark/Light Theme |
+| State / 状态 | React Hooks, localStorage persistence |
 
 ---
 
-## 更新日志
+## 📋 Changelog / 更新日志
 
-### v1.0.0 (2026-07-13)
+### v1.0.0 (Latest)
 
-**新功能**
-- 编辑器集成文件管理器，支持项目目录选择、文件树浏览、右键菜单
-- 编辑器底部命令栏，支持 shell 命令执行和命令历史
-- 改动行高亮，实时标记编辑的行
-- 模型能力自动测试（8 维度，10 分制）
-- 多模态能力检测（视觉/音频）
-- 扩展系统（MCP 服务器/技能服务器/技能库，40+ 预设）
-- 深色/浅色主题切换
-- 对话历史多线程管理
-- 全局思考强度调节（低/中/高/自动）
-
-**修复**
-- 编码引擎使用 cmd.exe 替代 PowerShell，避免特殊字符解析问题
-- npm install EBUSY 错误自动重试（指数退避 + 缓存清理）
-- 项目入口点自动检测（npm run dev 失败时自动尝试其他入口）
-- 同名模型自动绑定，共享测试结果
-- 扩展面板按钮和标签全部接通
+- ✅ Multi-model collaborative chat with orchestrator
+- ✅ 17 preset providers with API pool management
+- ✅ Monaco-based code editor with file tree
+- ✅ 14-language code execution engine
+- ✅ 8-dimension model capability testing (10-point scale)
+- ✅ 28 MCP + 27 Skill + 15 Expert presets
+- ✅ Multimodal detection (Vision / Audio)
+- ✅ Context compression and cache optimization
+- ✅ Dark/Light theme support
+- ✅ Portable and Installer EXE packaging
 
 ---
 
-## 许可证
+## 📄 License
 
-MIT License
+MIT License © 2025
+
+---
+
+<div align="center">
+
+**Built with ⚛️ by the Mixture of Agents team**
+
+*Crafted with care for developers who want AI-powered coding assistance*
+
+---
+
+*为追求 AI 辅助编程的开发者精心打造*
+
+</div>
