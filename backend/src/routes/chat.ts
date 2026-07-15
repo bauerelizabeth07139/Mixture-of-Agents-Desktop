@@ -15,7 +15,7 @@ import { Provider, Model, ApiKeyEntry } from '../types';
 const RECENT_MESSAGE_LIMIT = 20;
 const SUMMARY_MAX_CHARS = 200;
 const WORKSPACE_ROOT = path.join(os.homedir(), '.moa-workspace');
-const MAX_RETRIES = 5;
+const MAX_RETRIES = 10;
 const DEFAULT_CMD_TIMEOUT = 30_000;
 const INSTALL_CMD_TIMEOUT = 120_000;
 
@@ -93,9 +93,17 @@ const SYSTEM_PROMPT = [
   '- Use responsive design with flexbox/grid',
   '- Add scroll-reveal animations with IntersectionObserver',
   '- Dark themes: use #0a0a0f background with #6c5ce7 accent and gradient text',
-  '- Add animated progress bars, particle effects, or subtle background patterns',
+  '- Add animated progress bars, particle effects or subtle background patterns',
   '',
-  '## Error Recovery',
+  '## Complex Projects (Games, Multi-component Apps)',
+  '- For multi-game pages: put ALL game logic in a SINGLE games.js file',
+  '- Each game should be a self-contained function that renders to a specific container div',
+  '- HTML should have container divs like <div id="game-container"></div>',
+  '- NEVER use canvas for grid-based games (2048, Minesweeper). Use DOM elements.',
+  '- For games: ALWAYS include start/restart buttons and score display',
+  '- NEVER output incomplete game logic with comments like // rest of game logic here',
+  '- Make each game COMPLETE before moving to the next',
+  '','## Error Recovery',
   'When you see errors, fix them immediately:',
   '- MODULE_NOT_FOUND -> add npm install <package>',
   '- Syntax errors -> provide the corrected file',
@@ -293,7 +301,7 @@ function extractCodeBlocksRegex(response: string): ExtractedCodeBlock[] {
       const htmlComment = content.match(/^\s*<!--\s*([^\s>]+\.[a-z]+)\s*-->/i);
       if (htmlComment) filename = htmlComment[1];
     }
-    blocks.push({ language: correctedLang, filename, content: content.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), isCommand });
+    blocks.push({ language: correctedLang, filename, content: content.replace(/\r\n/g, '\n'), isCommand });
     idx++;
   }
   return blocks;
@@ -765,7 +773,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const thinkingEffort = orchestratorThinkingMode && orchestratorThinkingMode !== 'auto' ? orchestratorThinkingMode : undefined;
 
       const chatTemperature = 0.1 + ratio * 0.7;
-      const chatMaxTokens = Math.round(4096 + ratio * 12288);
+      const chatMaxTokens = Math.round(16384 + ratio * 49152);
 
       // Step 1: LLM call - get plan
       sendEvent('status', { status: 'calling_llm' });
@@ -808,11 +816,11 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const verifyMaxTokens: number = isHighStrict ? 2048 : isMediumStrict ? 1024 : 256;
 
       // === PLAN->ACT->OBSERVE->REPLAN LOOP ===
-      const MAX_PLAN_ROUNDS = 8;
+      const MAX_PLAN_ROUNDS = 12;
       let planContent = llmContent;
       let planRound = 0;
       let stepVerifyCount = 0;
-      const MAX_STEP_VERIFIES = isHighStrict ? 3 : 2;
+      const MAX_STEP_VERIFIES = isHighStrict ? 5 : 3;
       let planDone = false;
 
       while (!planDone && planRound < MAX_PLAN_ROUNDS) {
@@ -906,7 +914,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
           } catch (ve: any) { console.error('[Chat] Step verification error:', ve.message); }
         }
 
-        if ((hasHtml && hasCss && hasServer) || (hasHtml && stepVerifyCount >= MAX_STEP_VERIFIES)) {
+        if ((hasHtml && (hasJs || hasCss) && (hasServer || planRound >= 4)) || (hasHtml && stepVerifyCount >= MAX_STEP_VERIFIES) || (hasHtml && hasJs && hasCss && planRound >= 2)) {
           planDone = true;
         }
         if (planBlocks.length === 0 && !planDone) {
