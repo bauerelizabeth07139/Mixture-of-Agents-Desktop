@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 <a id='top'></a>
 
@@ -89,8 +89,8 @@ A full-featured AI development desktop environment with multi-model collaboratio
 
 ### Option 1: Download Portable (Recommended)
 
-1. Go to [Releases](../../releases) and download the latest portable exe
-2. Run `Mixture-of-Agents--portable.exe`
+1. Go to [Releases](../../releases) and download the latest Windows x64 package
+2. Extract the package and run `Mixture of Agents.exe`
 3. No installation required
 
 ### Option 2: Download Installer
@@ -439,7 +439,7 @@ MIT License © 2025
 ### 方式一：下载便携版（推荐）
 
 1. 前往 [Releases](../../releases) 下载最新版本
-2. 运行 `Mixture-of-Agents--portable.exe`
+2. 解压后运行 `Mixture of Agents.exe`
 3. 无需安装任何依赖
 
 ### 方式二：下载安装版
