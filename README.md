@@ -189,7 +189,7 @@
 
 <br>
 
-1. 📥 Go to [**Releases**](../../releases) and download the latest Windows x64 package
+1. 📥 Go to [**Releases**](https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop/releases) and download the latest Windows x64 package
 2. 📂 Extract the zip
 3. 🖱️ Run `Mixture of Agents.exe`
 4. 🚀 Done! No installation required.
@@ -720,7 +720,7 @@ npx electron-builder --win dir  # 📦 Package EXE
 
 <br>
 
-1. 📥 前往 [**Releases**](../../releases) 下载最新 Windows x64 包
+1. 📥 前往 [**Releases**](https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop/releases) 下载最新 Windows x64 包
 2. 📂 解压 zip
 3. 🖱️ 运行 `Mixture of Agents.exe`
 4. 🚀 完成！无需安装。
