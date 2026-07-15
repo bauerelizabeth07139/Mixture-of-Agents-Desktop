@@ -1,4 +1,4 @@
-﻿import { v4 as uuid } from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
@@ -757,9 +757,8 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const chatTemperature = 0.1 + ratio * 0.7;
       const chatMaxTokens = Math.round(4096 + ratio * 12288);
 
-      // Step 1: LLM call
+      // Step 1: LLM call - get plan
       sendEvent('status', { status: 'calling_llm' });
-      // Stream tokens in real-time
       let streamedContent = '';
       let streamedReasoning = '';
       const { response: initialResp, provider: usedProvider, model: usedModel } = await streamChatWithKeyRotation(
@@ -785,67 +784,66 @@ export function createChatRoutes(pool: ApiPoolManager) {
       let totalRetries = 0;
       let currentDir = projectDir;
 
-      // Step 2: Write code blocks
-      const codeBlocks = extractCodeBlocks(llmContent);
-      if (codeBlocks.length > 0) {
-        const written = writeCodeBlocks(codeBlocks, projectDir);
-        filesWritten.push(...written);
-        for (const f of written) {
-          sendEvent('file_written', { path: f.path, size: f.size, name: path.basename(f.path) });
-        }
+      // === PLAN->ACT->OBSERVE->REPLAN LOOP ===
+      const MAX_PLAN_ROUNDS = 8;
+      let planContent = llmContent;
+      let planRound = 0;
+      let planDone = false;
 
-        // Step 3: Execute commands
-        const dollarCmds = extractDollarCommands(llmContent);
-        const commands = collectCommands(codeBlocks, dollarCmds);
+      while (!planDone && planRound < MAX_PLAN_ROUNDS) {
+        planRound++;
+        sendEvent('status', { status: 'executing_step', round: planRound, description: 'Step ' + planRound });
 
-        if (commands.length > 0) {
-          sendEvent('status', { status: 'executing', commandCount: commands.length });
-          const { results } = runCommandsSequentially(commands, projectDir, currentDir);
-          allCommandsRun.push(...results);
-          for (const r of results) {
-            sendEvent('command_result', { cmd: r.cmd, exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr });
+        const planBlocks = extractCodeBlocks(planContent);
+        if (planBlocks.length > 0) {
+          const roundWritten = writeCodeBlocks(planBlocks, projectDir);
+          filesWritten.push(...roundWritten);
+          for (const f of roundWritten) {
+            sendEvent('file_written', { path: f.path, size: f.size, name: path.basename(f.path) });
           }
 
-          // Step 4: Error recovery
-          let failedResults = results.filter(r => r.exitCode !== 0);
-          let retryCount = 0;
+          const dollarCmds = extractDollarCommands(planContent);
+          const commands = collectCommands(planBlocks, dollarCmds);
 
-          while (failedResults.length > 0 && retryCount < MAX_RETRIES) {
-            retryCount++;
-            totalRetries++;
-            sendEvent('status', { status: 'fixing', attempt: retryCount, errors: failedResults.length });
-            const errorContext = buildErrorContext(projectDir, failedResults);
-            const fixMessages = [...messages, { role: 'assistant', content: llmContent }, { role: 'user', content: errorContext }];
-            try {
-              const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMessages, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
-              llmContent += '\r\n\r\n---\r\n**Fix attempt ' + retryCount + '**\r\n\r\n' + fixResp.content;
-              sendEvent('fix_response', { attempt: retryCount, content: fixResp.content });
+          if (commands.length > 0) {
+            sendEvent('status', { status: 'executing', commandCount: commands.length, round: planRound });
+            const { results: roundResults } = runCommandsSequentially(commands, projectDir, currentDir);
+            allCommandsRun.push(...roundResults);
+            for (const r of roundResults) {
+              sendEvent('command_result', { cmd: r.cmd, exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr });
+            }
 
-              const fixBlocks = extractCodeBlocks(fixResp.content);
-              const fixWritten = writeCodeBlocks(fixBlocks, projectDir);
-              filesWritten.push(...fixWritten);
-              for (const f of fixWritten) {
-                sendEvent('file_written', { path: f.path, size: f.size, name: path.basename(f.path) });
-              }
-
-              const fixDollarCmds = extractDollarCommands(fixResp.content);
-              const fixCommands = collectCommands(fixBlocks, fixDollarCmds);
-              if (fixCommands.length > 0) {
-                const { results: fixResults } = runCommandsSequentially(fixCommands, projectDir, currentDir);
-                allCommandsRun.push(...fixResults);
-                for (const r of fixResults) {
-                  sendEvent('command_result', { cmd: r.cmd, exitCode: r.exitCode, stdout: r.stdout, stderr: r.stderr });
+            const failed = roundResults.filter(r => r.exitCode !== 0);
+            if (failed.length > 0) {
+              totalRetries++;
+              if (totalRetries <= MAX_RETRIES) {
+                sendEvent('status', { status: 'fixing', attempt: totalRetries, round: planRound });
+                const errCtx = buildErrorContext(projectDir, failed);
+                const fixMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: errCtx }];
+                try {
+                  const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMsgs, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
+                  sendEvent('fix_response', { attempt: totalRetries, content: fixResp.content });
+                  planContent = fixResp.content;
+                  continue;
+                } catch (fixErr: any) {
+                  console.error('[Chat] Fix call failed:', fixErr.message);
+                  sendEvent('error', { error: 'Fix call failed: ' + fixErr.message });
                 }
-                failedResults = fixResults.filter(r => r.exitCode !== 0);
-              } else break;
-            } catch (retryErr: any) {
-              console.error('[Chat] Retry LLM call failed:', retryErr.message);
-              sendEvent('error', { error: 'Retry failed: ' + retryErr.message });
-              break;
+              }
             }
           }
         }
+
+        const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
+        const hasServer = allCommandsRun.some(r => r.exitCode === 0 && /http-server|serve|python.*http/i.test(r.cmd));
+        if (hasHtml || hasServer) {
+          planDone = true;
+        }
+        if (planBlocks.length === 0 && !planDone) {
+          planDone = true;
+        }
       }
+      // === END PLAN LOOP ===
 
       // Auto-install
       const autoResults = autoInstallDeps(projectDir);
