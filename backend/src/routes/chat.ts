@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+﻿import { v4 as uuid } from 'uuid';
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
@@ -15,13 +15,23 @@ import { Provider, Model, ApiKeyEntry } from '../types';
 const RECENT_MESSAGE_LIMIT = 20;
 const SUMMARY_MAX_CHARS = 200;
 const WORKSPACE_ROOT = path.join(os.homedir(), '.moa-workspace');
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 const DEFAULT_CMD_TIMEOUT = 30_000;
 const INSTALL_CMD_TIMEOUT = 120_000;
 
 const SYSTEM_PROMPT = [
-  'You are MOA (Mixture of Agents), an autonomous coding agent similar to Claude Code and Codex.',
-  'You write complete, runnable code, create full projects, and execute commands.',
+  'You are MOA (Mixture of Agents), an autonomous coding agent similar to Claude Code, Codex, and Trae.',
+  'You write COMPLETE, PRODUCTION-QUALITY code and NEVER stop until the task is FULLY done.',
+  '',
+  '## STRICT RULES - NO LAZY OUTPUT ALLOWED',
+  '1. NEVER output placeholder text, TODO comments, or incomplete code.',
+  '2. NEVER skip creating referenced files. If HTML references style.css and games.js, you MUST create BOTH.',
+  '3. NEVER output fewer than the requested number of items. If asked for 4 games, you MUST create all 4.',
+  '4. EVERY file must be COMPLETE and FUNCTIONAL. No skeleton code, no placeholders, no truncated output.',
+  '5. After writing all files, ALWAYS include a command block to start the server.',
+  '6. Do NOT split a single-file project into multiple pages unless explicitly asked.',
+  '7. For single-page multi-game sites: ALL games must be in ONE index.html with ONE games.js. Do NOT create separate pages.',
+  '',
   '',
   '## How You Work',
   'You operate in a tool-use loop:',
@@ -834,12 +844,30 @@ export function createChatRoutes(pool: ApiPoolManager) {
           }
         }
 
+        // Only consider done if: we have HTML + CSS + JS + a running server
         const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
+        const hasCss = filesWritten.some(f => f.path.endsWith('.css'));
+        const hasJs = filesWritten.some(f => f.path.endsWith('.js'));
         const hasServer = allCommandsRun.some(r => r.exitCode === 0 && /http-server|serve|python.*http/i.test(r.cmd));
-        if (hasHtml || hasServer) {
+        // Don't stop early - keep going until we have a complete project
+        if (hasHtml && hasCss && hasServer) {
           planDone = true;
         }
         if (planBlocks.length === 0 && !planDone) {
+          // No more code blocks but task not done - ask LLM to continue
+          totalRetries++;
+          if (totalRetries <= MAX_RETRIES) {
+            sendEvent('status', { status: 'fixing', attempt: totalRetries, round: planRound });
+            const continueMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: 'Your output was incomplete. You must create ALL requested files and start the server. Continue where you left off and finish the task completely.' }];
+            try {
+              const { response: contResp } = await chatWithKeyRotation(pool, resolved, continueMsgs, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
+              sendEvent('fix_response', { attempt: totalRetries, content: contResp.content });
+              planContent = contResp.content;
+              continue;
+            } catch (contErr: any) {
+              console.error('[Chat] Continue call failed:', contErr.message);
+            }
+          }
           planDone = true;
         }
       }
