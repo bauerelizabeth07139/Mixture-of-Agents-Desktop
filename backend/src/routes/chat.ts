@@ -794,6 +794,12 @@ export function createChatRoutes(pool: ApiPoolManager) {
       let totalRetries = 0;
       let currentDir = projectDir;
 
+
+      // Determine verification frequency based on thinking strength
+      // high = verify after EVERY step (strict), medium = verify after EVERY step (standard), low = verify only at end
+      const verifyFrequency: 'every_step' | 'end_only' = (orchestratorThinkingMode === 'high') ? 'every_step' : (orchestratorThinkingMode === 'medium' || !orchestratorThinkingMode) ? 'every_step' : 'end_only';
+      const verifyStrictness: 'none' | 'low' | 'medium' | 'high' = (orchestratorThinkingMode === 'high') ? 'low' : 'none';
+
       // === PLAN->ACT->OBSERVE->REPLAN LOOP ===
       const MAX_PLAN_ROUNDS = 8;
       let planContent = llmContent;
@@ -844,17 +850,49 @@ export function createChatRoutes(pool: ApiPoolManager) {
           }
         }
 
-        // Only consider done if: we have HTML + CSS + JS + a running server
+        // Only consider done if: we have HTML + CSS + a running server
         const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
         const hasCss = filesWritten.some(f => f.path.endsWith('.css'));
         const hasJs = filesWritten.some(f => f.path.endsWith('.js'));
         const hasServer = allCommandsRun.some(r => r.exitCode === 0 && /http-server|serve|python.*http/i.test(r.cmd));
-        // Don't stop early - keep going until we have a complete project
+
+        // Verify after each step if high/medium strictness
+        if (verifyFrequency === 'every_step' && filesWritten.length > 0) {
+          try {
+            sendEvent('status', { status: 'verifying', round: planRound, description: 'Step verification...' });
+            const projectFiles: string[] = [];
+            for (const wp of filesWritten.map(f => f.path)) {
+              try { const c = fs.readFileSync(wp, 'utf-8'); projectFiles.push(path.basename(wp) + ' (' + c.length + 'b)'); } catch {}
+            }
+            const verifyPrompt = 'Check if this project is complete. Files: ' + projectFiles.join(', ') + '. Task: ' + (message || 'unknown') + '. Reply JSON: {"passed":true/false,"issues":[]}';
+            const vResolved = resolveModel(pool, modelId);
+            if (vResolved) {
+              const vResp = await chatWithKeyRotation(pool, vResolved, [
+                { role: 'system', content: 'You are a quick verification agent. Reply only with JSON {"passed":bool,"issues":[]}. Check if all files exist and reference each other correctly.' },
+                { role: 'user', content: verifyPrompt },
+              ], { thinkingEffort: verifyStrictness as any, temperature: 0.1, maxTokens: 256 });
+              let vResult: any;
+              try { vResult = JSON.parse(vResp.response.content); } catch { vResult = { passed: true }; }
+              sendEvent('verification_result', { round: planRound, passed: vResult.passed, issues: vResult.issues || [] });
+              if (!vResult.passed && vResult.issues?.length > 0) {
+                sendEvent('status', { status: 'fixing_verification', issues: vResult.issues });
+                const fixCtx = 'VERIFICATION FAILED:\n' + vResult.issues.join('\n') + '\nFix all issues now.';
+                const fixMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: fixCtx }];
+                try {
+                  const { response: fixResp } = await chatWithKeyRotation(pool, resolved, fixMsgs, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
+                  sendEvent('fix_response', { attempt: totalRetries + 1, content: fixResp.content });
+                  planContent = fixResp.content;
+                  continue;
+                } catch (fe: any) { console.error('[Chat] Verify fix failed:', fe.message); }
+              }
+            }
+          } catch (ve: any) { console.error('[Chat] Step verification error:', ve.message); }
+        }
+
         if (hasHtml && hasCss && hasServer) {
           planDone = true;
         }
         if (planBlocks.length === 0 && !planDone) {
-          // No more code blocks but task not done - ask LLM to continue
           totalRetries++;
           if (totalRetries <= MAX_RETRIES) {
             sendEvent('status', { status: 'fixing', attempt: totalRetries, round: planRound });
@@ -873,7 +911,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       }
       // === END PLAN LOOP ===
 
-      // === STATELESS VERIFICATION SUB-AGENT ===
+      // === STATELESS VERIFICATION SUB-AGENT (always runs at end) ===
       // A fresh, memoryless agent checks the generated project for completeness
       try {
         sendEvent('status', { status: 'verifying', description: 'Verification agent checking project...' });
@@ -905,7 +943,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
           const verifyResp = await chatWithKeyRotation(pool, verifyResolved, [
             { role: 'system', content: 'You are a verification agent. Check if the generated project is complete and correct. Reply only with JSON.' },
             { role: 'user', content: verifyPrompt },
-          ], { thinkingEffort: 'none' as any, temperature: 0.1, maxTokens: 1024 });
+          ], { thinkingEffort: verifyStrictness as any, temperature: 0.1, maxTokens: 1024 });
           
           let verification: any;
           try { verification = JSON.parse(verifyResp.response.content); } catch { verification = { passed: true, issues: [] }; }
