@@ -14,6 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          echo "tag=v${VER}" >> $GITHUB_OUTPUT
+          echo "version=${VER}" >> $GITHUB_OUTPUT
+          echo "Version: ${VER}"
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -59,8 +68,7 @@ jobs:
 
       - name: Create zip
         shell: bash
-        run: |
-          7z a -tzip Mixture-of-Agents-Windows-x64.zip dist-exe/win-unpacked/ || true
+        run: 7z a -tzip Mixture-of-Agents-Windows-x64.zip dist-exe/win-unpacked/ || true
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -72,9 +80,21 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.0
-          name: Mixture of Agents Desktop v1.2.0
-          body: 'Multi-model AI agent system with Claude Code architecture'
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Mixture of Agents Desktop v${{ steps.version.outputs.version }}
+          body: |
+            ## Mixture of Agents Desktop v${{ steps.version.outputs.version }}
+
+            Multi-model AI agent system with Claude Code architecture.
+
+            ### Installation
+            1. Download Mixture-of-Agents-Windows-x64.zip
+            2. Extract to any directory
+            3. Run Mixture of Agents.exe
+
+            ### Links
+            - Web: https://github.com/bauerelizabeth07139/Mixture-of-Agents
+            - Docs: https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop#readme
           files: Mixture-of-Agents-Windows-x64.zip
           draft: false
           prerelease: false
