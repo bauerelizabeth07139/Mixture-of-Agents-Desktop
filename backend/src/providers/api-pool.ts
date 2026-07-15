@@ -70,31 +70,42 @@ export class ApiPoolManager {
    * 3. Pick first key under concurrency limit (80)
    * Same URL can use different keys in parallel via concurrency rotation.
    */
+  /**
+   * Get next available API key:
+   * 1. Filter out inactive keys
+   * 2. Sort: exhausted (quota=0) to end, keep original order for active keys
+   * 3. Return first key under concurrency limit (80)
+   * Strategy: use first key until it hits 80 concurrent, then overflow to next.
+   */
   getNextApiKey(providerId: string): ApiKeyEntry | null {
     const provider = this.providers.get(providerId);
     if (!provider || provider.apiKeys.length === 0) return null;
 
-    const sorted = [...provider.apiKeys]
-      .filter(k => k.isActive)
-      .sort((a, b) => {
-        const aExhausted = a.remainingQuota === 0 ? 1 : 0;
-        const bExhausted = b.remainingQuota === 0 ? 1 : 0;
-        if (aExhausted !== bExhausted) return aExhausted - bExhausted;
+    // Separate exhausted and active keys, preserve original order
+    const active: ApiKeyEntry[] = [];
+    const exhausted: ApiKeyEntry[] = [];
+    for (const k of provider.apiKeys) {
+      if (!k.isActive) continue;
+      if (k.remainingQuota === 0) exhausted.push(k);
+      else active.push(k);
+    }
 
-        const aConc = this.keyConcurrency.get(a.id) || 0;
-        const bConc = this.keyConcurrency.get(b.id) || 0;
-        if (aConc !== bConc) return aConc - bConc;
-
-        return a.failureCount - b.failureCount;
-      });
-
-    for (const key of sorted) {
+    // Try active keys first (original order = prefer first key)
+    for (const key of active) {
       if ((this.keyConcurrency.get(key.id) || 0) < MAX_CONCURRENT_PER_KEY) {
         return key;
       }
     }
 
-    return sorted[0] || null;
+    // All active keys at concurrency limit? Try exhausted keys as fallback
+    for (const key of exhausted) {
+      if ((this.keyConcurrency.get(key.id) || 0) < MAX_CONCURRENT_PER_KEY) {
+        return key;
+      }
+    }
+
+    // Everything at limit - return first active key anyway
+    return active[0] || exhausted[0] || null;
   }
 
   /** Increment concurrency count when a request starts */
@@ -233,3 +244,4 @@ export class ApiPoolManager {
     for (const p of providers) this.providers.set(p.id, p);
   }
 }
+

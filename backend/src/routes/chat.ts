@@ -1,4 +1,4 @@
-import { v4 as uuid } from 'uuid';
+﻿import { v4 as uuid } from 'uuid';
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
@@ -350,7 +350,7 @@ function collectCommands(blocks: ExtractedCodeBlock[], dollarCommands: string[])
 }
 
 // ============================================================
-// Command execution �?ONE BY ONE like Claude Code
+// Command execution 锟?ONE BY ONE like Claude Code
 // ============================================================
 
 function getCmdTimeout(cmd: string): number {
@@ -434,7 +434,7 @@ function runCommandsSequentially(
       if (fs.existsSync(resolved)) currentCwd = resolved;
     }
 
-    // Stop on failure �?error recovery loop will handle retries
+    // Stop on failure 锟?error recovery loop will handle retries
     if (result.exitCode !== 0) break;
     
     // Brief pause after server start to let it initialize
@@ -610,6 +610,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
       sendEvent('status', { status: 'starting', projectDir });
 
       // Resolve model - use agentModelMap for specific task types if available
+      // __follow__ = use global modelId directly; '' = let orchestrator decide; other = specific modelId
       let resolved = resolveModel(pool, modelId);
       if (agentModelMap && Object.keys(agentModelMap).length > 0) {
         const preferredKeys = ['general', 'chat', 'code', 'reasoning'];
@@ -635,6 +636,17 @@ export function createChatRoutes(pool: ApiPoolManager) {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'system', content: 'Working directory: ' + projectDir + '\r\nPlatform: ' + process.platform + '\r\nNode.js: ' + process.version },
       ];
+
+            // Add agentModelMap info to system context
+      if (agentModelMap && Object.keys(agentModelMap).length > 0) {
+        const mapInfo = Object.entries(agentModelMap).filter(([_, v]) => v).map(([k, v]) => {
+          if (v === '__follow__') return `${k}: follow global model`;
+          return `${k}: ${v}`;
+        }).join(', ');
+        if (mapInfo) {
+          messages.push({ role: 'system', content: 'Sub-agent model assignments: ' + mapInfo + '. When value is empty, you (the orchestrator) decide which model to use for each sub-task.' });
+        }
+      }
 
             // Add agentModelMap info to system context
       if (agentModelMap && Object.keys(agentModelMap).length > 0) {
@@ -819,3 +831,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
   return r;
 }
+
+
+
+
