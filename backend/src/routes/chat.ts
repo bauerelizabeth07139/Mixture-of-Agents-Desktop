@@ -103,6 +103,12 @@ const SYSTEM_PROMPT = [
   '- For games: ALWAYS include start/restart buttons and score display',
   '- NEVER output incomplete game logic with comments like // rest of game logic here',
   '- Make each game COMPLETE before moving to the next',
+  '- If a task requires many files (e.g. 4 games), you MAY split across multiple rounds: generate 1-2 files per round, then continue in next round',
+  '- When continuing from a previous round, do NOT recreate files already written. Only create new ones.',
+  '- CRITICAL: For game projects, write EACH game as a COMPLETE self-contained function in games.js',
+  '- Each game function must be fully working: initialization, game loop, input handling, win/lose conditions, scoring',
+  '- NEVER use placeholder comments like // game logic here or // add more games below',
+  '',
   '','## Error Recovery',
   'When you see errors, fix them immediately:',
   '- MODULE_NOT_FOUND -> add npm install <package>',
@@ -881,7 +887,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
             for (const wp of filesWritten.map(f => f.path)) {
               try { 
                 const c = fs.readFileSync(wp, 'utf-8'); 
-                const contentPreview = isHighStrict ? c.substring(0, fileReadLimit) : c.substring(0, fileReadLimit);
+                const contentPreview = c.substring(0, Math.min(c.length, 50000));
                 projectFiles.push('--- FILE: ' + path.basename(wp) + ' (' + c.length + ' bytes) ---\n' + contentPreview);
               } catch {}
             }
@@ -914,14 +920,14 @@ export function createChatRoutes(pool: ApiPoolManager) {
           } catch (ve: any) { console.error('[Chat] Step verification error:', ve.message); }
         }
 
-        if ((hasHtml && (hasJs || hasCss) && (hasServer || planRound >= 4)) || (hasHtml && stepVerifyCount >= MAX_STEP_VERIFIES) || (hasHtml && hasJs && hasCss && planRound >= 2)) {
+        if ((hasHtml && (hasJs || hasCss) && (hasServer || planRound >= 6)) || (hasHtml && stepVerifyCount >= MAX_STEP_VERIFIES) || (hasHtml && hasJs && hasCss && hasServer && planRound >= 3)) {
           planDone = true;
         }
         if (planBlocks.length === 0 && !planDone) {
           totalRetries++;
           if (totalRetries <= MAX_RETRIES) {
             sendEvent('status', { status: 'fixing', attempt: totalRetries, round: planRound });
-            const continueMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: 'Your output was incomplete. You must create ALL requested files and start the server. Continue where you left off and finish the task completely.' }];
+            const continueMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: 'Your previous output was incomplete. Here are the files already written:\n' + filesWritten.map(f => '- ' + path.basename(f.path) + ' (' + f.size + ' bytes)').join('\n') + '\n\nYou must now create the REMAINING files that are missing. Do NOT recreate files already written above. After creating all remaining files, start the server.' }];
             try {
               const { response: contResp } = await chatWithKeyRotation(pool, resolved, continueMsgs, { thinkingEffort: thinkingEffort as any, temperature: chatTemperature, maxTokens: chatMaxTokens });
               sendEvent('fix_response', { attempt: totalRetries, content: contResp.content });
@@ -933,6 +939,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
           }
           planDone = true;
         }
+      sendEvent('plan_round_complete', { round: planRound, filesWritten: filesWritten.length, commandsRun: allCommandsRun.length, planDone });
       }
       // === END PLAN LOOP ===
 
@@ -947,7 +954,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         for (const wp of writtenPaths) {
           try {
             const content = fs.readFileSync(wp, 'utf-8');
-            projectFiles.push('--- FILE: ' + path.basename(wp) + ' (' + content.length + ' bytes) ---\n' + content.substring(0, fileReadLimit));
+            projectFiles.push('--- FILE: ' + path.basename(wp) + ' (' + content.length + ' bytes) ---\n' + content.substring(0, Math.min(content.length, 50000)));
           } catch {}
         }
         
@@ -1026,10 +1033,10 @@ export function createChatRoutes(pool: ApiPoolManager) {
         if (hasHtml) {
           try {
             const serveScript = path.join(os.tmpdir(), 'moa-serve-' + uuid() + '.cmd');
-            fs.writeFileSync(serveScript, '@echo off\r\nset "PATH=' + getAugmentedPath().replace(/"/g, '') + '"\r\ncd /d "' + projectDir + '"\r\nnpx http-server -p 8080 -c-1\r\n', 'utf-8');
+            fs.writeFileSync(serveScript, '@echo off\r\nset "PATH=' + getAugmentedPath().replace(/"/g, '') + '"\r\ncd /d "' + projectDir + '"\r\nnpx http-server -p 3080 -c-1\r\n', 'utf-8');
             const { exec: execBg } = require('child_process');
             execBg('start /B "" "' + serveScript + '"', { shell: 'cmd.exe', windowsHide: true, env: { ...process.env, PATH: getAugmentedPath() } });
-            allCommandsRun.push({ cmd: 'npx http-server -p 8080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
+            allCommandsRun.push({ cmd: 'npx http-server -p 3080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
             sendEvent('command_result', { cmd: 'npx http-server -p 8080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
             serveUrl = 'http://localhost:8080';
             // Auto-open browser
