@@ -19,7 +19,6 @@ jobs:
         with:
           node-version: '20'
 
-      # ---- Backend ----
       - name: Install backend deps
         working-directory: backend
         run: npm install
@@ -30,12 +29,11 @@ jobs:
         run: |
           $tc = Get-Content tsconfig.json -Raw
           $tc = $tc -replace '"strict": true', '"strict": false'
-          Set-Content tsconfig.json -Value $tc
+          Set-Content tsconfig.json -Value 
           npx tsc
           $tc = $tc -replace '"strict": false', '"strict": true'
-          Set-Content tsconfig.json -Value $tc
+          Set-Content tsconfig.json -Value 
 
-      # ---- Frontend ----
       - name: Install frontend deps
         working-directory: frontend
         run: npm install
@@ -50,35 +48,30 @@ jobs:
           if (Test-Path backend/public) { Remove-Item backend/public -Recurse -Force }
           Copy-Item frontend/dist backend/public -Recurse
 
-      # ---- Bundle node.exe for backend ----
       - name: Copy node.exe to backend extraResources
         shell: pwsh
         run: |
           $nodePath = (Get-Command node).Source
           Copy-Item $nodePath frontend/node.exe -Force
 
-      # ---- Build Electron ----
       - name: Build Electron (unpacked dir)
         working-directory: frontend
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         shell: pwsh
         run: |
-          # Add node.exe to extraResources in package.json
           $pkg = Get-Content package.json -Raw | ConvertFrom-Json
-          $pkg.build.extraResources += @{ from = "node.exe"; to = "node.exe" }
+          $pkg.build.extraResources += @{ from = 'node.exe'; to = 'node.exe' }
           $pkg | ConvertTo-Json -Depth 10 | Set-Content package.json
           npx electron-builder --dir --x64
         continue-on-error: true
 
-      # ---- Zip the output ----
       - name: Create zip
         shell: pwsh
         run: |
           Compress-Archive -Path dist-exe/win-unpacked -DestinationPath Mixture-of-Agents-Windows-x64.zip
-          Write-Host "ZIP size: $([math]::Round((Get-Item Mixture-of-Agents-Windows-x64.zip).Length/1MB,1)) MB"
+          Write-Host 'ZIP created'
 
-      # ---- Upload artifact (always) ----
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -86,35 +79,12 @@ jobs:
           path: Mixture-of-Agents-Windows-x64.zip
           retention-days: 90
 
-      # ---- Create/update GitHub Release ----
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.2.0
           name: Mixture of Agents Desktop v1.2.0
-        body: |
-          ## ⚛️ Mixture of Agents Desktop v1.2.0
-
-          ### 🚀 What's New in v1.2.0
-          - Plan → Act → Observe → Replan orchestration (up to 12 rounds)
-          - Stateless verification sub-agents
-          - 8-dimension model testing (10-point scale)
-          - 17 providers with API pool (80 concurrent/key)
-          - 28 MCP + 27 Skill + 15 Expert extensions
-          - Monaco editor + 14-language execution
-          - Multimodal detection (Vision/Audio)
-          - Context compression (DeepSeek-style)
-          - Dark/Light theme toggle
-          - Improved game generation & encoding fix
-
-          ### 📦 Installation
-          1. Download `Mixture-of-Agents-Windows-x64.zip`
-          2. Extract to any directory
-          3. Run `Mixture of Agents.exe`
-
-          ### 🔗 Links
-          - [Web Version](https://github.com/bauerelizabeth07139/Mixture-of-Agents)
-          - [Documentation](https://github.com/bauerelizabeth07139/Mixture-of-Agents-Desktop#readme)
+          body: 'Mixture of Agents Desktop v1.2.0 - Multi-model AI agent system with Claude Code architecture'
           files: Mixture-of-Agents-Windows-x64.zip
           draft: false
           prerelease: false
