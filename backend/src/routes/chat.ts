@@ -811,6 +811,8 @@ export function createChatRoutes(pool: ApiPoolManager) {
       const MAX_PLAN_ROUNDS = 8;
       let planContent = llmContent;
       let planRound = 0;
+      let stepVerifyCount = 0;
+      const MAX_STEP_VERIFIES = isHighStrict ? 3 : 2;
       let planDone = false;
 
       while (!planDone && planRound < MAX_PLAN_ROUNDS) {
@@ -864,7 +866,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         const hasServer = allCommandsRun.some(r => r.exitCode === 0 && /http-server|serve|python.*http/i.test(r.cmd));
 
         // Verify after each step if high/medium strictness
-        if (verifyFrequency === 'every_step' && filesWritten.length > 0) {
+        if (verifyFrequency === 'every_step' && filesWritten.length > 0 && stepVerifyCount < MAX_STEP_VERIFIES) {
           try {
             sendEvent('status', { status: 'verifying', round: planRound, description: isHighStrict ? 'Deep step verification...' : 'Quick step verification...' });
             const projectFiles: string[] = [];
@@ -887,8 +889,9 @@ export function createChatRoutes(pool: ApiPoolManager) {
               ], { thinkingEffort: verifyThinkingEffort as any, temperature: 0.1, maxTokens: verifyMaxTokens });
               let vResult: any;
               try { vResult = JSON.parse(vResp.response.content); } catch { vResult = { passed: true }; }
-              sendEvent('verification_result', { round: planRound, passed: vResult.passed, issues: vResult.issues || [], strictness: isHighStrict ? 'high' : 'medium' });
-              if (!vResult.passed && vResult.issues?.length > 0) {
+              stepVerifyCount++;
+              sendEvent('verification_result', { round: planRound, passed: vResult.passed, issues: vResult.issues || [], strictness: isHighStrict ? 'high' : 'medium', verifyAttempt: stepVerifyCount });
+              if (!vResult.passed && vResult.issues?.length > 0 && stepVerifyCount < MAX_STEP_VERIFIES) {
                 sendEvent('status', { status: 'fixing_verification', issues: vResult.issues, strictness: isHighStrict ? 'deep_fix' : 'quick_fix' });
                 const fixCtx = (isHighStrict ? 'STRICT VERIFICATION FAILED. You MUST fix every issue:\n' : 'Verification issues:\n') + vResult.issues.join('\n') + '\n\n' + (isHighStrict ? 'Fix ALL issues thoroughly. Generate complete corrected files. Do NOT leave any issues unfixed.' : 'Fix these issues.');
                 const fixMsgs = [...messages, { role: 'assistant', content: planContent }, { role: 'user', content: fixCtx }];
@@ -903,7 +906,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
           } catch (ve: any) { console.error('[Chat] Step verification error:', ve.message); }
         }
 
-        if (hasHtml && hasCss && hasServer) {
+        if ((hasHtml && hasCss && hasServer) || (hasHtml && stepVerifyCount >= MAX_STEP_VERIFIES)) {
           planDone = true;
         }
         if (planBlocks.length === 0 && !planDone) {
