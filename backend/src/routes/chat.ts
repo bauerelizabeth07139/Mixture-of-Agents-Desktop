@@ -720,11 +720,12 @@ export function createChatRoutes(pool: ApiPoolManager) {
           return `${k}: ${v}`;
         }).join(', ');
         if (mapInfo) {
-          messages.push({ role: 'system', content: 'Sub-agent model assignments: ' + mapInfo + '. When value is empty, you (the orchestrator) decide which model to use for each sub-task.' });
+          messages.push({ role: 'system', content: 'Sub-agent model PREFERRED assignments (these are first-choice models; if they fail, you may fall back to any available model): ' + mapInfo + '.' });
         }
       }
 
             // Add agentModelMap info to system context
+      const ratio = typeof costEfficiencyRatio === 'number' ? Math.max(0, Math.min(1, costEfficiencyRatio)) : 0.5;
       if (agentModelMap && Object.keys(agentModelMap).length > 0) {
         const entries = Object.entries(agentModelMap);
         const explicitMap = entries.filter(([_, v]) => v && v !== '');
@@ -732,7 +733,7 @@ export function createChatRoutes(pool: ApiPoolManager) {
         const mapInfo = explicitMap.map(([k, v]) => `${k}: ${v === '__follow__' ? resolved.model.modelId : v}`).join(', ');
         const parts: string[] = [];
         if (mapInfo) parts.push('Explicit sub-agent model assignments: ' + mapInfo + '.');
-        if (hasAutoDecision) parts.push('For unassigned sub-task types, you (the orchestrator) must decide the best available model before dispatching the sub-agent.');
+        if (hasAutoDecision) { const ratioDesc = ratio < 0.3 ? 'prefer fast/cheap models' : ratio > 0.7 ? 'prefer high-quality models' : 'balance quality and speed'; parts.push('For unassigned sub-task types, select the best model based on quality/speed ratio (' + ratioDesc + ', ratio=' + ratio.toFixed(2) + ').'); }
         parts.push('Planning thinking intensity is bound to strictness: higher strictness means stricter verification before passing a step.');
         messages.push({ role: 'system', content: parts.join(' ') });
       }
@@ -753,7 +754,6 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       const thinkingEffort = orchestratorThinkingMode && orchestratorThinkingMode !== 'auto' ? orchestratorThinkingMode : undefined;
 
-      const ratio = typeof costEfficiencyRatio === 'number' ? Math.max(0, Math.min(1, costEfficiencyRatio)) : 0.5;
       const chatTemperature = 0.1 + ratio * 0.7;
       const chatMaxTokens = Math.round(4096 + ratio * 12288);
 
