@@ -29,7 +29,7 @@ const SYSTEM_PROMPT = [
   '2. NEVER skip creating referenced files. If HTML references style.css and games.js, you MUST create BOTH.',
   '3. NEVER output fewer than the requested number of items. If asked for 4 games, you MUST create all 4.',
   '4. EVERY file must be COMPLETE and FUNCTIONAL. No skeleton code, no placeholders, no truncated output.',
-  '5. After writing all files, ALWAYS include a command block to start the server.',
+  '5. After writing all files, ALWAYS include a command block to start the server. Use pnpm dlx http-server -p 8080 -c-1 (NOT npx).',
   '6. Do NOT split a single-file project into multiple pages unless explicitly asked.',
   '7. For single-page multi-game sites: ALL games must be in ONE index.html with ONE games.js. Do NOT create separate pages.',
   '',
@@ -353,7 +353,11 @@ function writeCodeBlocks(blocks: ExtractedCodeBlock[], projectDir: string): File
     usedNames.add(filename);
     const filePath = path.resolve(projectDir, filename);
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
-    fs.writeFileSync(filePath, block.content, 'utf-8');
+    // Skip write if file already has identical content (prevents stall loops)
+if (fs.existsSync(filePath)) {
+  try { const existing = fs.readFileSync(filePath, 'utf-8'); if (existing === block.content) continue; } catch {}
+}
+fs.writeFileSync(filePath, block.content, 'utf-8');
     written.push({ path: filePath, size: Buffer.byteLength(block.content, 'utf-8') });
   }
   return written;
@@ -439,17 +443,23 @@ function runCommandsSequentially(
   let currentCwd = cwd;
 
   for (const cmd of allCommands) {
-    const isServerStart = /^\s*(start\s+\/B\s+)?(node|python|npm\s+start|npx\s+(nodemon|http-server))\s+/i.test(cmd.trim());
+    const isServerStart = /^\s*(start\s+\/B\s+)?(node|python|npm\s+start|npx\s+(nodemon|http-server)|pnpm\s+dlx\s+http-server)\s+/i.test(cmd.trim());
     const timeout = isServerStart ? 15_000 : getCmdTimeout(cmd);
-    
-    // For server start commands without "start /B", wrap them to run in background
-    let actualCmd = cmd;
-    if (isServerStart && !/^\s*start\s+\/B/i.test(cmd)) {
-      actualCmd = 'start /B ' + cmd;
+
+    let result: { exitCode: number; stdout: string; stderr: string } = { exitCode: 0, stdout: "", stderr: "" };
+    if (isServerStart) {
+                  // Launch server as fully detached background process via .cmd script
+      const { execSync } = require("child_process");
+      const augmentedPath = getAugmentedPath();
+      const serveScript = path.join(os.tmpdir(), "moa-serve-" + uuid() + ".cmd");
+      fs.writeFileSync(serveScript, ["@echo off", "set PATH=" + augmentedPath.replace(/"/g, ""), "cd /d \"" + currentCwd + "\"", cmd].join("\r\n"), "utf-8");
+      try { execSync('cmd /c start "" "' + serveScript + '"' , { timeout: 3000, windowsHide: true }); } catch {}
+      result = { exitCode: 0, stdout: "Server launched in background", stderr: "" };
+      results.push({ cmd, ...result });
+    } else {
+      result = execSingleCmd(cmd, currentCwd, timeout);
+      results.push({ cmd, exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr });
     }
-    
-    const result = execSingleCmd(actualCmd, currentCwd, timeout);
-    results.push({ cmd, exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr });
 
     // Track cd
     const cdMatch = cmd.trim().match(/^cd\s+(.+)$/i);
@@ -853,10 +863,15 @@ export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionMan
             sendEvent('file_written', { path: f.path, size: f.size, name: path.basename(f.path) });
           }
 
+          // Skip command execution if no new files were actually written this round
+          if (roundWritten.length === 0) {
+            sendEvent("status", { status: "skipped", message: "No new files this round, skipping commands" });
+          }
+
           const dollarCmds = extractDollarCommands(planContent);
           const commands = collectCommands(planBlocks, dollarCmds);
 
-          if (commands.length > 0) {
+          if (commands.length > 0 && roundWritten.length > 0) {
             sendEvent('status', { status: 'executing', commandCount: commands.length, round: planRound });
             const { results: roundResults } = runCommandsSequentially(commands, projectDir, currentDir);
             allCommandsRun.push(...roundResults);
@@ -936,7 +951,8 @@ export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionMan
           planDone = true;
         }
         // Stall detection: break if no progress
-        if (filesWritten.length <= prevFileCount && planBlocks.length === 0) {
+        const uniqueFiles = new Set(filesWritten.map(f => f.path)).size;
+        if (uniqueFiles <= prevFileCount && planBlocks.length === 0) {
           stallCount++;
           if (stallCount >= MAX_STALL_ROUNDS) {
             sendEvent('status', { status: 'stall_detected', message: 'No progress for ' + stallCount + ' consecutive rounds. Stopping.' });
@@ -944,7 +960,7 @@ export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionMan
             break;
           }
         } else { stallCount = 0; }
-        prevFileCount = filesWritten.length;
+        prevFileCount = new Set(filesWritten.map(f => f.path)).size;
 
         if (planBlocks.length === 0 && !planDone) {
           totalRetries++;
@@ -1039,38 +1055,43 @@ export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionMan
         }
       }
 
-      // Auto-serve + auto-open browser
+            // Auto-serve + auto-open browser
       const hasSuccessfulServer = allCommandsRun.some(r => r.exitCode === 0 && /http-server|serve|python.*http/i.test(r.cmd));
-            // Detect serve URL from commands
       let serveUrl: string | null = null;
       for (const cmd of allCommandsRun) {
         if (cmd.exitCode === 0) {
           const portMatch = cmd.cmd.match(/http-server.*-p\s+(\d+)/);
-          if (portMatch) { serveUrl = 'http://localhost:' + portMatch[1]; break; }
+          if (portMatch) { serveUrl = "http://localhost:" + portMatch[1]; break; }
           const pyMatch = cmd.cmd.match(/python.*-m\s+http\.server\s+(\d+)/);
-          if (pyMatch) { serveUrl = 'http://localhost:' + pyMatch[1]; break; }
+          if (pyMatch) { serveUrl = "http://localhost:" + pyMatch[1]; break; }
         }
       }
       if (filesWritten.length > 0 && !hasSuccessfulServer) {
-        const hasHtml = filesWritten.some(f => f.path.endsWith('.html') || f.path.endsWith('.htm'));
+        const hasHtml = filesWritten.some(f => f.path.endsWith(".html") || f.path.endsWith(".htm"));
         if (hasHtml) {
+          const SERVE_PORT = 8080;
           try {
-            const serveScript = path.join(os.tmpdir(), 'moa-serve-' + uuid() + '.cmd');
-            fs.writeFileSync(serveScript, '@echo off\r\nset "PATH=' + getAugmentedPath().replace(/"/g, '') + '"\r\ncd /d "' + projectDir + '"\r\nnpx http-server -p 3080 -c-1\r\n', 'utf-8');
-            const { exec: execBg } = require('child_process');
-            execBg('start /B "" "' + serveScript + '"', { shell: 'cmd.exe', windowsHide: true, env: { ...process.env, PATH: getAugmentedPath() } });
-            allCommandsRun.push({ cmd: 'npx http-server -p 3080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
-            sendEvent('command_result', { cmd: 'npx http-server -p 8080 -c-1', exitCode: 0, stdout: 'Server started on port 8080', stderr: '' });
-            serveUrl = 'http://localhost:8080';
-            // Auto-open browser
-            try { execBg('start http://localhost:8080', { shell: 'cmd.exe', windowsHide: true }); } catch {}
+            const { execSync } = require("child_process");
+            const augmentedPath = getAugmentedPath();
+            const serveScript = path.join(os.tmpdir(), "moa-serve-" + uuid() + ".cmd");
+            fs.writeFileSync(serveScript, [
+              "@echo off",
+              "set PATH=" + augmentedPath.replace(/"/g, ""),
+              "cd /d \"" + projectDir + "\"",
+              "pnpm dlx http-server -p " + SERVE_PORT + " -c-1 || python -m http.server " + SERVE_PORT,
+            ].join("\r\n"), "utf-8");
+            const { spawn } = require("child_process");
+            const serveProc = spawn("cmd", ["/c", serveScript], { detached: true, stdio: "ignore", windowsHide: true, cwd: projectDir, env: { ...process.env, PATH: augmentedPath } });
+            serveProc.unref();
+            serveUrl = "http://localhost:" + SERVE_PORT;
+            sendEvent("command_result", { cmd: "Auto-serve on port " + SERVE_PORT, exitCode: 0, stdout: "Server starting in background...", stderr: "" });
+            // Browser will be opened by frontend on receiving done event
           } catch (e: any) {
-            console.error('[AutoServe] Failed:', e.message);
+            console.error("[AutoServe] Failed:", e.message);
           }
         }
       }
-
-      // Final done event
+// Final done event
       sendEvent('done', {
         role: 'orchestrator',
         content: llmContent,

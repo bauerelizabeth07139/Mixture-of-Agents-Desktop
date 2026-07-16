@@ -13,7 +13,9 @@ function testResult(passed: boolean, message: string, diagnostics?: Record<strin
 function augmentedEnv(extra?: Record<string, string>) {
   const env = { ...process.env, ...(extra || {}) };
   const extraPaths = [
-    'C:\\node20b\\node-v20.15.1-win-x64',
+    
+    
+    'C:\\Users\\vipuser\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\bin\\fallback',path.dirname(process.execPath),'C:\\node20b\\node-v20.15.1-win-x64',
     'C:\\Program Files\\nodejs',
     path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python312'),
     path.join(os.homedir(), 'AppData\\Local\\Programs\\Python\\Python311'),
