@@ -16,7 +16,7 @@ import { ExtensionManager } from '../services/extensions/extension-manager';
 const RECENT_MESSAGE_LIMIT = 20;
 const SUMMARY_MAX_CHARS = 200;
 const WORKSPACE_ROOT = path.join(os.homedir(), '.moa-workspace');
-const MAX_RETRIES = 10;
+const MAX_RETRIES = 3;
 const DEFAULT_CMD_TIMEOUT = 30_000;
 const INSTALL_CMD_TIMEOUT = 120_000;
 
@@ -841,7 +841,7 @@ export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionMan
       const verifyMaxTokens: number = isHighStrict ? 2048 : isMediumStrict ? 1024 : 256;
 
       // === PLAN->ACT->OBSERVE->REPLAN LOOP ===
-      const MAX_PLAN_ROUNDS = 12;
+      const MAX_PLAN_ROUNDS = 4;
       const MAX_STALL_ROUNDS = 2;
       let planContent = llmContent;
       let planRound = 0;
@@ -865,7 +865,9 @@ export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionMan
 
           // Skip command execution if no new files were actually written this round
           if (roundWritten.length === 0) {
-            sendEvent("status", { status: "skipped", message: "No new files this round, skipping commands" });
+            sendEvent("status", { status: "skipped", message: "No new files this round, all identical. Done." });
+            planDone = true;
+            break;
           }
 
           const dollarCmds = extractDollarCommands(planContent);
@@ -947,7 +949,7 @@ export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionMan
           } catch (ve: any) { console.error('[Chat] Step verification error:', ve.message); }
         }
 
-        if ((hasHtml && (hasJs || hasCss) && (hasServer || planRound >= 6)) || (hasHtml && stepVerifyCount >= MAX_STEP_VERIFIES) || (hasHtml && hasJs && hasCss && hasServer && planRound >= 3)) {
+        if (filesWritten.length > 0 && (hasServer || planRound >= 2)) {
           planDone = true;
         }
         // Stall detection: break if no progress
