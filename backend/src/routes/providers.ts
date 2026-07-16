@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+﻿import { Router, Request, Response } from 'express';
 import { ApiPoolManager } from '../providers/api-pool';
 import { PROVIDER_PRESETS } from '../providers/presets';
 import { ModelCapabilityScorer } from '../models/capability-scorer';
@@ -7,22 +7,310 @@ import { LLMClient } from '../services/llm-client';
 import { v4 as uuid } from 'uuid';
 import { Provider, Model, ModelType } from '../types';
 
+// ============================================================
+// Comprehensive Image/Video model dictionaries (100+ each)
+// ============================================================
+
+const IMAGE_MODEL_NAMES: Set<string> = new Set([
+  // OpenAI DALL-E series
+  'dall-e-1', 'dall-e-2', 'dall-e-3', 'dall-e-3-hd',
+  // Stability AI - Stable Diffusion
+  'stable-diffusion-v1', 'stable-diffusion-v1-4', 'stable-diffusion-v1-5',
+  'stable-diffusion-v2', 'stable-diffusion-v2-1', 'stable-diffusion-xl',
+  'stable-diffusion-xl-1024', 'stable-diffusion-xl-turbo',
+  'sd-v1-4', 'sd-v1-5', 'sd-v2-0', 'sd-v2-1', 'sd-xl', 'sdxl', 'sdxl-turbo',
+  'sd3', 'sd3-medium', 'sd3-large', 'sd3-large-turbo', 'sd3-5-large',
+  'stable-cascade', 'stable-image-core', 'stable-image-ultra',
+  'stability-sdxl', 'stability-sd3',
+  // Midjourney
+  'midjourney', 'midjourney-v4', 'midjourney-v5', 'midjourney-v5a',
+  'midjourney-v5b', 'midjourney-v6', 'midjourney-v6a', 'midjourney-v7',
+  // Flux (Black Forest Labs)
+  'flux', 'flux-schnell', 'flux-dev', 'flux-pro', 'flux-pro-v1.1',
+  'flux-1-schnell', 'flux-1-dev', 'flux-1-pro',
+  // Adobe Firefly
+  'firefly', 'firefly-v1', 'firefly-v2', 'firefly-v3',
+  // Google Imagen
+  'imagen', 'imagen-1', 'imagen-2', 'imagen-3', 'imagen-3-fast',
+  'imagen-4', 'imagen-4-fast',
+  // Alibaba Wanx
+  'wanx', 'wanx-v1', 'wanx-v1-plus', 'wanx2', 'wanx2-1',
+  // Alibaba Tongyi Wanxiang
+  'wan', 'wan-v1',
+  // Baidu Wenxin
+  'wenxin-yige', 'ernie-vilg', 'ernie-vilg-2',
+  // Tencent Hunyuan
+  'hunyuan-image', 'hunyuan-dit',
+  // Zhipu CogView
+  'cogview', 'cogview-2', 'cogview-3', 'cogview-3-plus', 'cogview-4',
+  'cogview-3-flash', 'cogview-4-250304',
+  // Playground AI
+  'playground', 'playground-v1', 'playground-v2', 'playground-v2.5',
+  // Kandinsky
+  'kandinsky', 'kandinsky-2', 'kandinsky-2-1', 'kandinsky-2-2',
+  'kandinsky-3', 'kandinsky-3-1',
+  // Ideogram
+  'ideogram', 'ideogram-v1', 'ideogram-v1-turbo', 'ideogram-v2',
+  // Recraft
+  'recraft', 'recraft-v1', 'recraft-v2',
+  // DeepAI
+  'deepai-text2img', 'deepai-image',
+  // Artbreeder
+  'artbreeder', 'artbreeder-collage',
+  // Leonardo AI
+  'leonardo', 'leonardo-diffusion', 'leonardo-phoenix',
+  // Canva
+  'canva-text-to-image',
+  // Getty Images
+  'getty-generative-ai',
+  // Shutterstock
+  'shutterstock-generative',
+  // Lexica
+  'lexica-aperture',
+  // Craiyon
+  'craiyon', 'craiyon-v3',
+  // DreamStudio
+  'dreamstudio',
+  // NightCafe
+  'nightcafe',
+  // Jasper Art
+  'jasper-art',
+  // StarryAI
+  'starryai',
+  // WOMBO Dream
+  'wombo-dream',
+  // Picsart
+  'picsart-ai',
+  // Fotor
+  'fotor-ai',
+  // Hotpot AI
+  'hotpot-ai',
+  // Patterned AI
+  'patterned-ai',
+  // Rosebud AI
+  'rosebud-ai',
+  // PixelVibe
+  'pixelvibe',
+  // Freepik
+  'freepik-ai',
+  // Flair AI
+  'flair-ai',
+  // Clipdrop
+  'clipdrop',
+  // Visual Electric
+  'visual-electric',
+  // Scenario
+  'scenario-gg',
+  // Astria
+  'astria',
+  // OctoBase
+  'octoai-sdxl',
+  // Replicate SDXL
+  'replicate-sdxl',
+  // ByteDance
+  'skymaster-volcengine', 'seedream', 'seedream-3',
+  // Kuaishou
+  'kolors', 'kolors-v1',
+  // Minimax (image)
+  'minimax-image', 'abab-image',
+  // Bria AI
+  'bria-text-to-image',
+  // Together AI
+  'together-sdxl',
+  // Segmind
+  'segmind-vega',
+  // etc.
+]);
+
+const VIDEO_MODEL_NAMES: Set<string> = new Set([
+  // OpenAI Sora
+  'sora', 'sora-turbo',
+  // Runway
+  'runway', 'runway-gen-1', 'runway-gen-2', 'runway-gen-3', 'runway-gen-3-alpha',
+  'runway-gen-3-alpha-turbo',
+  // Pika Labs
+  'pika', 'pika-v1', 'pika-v1-5', 'pika-v2',
+  // Kling (Kuaishou)
+  'kling', 'kling-v1', 'kling-v1-5', 'kling-v1-6',
+  // Hailuo AI (MiniMax)
+  'hailuo', 'hailuo-video', 'hailuo-01', 'hailuo-video-01',
+  // MiniMax
+  'minimax-video', 'abab-video', 'video-01',
+  // Wan Video (Alibaba)
+  'wan-video', 'wan2.1-t2v', 'wan2.1-i2v', 'wan-video-v1',
+  // CogVideo (Zhipu/THUDM)
+  'cogvideo', 'cogvideox', 'cogvideox-2', 'cogvideox-5b',
+  'cogvideox-2b', 'cogvideox-5b-i2v',
+  // ByteDance
+  'dreamina', 'jimeng', 'magic-video', 'seed-video',
+  // Tencent
+  'hunyuan-video', 'hunyuan-video-v1',
+  // Luma AI
+  'luma', 'luma-dream-machine', 'luma-video',
+  // Stability AI
+  'stable-video-diffusion', 'svd', 'svd-xt',
+  // Synthesia
+  'synthesia', 'synthesia-v14',
+  // HeyGen
+  'heygen', 'heygen-v2',
+  // D-ID
+  'd-id',
+  // Colossyan
+  'colossyan',
+  // Elai
+  'elai',
+  // Pictory
+  'pictory',
+  // InVideo
+  'invideo-ai',
+  // Fliki
+  'fliki',
+  // Kapwing
+  'kapwing',
+  // Peech
+  'peech',
+  // Opus Clip
+  'opus-clip',
+  // Deepbrain AI
+  'deepbrain-ai',
+  // Hour One
+  'hour-one',
+  // Rephrase AI
+  'rephrase-ai',
+  // Deepshot
+  'deepshot',
+  // Wondercraft
+  'wondercraft',
+  // Ssemble
+  'ssemble',
+  // Nova AI
+  'nova-ai',
+  // Predis AI
+  'predis-ai',
+  // Visla
+  'visla',
+  // Simplified
+  'simplified-video',
+  // Lumen5
+  'lumen5',
+  // Animoto
+  'animoto',
+  // FlexClip
+  'flexclip',
+  // Veed
+  'veed',
+  // ClipChamp
+  'clipchamp',
+  // Descript
+  'descript',
+  // WeVideo
+  'wevideo',
+  // Biteable
+  'biteable',
+  // Powtoon
+  'powtoon',
+  // Vyond
+  'vyond',
+  // Raw Shorts
+  'rawshorts',
+  // Moovly
+  'moovly',
+  // Renderforest
+  'renderforest',
+  // Wideo
+  'wideo',
+  // Magisto
+  'magisto',
+  // Kizoa
+  'kizoa',
+  // Hippo Video
+  'hippo-video',
+  // Covideo
+  'covideo',
+  // BombBomb
+  'bombbomb',
+  // Dubverse
+  'dubverse',
+  // Narakeet
+  'narakeet',
+  // Steve AI
+  'steve-ai',
+  // Tavus
+  'tavus',
+  // Gan AI
+  'gan-ai',
+  // Argil
+  'argil',
+  // Kling-V
+  'kling-v',
+  // Genmo
+  'genmo', 'genmo-mochi',
+  // PixVerse
+  'pixverse', 'pixverse-v3',
+  // Haiper
+  'haiper', 'haiper-video',
+  // Viggle
+  'viggle',
+  // X AI Grok
+  'grok-video',
+  // Meta
+  'meta-video', 'meta-movie-gen', 'movie-gen',
+  // Google Veo
+  'veo', 'veo-2', 'veo-3',
+  // etc.
+]);
+
+// Substring patterns for fuzzy matching (lowercase)
+const IMAGE_SUBSTRINGS: string[] = [
+  'txt2img', 'img2img', 'text-to-image', 'image-generation', 'image-gen',
+  'text2img', 'img2photo', 'txt2photo', 'image-synthesis',
+];
+
+const VIDEO_SUBSTRINGS: string[] = [
+  'video-generation', 'video-gen', 'text-to-video', 'txt2video', 'txt2vid',
+  'img2video', 'image-to-video', 'i2v', 't2v',
+];
+
 function classifyModelType(modelId: string, raw?: any): ModelType {
   const id = modelId.toLowerCase();
-  // Video generation models
-  if (/\b(video|cogvideo|sora|kling|pika|runway|minimax-video|hailuo|wan-video)\b/.test(id)) return 'video';
-  if (raw?.model_type === 'video' || raw?.task === 'video-generation') return 'video';
-  // Image generation models
-  if (/\b(dall-?e|stable-?diffusion|sd[123x]|sdxl|flux|midjourney|imagen|wanx|wan\b|cogview|cogview-?4|playground|kandinsky|firefly|ideogram|recraft)\b/.test(id)) return 'image';
-  if (/\b(txt2img|img2img|text-to-image|image-generation)\b/.test(id)) return 'image';
-  if (raw?.model_type === 'image' || raw?.task === 'text-to-image' || raw?.task === 'image-generation') return 'image';
+
+  // Check API metadata first (most reliable) - any field that identifies model type
+  const metaType = (raw?.model_type || raw?.type || raw?.task_type || raw?.category || '').toLowerCase();
+  const metaTask = (raw?.task || raw?.task_name || raw?.endpoint_type || '').toLowerCase();
+  const metaCaps = JSON.stringify(raw?.capabilities || raw?.features || raw?.supported_tasks || '').toLowerCase();
+  if (metaType === 'video' || metaTask.includes('video') || metaCaps.includes('video')) return 'video';
+  if (metaType === 'image' || metaTask.includes('image') || metaTask.includes('text-to-image') || metaCaps.includes('image')) return 'image';
+  if (metaType === 'tts' || metaTask.includes('tts') || metaTask.includes('text-to-speech') || metaCaps.includes('tts')) return 'tts';
+  if (metaType === 'stt' || metaTask.includes('stt') || metaTask.includes('speech-recognition') || metaCaps.includes('stt') || metaTask.includes('asr')) return 'stt';
+  // Also check raw.task for video-generation variants
+  if (raw?.task === 'video-generation' || raw?.task === 'text-to-video' || raw?.task === 'video-gen') return 'video';
+  if (raw?.task === 'text-to-image' || raw?.task === 'image-generation' || raw?.task === 'image-gen') return 'image';
+
+  // Exact match against video model dictionary
+  if (VIDEO_MODEL_NAMES.has(id)) return 'video';
+  // Exact match against image model dictionary
+  if (IMAGE_MODEL_NAMES.has(id)) return 'image';
+
+  // Substring pattern matching for video
+  for (const substr of VIDEO_SUBSTRINGS) {
+    if (id.includes(substr)) return 'video';
+  }
+  // Substring pattern matching for image
+  for (const substr of IMAGE_SUBSTRINGS) {
+    if (id.includes(substr)) return 'image';
+  }
+
+  // Regex fallback for video models
+  if (/\b(video|cogvideo|sora|kling|pika|runway|minimax-video|hailuo|wan-video|luma|svd|stable-video|dreammachine|movie-gen|veo|mochi|pixverse|haiper|genmo)\b/.test(id)) return 'video';
+  // Regex fallback for image models
+  if (/\b(dall-?e|stable-?diffusion|sd[123x]|sdxl|flux|midjourney|imagen|wanx|wan\b|cogview|cogview-?4|playground|kandinsky|firefly|ideogram|recraft|seedream|kolors|hunyuan-image|wenxin-yige|deepai-text2img|craiyon)\b/.test(id)) return 'image';
+
   // TTS models
   if (/\b(tts|text.to.speech|speech.synthesis|voice.synth|bark|coqui|xtts|fish.audio|cosyvoice|chat-tts|f5-tts)\b/.test(id)) return 'tts';
-  if (raw?.model_type === 'tts' || raw?.task === 'text-to-speech' || raw?.task === 'tts') return 'tts';
   // STT/ASR models
   if (/\b(whisper|asr|stt|speech.to.text|transcri|paraformer|sense.voice|funasr)\b/.test(id)) return 'stt';
-  if (raw?.model_type === 'stt' || raw?.task === 'speech-recognition' || raw?.task === 'asr') return 'stt';
-  // All other text models are LLM (vision/audio detected via testing)
+
+  // All other text models are LLM
   return 'llm';
 }
 
@@ -33,7 +321,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
 
   r.get('/presets', (_req, res) => res.json(PROVIDER_PRESETS));
   r.get('/', (_req, res) => {
-    // Sync real-time concurrency into each key object before returning
     for (const p of pool.getAllProviders()) {
       for (const k of p.apiKeys) {
         (k as any).concurrentRequests = pool.getKeyConcurrency(k.id);
@@ -87,7 +374,6 @@ export function createProviderRoutes(pool: ApiPoolManager) {
     const endpoint = prov.modelsEndpoint || '/models';
     const url = prov.baseUrl + endpoint;
     try {
-      let modelsData: any[] = [];
       if (prov.type === 'anthropic') {
         return res.json({ models: prov.models, source: 'default' });
       }
@@ -106,15 +392,9 @@ export function createProviderRoutes(pool: ApiPoolManager) {
             const caps = ModelCapabilityScorer.getDefaultProfile(modelId);
             if (m.context_length) caps.context = Math.min(10, Math.log2(m.context_length / 1000));
             prov.models.push({
-              id: uuid(),
-              name: m.name || m.id,
-              providerId: prov.id,
-              modelId: modelId,
-              type: mtype,
-              capabilities: caps,
-              contextLength: m.context_length,
-              maxOutputLength: m.max_output_length,
-              description: m.description,
+              id: uuid(), name: m.name || m.id, providerId: prov.id,
+              modelId, type: mtype, capabilities: caps,
+              contextLength: m.context_length, maxOutputLength: m.max_output_length, description: m.description,
             });
           }
         }
@@ -124,14 +404,10 @@ export function createProviderRoutes(pool: ApiPoolManager) {
           if (!modelId) continue;
           if (!prov.models.find(em => em.modelId === modelId)) {
             const caps = ModelCapabilityScorer.getDefaultProfile(modelId);
-            prov.models.push({
-              id: uuid(), name: modelId, providerId: prov.id,
-              modelId, type: classifyModelType(modelId), capabilities: caps,
-            });
+            prov.models.push({ id: uuid(), name: modelId, providerId: prov.id, modelId, type: classifyModelType(modelId), capabilities: caps });
           }
         }
       }
-      // Probe new LLM models for vision/audio capabilities BEFORE responding
       const llmModels = prov.models.filter(m => m.type === 'llm' && (m.capabilities.visionScore === 0 || m.capabilities.audioScore === 0));
       if (llmModels.length > 0 && key) {
         for (const m of llmModels.slice(0, 10)) {
@@ -139,7 +415,7 @@ export function createProviderRoutes(pool: ApiPoolManager) {
             const probe = await CapabilityTestEngine.probeCapabilities(prov, key, m);
             if (probe.visionScore > 0) { m.capabilities.visionScore = probe.visionScore; m.capabilities.multimodal = true; }
             if (probe.audioScore > 0) { m.capabilities.audioScore = probe.audioScore; }
-          } catch (e: any) { console.log(`[Probe] ${m.modelId} error:`, e.message); }
+          } catch (e: any) { console.log('[Probe] ' + m.modelId + ' error:', e.message); }
         }
       }
       res.json({ models: prov.models, source: 'api', count: prov.models.length });
@@ -176,3 +452,4 @@ export function createProviderRoutes(pool: ApiPoolManager) {
 
   return r;
 }
+
