@@ -316,7 +316,8 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
               { key: 'audio', label: '🔊 音频', types: ['llm'], filter: (m: any) => m.capabilities?.audioScore > 0 },
               { key: 'tts', label: '🔊 TTS', types: ['tts'], filter: (m: any) => m.type === 'tts' },
               { key: 'stt', label: '🎙 STT', types: ['stt'], filter: (m: any) => m.type === 'stt' },
-              { key: 'image', label: '🎨 图像生成', types: ['image'], filter: (m: any) => m.type === 'image' },
+              { key: 'image', label: '🎨 图像生成', types: ['image'], filter: (m: any) => m.type === 'image', listAll: true },
+              { key: 'video', label: '🎬 视频生成', types: ['video'], filter: (m: any) => m.type === 'video', listAll: true },
           ].map(cfg => (
             <div key={cfg.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <span style={{ fontSize: 12, minWidth: 80, color: 'var(--text-secondary)' }}>
@@ -324,11 +325,25 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
               </span>
               <select value={agentModelMap[cfg.key] || ''} onChange={e => setAgentModelMap({ ...agentModelMap, [cfg.key]: e.target.value })}
                 style={{ flex: 1, fontSize: 11 }}>
-                <option value="">🤖 让全局模型决定</option>
-                <option value="__follow__">📌 跟随全局模型</option>
-                {providers.flatMap(p => p.models.filter(m => cfg.filter ? cfg.filter(m) : cfg.types.includes(m.type)).map(m => (
-                  <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name} {m.type !== 'llm' ? `(${m.type})` : ''}</option>
-                )))}
+                {cfg.listAll ? (
+                  <>
+                    <option value="">请选择{cfg.key === "video" ? "视频" : "图像"}生成模型...</option>
+                    {providers.flatMap(p => p.models.filter(m => cfg.filter(m)).map(m => (
+                      <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name}</option>
+                    )))}
+                    {providers.every(p => p.models.filter(m => cfg.filter(m)).length === 0) && (
+                      <option value="" disabled>未找到可用的{cfg.key === "video" ? "视频" : "图像"}生成模型</option>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <option value="">🤖 让全局模型决定</option>
+                    <option value="__follow__">📌 跟随全局模型</option>
+                    {providers.flatMap(p => p.models.filter(m => cfg.filter ? cfg.filter(m) : cfg.types.includes(m.type)).map(m => (
+                      <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name} {m.type !== 'llm' ? '(' + m.type + ')' : ''}</option>
+                    )))}
+                  </>
+                )}
               </select>
             </div>
           ))}

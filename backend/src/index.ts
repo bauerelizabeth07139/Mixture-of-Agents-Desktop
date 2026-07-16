@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import cors from 'cors';
@@ -81,7 +81,7 @@ app.use('/api/models', createModelRoutes(poolManager));
 app.use('/api/testing', createTestingRoutes(poolManager, wsManager.broadcast.bind(wsManager)));
 app.use('/api/coding', createCodingRoutes(poolManager, wsManager.broadcast.bind(wsManager), projectManager));
 app.use('/api/extensions', createExtensionRoutes(extManager));
-app.use('/api/chat', createChatRoutes(poolManager));
+app.use('/api/chat', createChatRoutes(poolManager, extManager));
 app.get('/api/health', (_req, res) => { res.json({ status: 'ok', providers: poolManager.getAllProviders().length, ws: wsManager.getClientCount() }); });
 
 const PORT = process.env.PORT || 3001;

@@ -32,7 +32,15 @@ export function createProviderRoutes(pool: ApiPoolManager) {
   const r = Router();
 
   r.get('/presets', (_req, res) => res.json(PROVIDER_PRESETS));
-  r.get('/', (_req, res) => res.json(pool.getAllProviders()));
+  r.get('/', (_req, res) => {
+    // Sync real-time concurrency into each key object before returning
+    for (const p of pool.getAllProviders()) {
+      for (const k of p.apiKeys) {
+        (k as any).concurrentRequests = pool.getKeyConcurrency(k.id);
+      }
+    }
+    res.json(pool.getAllProviders());
+  });
 
   r.post('/from-preset', (req: Request, res: Response) => {
     const preset = PROVIDER_PRESETS.find(p => p.id === req.body.presetId);

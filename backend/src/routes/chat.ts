@@ -1,4 +1,4 @@
-﻿import { v4 as uuid } from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import os from 'os';
@@ -7,6 +7,7 @@ import { spawnSync } from 'child_process';
 import { ApiPoolManager } from '../providers/api-pool';
 import { LLMClient, QuotaExhaustedError, LLMError } from '../services/llm-client';
 import { Provider, Model, ApiKeyEntry } from '../types';
+import { ExtensionManager } from '../services/extensions/extension-manager';
 
 // ============================================================
 // Constants
@@ -374,7 +375,7 @@ function collectCommands(blocks: ExtractedCodeBlock[], dollarCommands: string[])
 }
 
 // ============================================================
-// Command execution 锟?ONE BY ONE like Claude Code
+// Command execution �?ONE BY ONE like Claude Code
 // ============================================================
 
 function getCmdTimeout(cmd: string): number {
@@ -458,7 +459,7 @@ function runCommandsSequentially(
       if (fs.existsSync(resolved)) currentCwd = resolved;
     }
 
-    // Stop on failure 锟?error recovery loop will handle retries
+    // Stop on failure �?error recovery loop will handle retries
     if (result.exitCode !== 0) break;
     
     // Brief pause after server start to let it initialize
@@ -645,7 +646,7 @@ async function streamChatWithKeyRotation(
 // Route factory
 // ============================================================
 
-export function createChatRoutes(pool: ApiPoolManager) {
+export function createChatRoutes(pool: ApiPoolManager, extManager?: ExtensionManager) {
   const r = Router();
 
   r.get('/project-dir', (req: Request, res: Response) => {
@@ -762,6 +763,14 @@ export function createChatRoutes(pool: ApiPoolManager) {
         messages.push({ role: 'system', content: parts.join(' ') });
       }
 
+      // Inject MCP/Skill context if available
+      if (extManager) {
+        const mcpCtx = extManager.buildMcpContext();
+        if (mcpCtx) messages.push({ role: 'system', content: mcpCtx });
+        const skillCtx = extManager.buildSkillContext();
+        if (skillCtx) messages.push({ role: 'system', content: skillCtx });
+      }
+
       const compressedHistory = compressHistory(history || []);
       for (const msg of compressedHistory) messages.push({ role: msg.role, content: msg.content });
 
@@ -823,11 +832,14 @@ export function createChatRoutes(pool: ApiPoolManager) {
 
       // === PLAN->ACT->OBSERVE->REPLAN LOOP ===
       const MAX_PLAN_ROUNDS = 12;
+      const MAX_STALL_ROUNDS = 2;
       let planContent = llmContent;
       let planRound = 0;
       let stepVerifyCount = 0;
       const MAX_STEP_VERIFIES = isHighStrict ? 5 : 3;
       let planDone = false;
+      let stallCount = 0;
+      let prevFileCount = 0;
 
       while (!planDone && planRound < MAX_PLAN_ROUNDS) {
         planRound++;
@@ -923,6 +935,17 @@ export function createChatRoutes(pool: ApiPoolManager) {
         if ((hasHtml && (hasJs || hasCss) && (hasServer || planRound >= 6)) || (hasHtml && stepVerifyCount >= MAX_STEP_VERIFIES) || (hasHtml && hasJs && hasCss && hasServer && planRound >= 3)) {
           planDone = true;
         }
+        // Stall detection: break if no progress
+        if (filesWritten.length <= prevFileCount && planBlocks.length === 0) {
+          stallCount++;
+          if (stallCount >= MAX_STALL_ROUNDS) {
+            sendEvent('status', { status: 'stall_detected', message: 'No progress for ' + stallCount + ' consecutive rounds. Stopping.' });
+            planDone = true;
+            break;
+          }
+        } else { stallCount = 0; }
+        prevFileCount = filesWritten.length;
+
         if (planBlocks.length === 0 && !planDone) {
           totalRetries++;
           if (totalRetries <= MAX_RETRIES) {
