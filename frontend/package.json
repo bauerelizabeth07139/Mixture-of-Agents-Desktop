@@ -1,94 +1,90 @@
 {
-  "name": "moa-frontend",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "electron": "electron .",
-    "start": "concurrently \"vite --host\" \"wait-on http://localhost:5173 && electron .\"",
-    "build:frontend": "vite build",
-    "build:backend": "cd ../backend && npx tsc",
-    "build:all": "npm run build:frontend && cd ../backend && npx tsc",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win"
-  },
-  "dependencies": {
-    "@monaco-editor/react": "^4.7.0",
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/addon-web-links": "^0.12.0",
-    "@xterm/xterm": "^6.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17",
-    "@vitejs/plugin-react": "^4.2.1",
-    "electron": "^43.0.0",
-    "electron-builder": "^25.1.8",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.8"
-  },
-  "main": "electron-main.cjs",
-  "build": {
-    "appId": "com.moa.desktop",
-    "productName": "Mixture of Agents",
-    "directories": {
-      "output": "../dist-exe"
-    },
-    "files": [
-      "electron-main.cjs",
-      "dist/**/*",
-      "node_modules/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "../backend/dist",
-        "to": "backend/dist"
-      },
-      {
-        "from": "../backend/public",
-        "to": "backend/public"
-      },
-      {
-        "from": "../backend/node_modules",
-        "to": "backend/node_modules"
-      },
-      {
-        "from": "../backend/package.json",
-        "to": "backend/package.json"
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "sign": null,
-      "signingHashAlgorithms": [],
-      "verifyUpdateCodeSignature": false,
-      "signAndEditExecutable": false
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    },
-    "asar": true,
-    "asarUnpack": [
-      "backend/**/*"
-    ]
-  },
-  "description": "Multi-model collaborative AI agent system",
-  "author": "Mixture of Agents"
+    "name":  "moa-frontend",
+    "private":  true,
+    "version":  "1.0.0",
+    "type":  "module",
+    "scripts":  {
+                    "dev":  "vite",
+                    "build":  "tsc \u0026\u0026 vite build",
+                    "preview":  "vite preview",
+                    "electron":  "electron .",
+                    "start":  "concurrently \"vite --host\" \"wait-on http://localhost:5173 \u0026\u0026 electron .\"",
+                    "build:frontend":  "vite build",
+                    "build:backend":  "cd ../backend \u0026\u0026 npx tsc",
+                    "build:all":  "npm run build:frontend \u0026\u0026 cd ../backend \u0026\u0026 npx tsc",
+                    "pack":  "electron-builder --dir",
+                    "dist":  "electron-builder",
+                    "dist:win":  "electron-builder --win"
+                },
+    "dependencies":  {
+                         "@monaco-editor/react":  "^4.7.0",
+                         "@xterm/addon-fit":  "^0.11.0",
+                         "@xterm/addon-web-links":  "^0.12.0",
+                         "@xterm/xterm":  "^6.0.0",
+                         "react":  "^18.2.0",
+                         "react-dom":  "^18.2.0"
+                     },
+    "devDependencies":  {
+                            "@types/react":  "^18.2.43",
+                            "@types/react-dom":  "^18.2.17",
+                            "@vitejs/plugin-react":  "^4.2.1",
+                            "electron":  "^43.1.1",
+                            "electron-builder":  "^25.1.8",
+                            "typescript":  "^5.3.3",
+                            "vite":  "^5.0.8"
+                        },
+    "main":  "electron-main.cjs",
+    "build":  {
+                  "appId":  "com.moa.desktop",
+                  "productName":  "Mixture of Agents",
+                  "directories":  {
+                                      "output":  "../dist-exe"
+                                  },
+                  "files":  [
+                                "electron-main.cjs",
+                                "dist/**/*",
+                                "node_modules/**/*",
+                                "package.json"
+                            ],
+                  "extraResources":  [
+                                         {
+                                             "from":  "../backend/dist",
+                                             "to":  "backend/dist"
+                                         },
+                                         {
+                                             "from":  "../backend/public",
+                                             "to":  "backend/public"
+                                         },
+                                         {
+                                             "from":  "../backend/node_modules",
+                                             "to":  "backend/node_modules"
+                                         },
+                                         {
+                                             "from":  "../backend/package.json",
+                                             "to":  "backend/package.json"
+                                         }
+                                     ],
+                  "win":  {
+                              "target":  [
+                                             {
+                                                 "target":  "portable",
+                                                 "arch":  [
+                                                              "x64"
+                                                          ]
+                                             }
+                                         ]
+                          },
+                  "nsis":  {
+                               "oneClick":  false,
+                               "allowToChangeInstallationDirectory":  true,
+                               "createDesktopShortcut":  true,
+                               "createStartMenuShortcut":  true
+                           },
+                  "asar":  true,
+                  "asarUnpack":  [
+                                     "backend/**/*"
+                                 ]
+              },
+    "description":  "Multi-model collaborative AI agent system",
+    "author":  "Mixture of Agents"
 }
