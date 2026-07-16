@@ -328,8 +328,13 @@ function SettingsPanel({ providers, ratio, setRatio, orchThinking, setOrchThinki
                 {cfg.listAll ? (
                   <>
                     <option value="">请选择{cfg.key === "video" ? "视频" : "图像"}生成模型...</option>
+                    {/* Confirmed models listed first */}
                     {providers.flatMap(p => p.models.filter(m => cfg.filter(m)).map(m => (
-                      <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name}</option>
+                      <option key={m.id} value={m.modelId}>✅ {p.icon} {p.name} - {m.name}</option>
+                    )))}
+                    {/* All other models as fallback */}
+                    {providers.flatMap(p => p.models.filter(m => !cfg.filter(m)).sort((a,b) => a.name.localeCompare(b.name)).map(m => (
+                      <option key={m.id} value={m.modelId}>{p.icon} {p.name} - {m.name} ({m.type})</option>
                     )))}
                     {providers.every(p => p.models.filter(m => cfg.filter(m)).length === 0) && (
                       <option value="" disabled>未找到可用的{cfg.key === "video" ? "视频" : "图像"}生成模型</option>
